@@ -1,0 +1,19 @@
+name: ReadingDiary
+description: "The all in one App for Book Lovers."
+publish_to: 'ReadingDiary'
+version: 0.1.0
+
+environment:
+  sdk: ^3.6.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
