@@ -1,0 +1,135 @@
+<Window x:Class="ServerGui.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Reading Diary Server GUI" Height="700" Width="900"
+        WindowStartupLocation="CenterScreen"
+        Background="#F8FAFC">
+    
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="Reading Diary Server Control Panel" 
+                       FontSize="24" FontWeight="Bold" 
+                       HorizontalAlignment="Center" Margin="0,0,0,10"/>
+            <TextBlock Text="Coded by TheMRX - Pascal Keller" 
+                       FontSize="12" Foreground="#6B7280"
+                       HorizontalAlignment="Center"/>
+        </StackPanel>
+        
+        <!-- Server Controls -->
+        <Grid Grid.Row="1" Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- Settings Panel -->
+            <GroupBox Grid.Column="0" Header="Server Einstellungen" Margin="0,0,10,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <Label Grid.Row="0" Content="Port:" />
+                    <TextBox Grid.Row="1" x:Name="PortTextBox" Text="7443" 
+                             IsEnabled="{Binding CanChangeSettings}" Margin="0,0,0,10"/>
+                    
+                    <Label Grid.Row="2" Content="Passwort:" />
+                    <PasswordBox Grid.Row="3" x:Name="PasswordBox" 
+                                 IsEnabled="{Binding CanChangeSettings}" Margin="0,0,0,10"/>
+                    
+                    <Button Grid.Row="4" Content="{Binding StartButtonText}" 
+                            Click="StartStopButton_Click"
+                            Background="#3B82F6" Foreground="White" 
+                            Padding="15,8" FontWeight="Bold"/>
+                </Grid>
+            </GroupBox>
+            
+            <!-- Status Panel -->
+            <GroupBox Grid.Column="1" Header="Server Status" Margin="10,0,0,0">
+                <StackPanel>
+                    <TextBlock Text="{Binding StatusText}" FontWeight="Bold" Margin="0,0,0,5"/>
+                    <TextBlock Text="{Binding UptimeText, StringFormat='Laufzeit: {0}'}" Margin="0,0,0,10"/>
+                    
+                    <Button Content="Web-Interface öffnen" 
+                            Click="OpenWebInterfaceButton_Click"
+                            IsEnabled="{Binding IsServerRunning}"
+                            Background="#10B981" Foreground="White" 
+                            Padding="10,5" Margin="0,0,0,5"/>
+                    
+                    <Button Content="IP-Adressen aktualisieren" 
+                            Click="RefreshIpButton_Click"
+                            Background="#F59E0B" Foreground="White" 
+                            Padding="10,5"/>
+                </StackPanel>
+            </GroupBox>
+        </Grid>
+        
+        <!-- Main Content Area -->
+        <TabControl Grid.Row="2">
+            <TabItem Header="📋 Log">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+                        <TextBox x:Name="LogTextBox" 
+                                 IsReadOnly="True" 
+                                 Background="Black" Foreground="Lime"
+                                 FontFamily="Consolas" FontSize="11"
+                                 TextWrapping="Wrap" 
+                                 VerticalScrollBarVisibility="Auto"/>
+                    </ScrollViewer>
+                    
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" 
+                                HorizontalAlignment="Right" Margin="0,10,0,0">
+                        <Button Content="Log exportieren" 
+                                Click="ExportLogButton_Click"
+                                Margin="0,0,10,0" Padding="10,5"/>
+                        <Button Content="Log leeren" 
+                                Click="ClearLogButton_Click"
+                                Padding="10,5"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+            
+            <TabItem Header="🌐 Netzwerk">
+                <ScrollViewer>
+                    <StackPanel>
+                        <TextBlock Text="Verfügbare URLs:" FontWeight="Bold" Margin="0,0,0,10"/>
+                        <TextBlock Text="{Binding IpAddresses}" 
+                                   FontFamily="Consolas" FontSize="12"
+                                   Background="#F3F4F6" Padding="10"
+                                   TextWrapping="Wrap"/>
+                        <TextBlock Text="Klicken Sie auf eine URL um sie zu kopieren" 
+                                   FontStyle="Italic" Foreground="#6B7280" 
+                                   Margin="0,10,0,0"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+        
+        <!-- Footer -->
+        <Border Grid.Row="3" Background="#E5E7EB" CornerRadius="8" 
+                Padding="15" Margin="0,20,0,0">
+            <TextBlock HorizontalAlignment="Center">
+                <Run Text="Reading Diary Server GUI v1.0"/>
+                <LineBreak/>
+                <Run Text="Coded by TheMRX - Pascal Keller" FontSize="11" Foreground="#6B7280"/>
+            </TextBlock>
+        </Border>
+    </Grid>
+</Window>

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reading Diary</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Login-Bildschirm -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-container">
+            <div class="login-header">
+                <i class="fas fa-book icon"></i>
+                <h1>Reading Diary</h1>
+            </div>
+            <div class="login-form">
+                <div class="form-group">
+                    <label for="password">Passwort</label>
+                    <input type="password" id="password" placeholder="Passwort eingeben">
+                </div>
+                <div class="login-buttons">
+                    <button id="login" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt"></i> Anmelden
+                    </button>
+                </div>
+                <div id="loginMessage" class="message"></div>
+            </div>
+            <div class="login-footer">
+                <p>Coded by TheMRX - Pascal Keller</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Haupt-App -->
+    <div id="mainApp" class="main-app" style="display: none;">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <i class="fas fa-book"></i>
+                <span class="app-title">Reading Diary</span>
+                <div id="readingGoalProgress" class="reading-goal-progress"></div>
+            </div>
+            <div class="header-right">
+                <button id="logout" class="btn btn-secondary">
+                    <i class="fas fa-sign-out-alt"></i> Abmelden
+                </button>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav">
+            <button class="nav-btn active" data-page="dashboard">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </button>
+            <button class="nav-btn" data-page="books">
+                <i class="fas fa-books"></i> Meine Bücher
+            </button>
+            <button class="nav-btn" data-page="wishlist">
+                <i class="fas fa-heart"></i> Wunschliste
+            </button>
+            <button class="nav-btn" data-page="quotes">
+                <i class="fas fa-quote-left"></i> Lieblingszitate
+            </button>
+            <button class="nav-btn" data-page="statistics">
+                <i class="fas fa-chart-bar"></i> Statistiken
+            </button>
+            <button class="nav-btn" data-page="settings">
+                <i class="fas fa-cog"></i> Einstellungen
+            </button>
+        </nav>
+
+        <!-- Inhaltsbereich -->
+        <main class="content">
+            <!-- Dashboard -->
+            <div id="dashboard" class="page active">
+                <div class="stats-cards">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalBooks">0</div>
+                            <div class="stat-label">Gesamte Bücher</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="readBooks">0</div>
+                            <div class="stat-label">Gelesen</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-quote-left"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalQuotes">0</div>
+                            <div class="stat-label">Zitate</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="recent-books">
+                    <h2>Zuletzt hinzugefügte Bücher</h2>
+                    <div id="recentBooksList" class="books-grid"></div>
+                </div>
+            </div>
+
+            <!-- Meine Bücher -->
+            <div id="books" class="page">
+                <div class="page-header">
+                    <h1>Meine Bücher</h1>
+                    <div class="page-actions">
+                        <div class="search-container">
+                            <input type="text" id="booksSearch" placeholder="Nach Titel oder Autor suchen..." class="search-input">
+                        </div>
+                        <button id="addBook" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Buch hinzufügen
+                        </button>
+                    </div>
+                </div>
+                <div id="booksList" class="books-list"></div>
+            </div>
+
+            <!-- Wunschliste -->
+            <div id="wishlist" class="page">
+                <div class="page-header">
+                    <h1>Wunschliste</h1>
+                    <div class="page-actions">
+                        <div class="search-container">
+                            <input type="text" id="wishlistSearch" placeholder="Nach Titel oder Autor suchen..." class="search-input">
+                        </div>
+                        <button id="addWishlistItem" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Buch hinzufügen
+                        </button>
+                    </div>
+                </div>
+                <div id="wishlistList" class="books-list"></div>
+            </div>
+
+            <!-- Lieblingszitate -->
+            <div id="quotes" class="page">
+                <div class="page-header">
+                    <h1>Lieblingszitate</h1>
+                    <div class="page-actions">
+                        <div class="search-container">
+                            <input type="text" id="quotesSearch" placeholder="Nach Zitat oder Buch suchen..." class="search-input">
+                        </div>
+                        <button id="addQuote" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Zitat hinzufügen
+                        </button>
+                    </div>
+                </div>
+                <div id="quotesList" class="quotes-list"></div>
+            </div>
+
+            <!-- Statistiken -->
+            <div id="statistics" class="page">
+                <div class="page-header">
+                    <h1>Statistiken</h1>
+                </div>
+                <div id="statisticsContent"></div>
+            </div>
+
+            <!-- Einstellungen -->
+            <div id="settings" class="page">
+                <div class="page-header">
+                    <h1>Einstellungen</h1>
+                </div>
+                <div class="settings-content" id="settingsContent">
+                    <div class="settings-section">
+                        <h3>Leseziel</h3>
+                        <div id="readingGoalSettings"></div>
+                    </div>
+                    <div class="settings-section">
+                        <h3>Genres verwalten</h3>
+                        <div id="genreSettings"></div>
+                    </div>
+                    <div class="settings-section">
+                        <h3>Verlage verwalten</h3>
+                        <div id="publisherSettings"></div>
+                    </div>
+                    <div class="settings-footer">
+                        <p>Coded by TheMRX - Pascal Keller</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle"></h3>
+                <button id="closeModal" class="close-btn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

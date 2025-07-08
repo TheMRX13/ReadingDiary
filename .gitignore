@@ -1,0 +1,70 @@
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Executable files
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go build artifacts
+/bin/
+
+# NICHT FERTIGE KOMPONENTEN - NICHT HOCHLADEN
+/windows-client/
+/android-app/
+build-windows-client.bat
+build-android.bat
+ReadingDiary.sln
+
+# Build-Skripte für unfertige Komponenten
+build-windows-client.bat
+build-android.bat
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Log files
+*.log
+logs/
+
+# Uploads directory content (but keep directory structure)
+uploads/covers/*
+!uploads/covers/.gitkeep
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Configuration files with sensitive data
+config.json
+settings.json
+
+# Test files
+*_test.go
+test/
+
+# Coverage files
+*.out
+coverage.txt
+
+# Node modules (if any)
+node_modules/
+
+# Local environment files
+.env
+.env.local
+.env.*.local
