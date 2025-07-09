@@ -17,6 +17,7 @@
 /android-app/
 build-windows-client.bat
 build-android.bat
+build-server.bat
 ReadingDiary.sln
 
 # Build-Skripte für unfertige Komponenten
