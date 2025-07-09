@@ -1000,7 +1000,8 @@ input[type="file"]:focus {
 }
 
 .book-cover,
-.book-card-cover {
+.book-card-cover,
+.wishlist-cover {
     width: 60px;
     height: 80px;
     flex-shrink: 0;
@@ -1010,6 +1011,18 @@ input[type="file"]:focus {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.wishlist-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.wishlist-cover i {
+    font-size: 24px;
+    color: #999;
 }
 
 .book-card-cover {
@@ -1056,6 +1069,12 @@ input[type="file"]:focus {
     gap: 16px;
 }
 
+.quotes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
 .book-item, .wishlist-item, .quote-item {
     background: white;
     border-radius: 12px;
@@ -1066,58 +1085,6 @@ input[type="file"]:focus {
     gap: 16px;
     transition: transform 0.2s, box-shadow 0.2s;
     cursor: pointer;
-}
-
-.book-item:hover, .wishlist-item:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-.quote-item {
-    cursor: default;
-    flex-direction: column;
-    align-items: flex-start;
-}
-
-.book-info, .wishlist-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.book-title, .wishlist-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: #1f2937;
-    margin-bottom: 4px;
-}
-
-.book-meta, .wishlist-meta {
-    font-size: 14px;
-    color: #6b7280;
-    margin-bottom: 2px;
-}
-
-.book-actions, .wishlist-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.status-badge {
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.status-badge.read {
-    background: #dcfce7;
-    color: #166534;
-}
-
-.status-badge.unread {
-    background: #fef3c7;
-    color: #92400e;
 }
 
 /* Quote Styles */
@@ -1340,6 +1307,196 @@ input[type="file"]:focus {
     justify-content: center;
 }
 
+/* Autocomplete-System für Verlage */
+.autocomplete-container {
+    position: relative;
+    width: 100%;
+}
+
+.autocomplete-container input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+
+.autocomplete-container input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.autocomplete-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.autocomplete-suggestions.show {
+    display: block;
+}
+
+.autocomplete-suggestion {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.autocomplete-suggestion:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-suggestion:hover,
+.autocomplete-suggestion.selected {
+    background-color: #f8f9fa;
+}
+
+.autocomplete-suggestion.create-new {
+    background-color: #e7f3ff;
+    color: #0066cc;
+    font-weight: 500;
+}
+
+.autocomplete-suggestion.create-new:hover {
+    background-color: #d1e7ff;
+}
+
+.autocomplete-suggestion i {
+    font-size: 12px;
+}
+
+/* Info-Box für Hinweise */
+.info-box {
+    background-color: #e3f2fd;
+    border: 1px solid #bbdefb;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    color: #1565c0;
+}
+
+.info-box p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.book-info, .wishlist-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.book-title, .wishlist-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 4px;
+}
+
+.book-meta, .wishlist-meta {
+    font-size: 14px;
+    color: #6b7280;
+    margin-bottom: 2px;
+}
+
+.book-actions, .wishlist-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: white;
+    text-align: center;
+    min-width: 60px;
+    display: inline-block;
+}
+
+.status-badge.read {
+    background-color: #22c55e;
+}
+
+.status-badge.unread {
+    background-color: #6b7280;
+}
+
+.status-badge.reading {
+    background-color: #3b82f6;
+}
+
+/* Status-Dropdown */
+.status-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.status-select {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    font-size: 12px;
+    border: none;
+    background: transparent;
+}
+
+.status-select:focus {
+    outline: none;
+}
+
+.status-dropdown:hover .status-badge {
+    opacity: 0.8;
+}
+
+/* Currently Reading Section */
+.currently-reading {
+    margin-bottom: 32px;
+}
+
+.currently-reading h2 {
+    color: #1f2937;
+    margin-bottom: 16px;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.currently-reading .books-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+/* Responsive Anpassungen für Mobile */
+@media (max-width: 768px) {
+    .install-btn {
+        bottom: 80px !important;
+        right: 16px !important;
+        padding: 10px 16px !important;
+        font-size: 14px !important;
+    }
+}
 @media (max-width: 768px) {
     .header {
         padding: 12px 16px;
@@ -1430,5 +1587,79 @@ input[type="file"]:focus {
     
     .page-header h1 {
         font-size: 24px;
+    }
+}
+
+/* Zitate-Stile */
+.quote-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.quote-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.quote-content {
+    flex: 1;
+}
+
+.quote-content blockquote {
+    font-style: italic;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #2c3e50;
+    margin: 0 0 16px 0;
+    padding: 0 0 0 20px;
+    border-left: 4px solid #667eea;
+    background: #f8f9fa;
+    padding: 16px 20px;
+    border-radius: 8px;
+}
+
+.quote-meta {
+    font-size: 14px;
+    color: #666;
+}
+
+.quote-meta p {
+    margin: 4px 0;
+}
+
+.quote-meta strong {
+    color: #333;
+}
+
+.quote-actions {
+    margin-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.quote-actions .btn {
+    min-width: 80px;
+    font-size: 12px;
+    padding: 6px 12px;
+}
+
+@media (max-width: 768px) {
+    .quote-card {
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .quote-actions {
+        margin-left: 0;
+        flex-direction: row;
+        justify-content: flex-end;
     }
 }
