@@ -3,6 +3,77 @@ let currentToken = '';
 let currentServerUrl = '';
 let currentPage = 'dashboard';
 
+// Service Worker Registration für PWA
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/static/sw.js')
+            .then(function(registration) {
+                console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            }, function(err) {
+                console.log('ServiceWorker registration failed: ', err);
+            });
+    });
+}
+
+// PWA Install Prompt
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Prevent Chrome 67 and earlier from automatically showing the prompt
+    e.preventDefault();
+    // Stash the event so it can be triggered later
+    deferredPrompt = e;
+    // Show install button or banner
+    showInstallPromotion();
+});
+
+function showInstallPromotion() {
+    // Zeige einen Install-Button in der App
+    const installButton = document.createElement('button');
+    installButton.className = 'btn btn-primary install-btn';
+    installButton.innerHTML = '<i class="fas fa-download"></i> App installieren';
+    installButton.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    `;
+    
+    installButton.addEventListener('click', installApp);
+    document.body.appendChild(installButton);
+    
+    // Verstecke Button nach 10 Sekunden
+    setTimeout(() => {
+        if (installButton.parentNode) {
+            installButton.remove();
+        }
+    }, 10000);
+}
+
+async function installApp() {
+    if (deferredPrompt) {
+        // Show the prompt
+        deferredPrompt.prompt();
+        // Wait for the user to respond to the prompt
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`User response to the install prompt: ${outcome}`);
+        // Clear the deferredPrompt variable
+        deferredPrompt = null;
+        
+        // Remove install button
+        const installBtn = document.querySelector('.install-btn');
+        if (installBtn) {
+            installBtn.remove();
+        }
+    }
+}
+
+// Detect if app is installed
+window.addEventListener('appinstalled', (evt) => {
+    console.log('Reading Diary PWA was installed');
+    showMessage(null, 'Reading Diary wurde erfolgreich installiert!', 'success');
+});
+
 // Hilfsfunktionen
 function debounce(func, wait) {
     let timeout;
@@ -233,7 +304,7 @@ function setupEventListeners() {
     document.getElementById('quotesSearch').addEventListener('input', debounce(searchQuotes, 300));
     
     // Buttons
-    document.getElementById('addBook').addEventListener('click', () => showAddBookModal());
+    document.getElementById('addBook').addEventListener('click', () => showBookModal({}));
     document.getElementById('addWishlistItem').addEventListener('click', () => showAddWishlistModal());
     document.getElementById('addQuote').addEventListener('click', () => showAddQuoteModal());
 }
@@ -280,7 +351,7 @@ async function login() {
     }
     
     try {
-        const response = await fetch(`${currentServerUrl}/api/login`, {
+        const response = await fetch('/api/login', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -367,6 +438,21 @@ async function loadDashboard() {
         document.getElementById('totalBooks').textContent = stats.totalBooks;
         document.getElementById('readBooks').textContent = stats.readBooks;
         document.getElementById('totalQuotes').textContent = stats.totalQuotes;
+        
+        // Aktuell gelesene Bücher anzeigen
+        const currentlyReadingEl = document.getElementById('currentlyReadingList');
+        if (currentlyReadingEl) {
+            currentlyReadingEl.innerHTML = '';
+            
+            if (stats.currentlyReading && stats.currentlyReading.length > 0) {
+                stats.currentlyReading.forEach(book => {
+                    const bookCard = createBookCard(book);
+                    currentlyReadingEl.appendChild(bookCard);
+                });
+            } else {
+                currentlyReadingEl.innerHTML = '<p>Gerade liest du keine Bücher.</p>';
+            }
+        }
         
         // Neueste Bücher anzeigen
         const recentBooksEl = document.getElementById('recentBooksList');
@@ -455,9 +541,24 @@ function createBookListItem(book) {
     item.className = 'book-item';
     item.onclick = () => showBookDetails(book.id);
     
-    const statusBadge = (book.isRead || book.is_read)
-        ? '<span class="status-badge read">Gelesen</span>'
-        : '<span class="status-badge unread">Ungelesen</span>';
+    // Status basierend auf neuem System oder Fallback auf altes System
+    let currentStatus = book.status || (book.isRead || book.is_read ? 'Gelesen' : 'Ungelesen');
+    
+    // Status-Badge mit Dropdown für Änderung
+    let statusBadgeClass = 'unread';
+    if (currentStatus === 'Gelesen') statusBadgeClass = 'read';
+    else if (currentStatus === 'Am Lesen') statusBadgeClass = 'reading';
+    
+    const statusDropdown = `
+        <div class="status-dropdown">
+            <span class="status-badge ${statusBadgeClass}">${currentStatus}</span>
+            <select class="status-select" onchange="changeBookStatus(${book.id}, this.value)" onclick="event.stopPropagation()">
+                <option value="Ungelesen" ${currentStatus === 'Ungelesen' ? 'selected' : ''}>Ungelesen</option>
+                <option value="Am Lesen" ${currentStatus === 'Am Lesen' ? 'selected' : ''}>Am Lesen</option>
+                <option value="Gelesen" ${currentStatus === 'Gelesen' ? 'selected' : ''}>Gelesen</option>
+            </select>
+        </div>
+    `;
     
     const coverImageUrl = book.cover_image 
         ? `${currentServerUrl}/uploads/covers/${book.cover_image}` 
@@ -473,7 +574,7 @@ function createBookListItem(book) {
             <div class="book-meta">${escapeHtml(book.publisher)} • ${formatDate(book.publish_date || book.publishDate)}</div>
         </div>
         <div class="book-actions">
-            ${statusBadge}
+            ${statusDropdown}
         </div>
     `;
     
@@ -545,7 +646,7 @@ function showBookModal(book) {
                         <div><strong>Erscheinungsdatum:</strong> ${formatDate(book.publish_date || book.publishDate)}</div>
                         <div><strong>Reihe:</strong> ${escapeHtml(book.series || 'Keine')}</div>
                         <div><strong>Band:</strong> ${book.volume || 'Kein Band'}</div>
-                        <div><strong>Status:</strong> ${(book.isRead || book.is_read) ? 'Gelesen' : 'Ungelesen'}</div>
+                        <div><strong>Status:</strong> ${book.status || (book.isRead || book.is_read ? 'Gelesen' : 'Ungelesen')}</div>
                     </div>
                 </div>
 
@@ -588,9 +689,10 @@ function showBookModal(book) {
                         </div>
                         <div class="form-group">
                             <label for="bookPublisher">Verlag *</label>
-                            <select id="bookPublisher" required>
-                                <option value="">Verlag wählen</option>
-                            </select>
+                            <div class="autocomplete-container">
+                                <input type="text" id="bookPublisher" placeholder="Verlag eingeben..." required>
+                                <div id="publisherSuggestions" class="autocomplete-suggestions"></div>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label for="bookPublishDate">Erscheinungsdatum *</label>
@@ -605,10 +707,12 @@ function showBookModal(book) {
                             <input type="text" id="bookVolume" value="${book.volume || ''}">
                         </div>
                         <div class="form-group">
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="bookIsRead" ${(book.isRead || book.is_read) ? 'checked' : ''}>
-                                <label for="bookIsRead">Gelesen</label>
-                            </div>
+                            <label for="bookStatus">Status</label>
+                            <select id="bookStatus">
+                                <option value="Ungelesen" ${(book.status === 'Ungelesen' || (!book.status && !(book.isRead || book.is_read))) ? 'selected' : ''}>Ungelesen</option>
+                                <option value="Am Lesen" ${book.status === 'Am Lesen' ? 'selected' : ''}>Am Lesen</option>
+                                <option value="Gelesen" ${(book.status === 'Gelesen' || (!book.status && (book.isRead || book.is_read))) ? 'selected' : ''}>Gelesen</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -778,9 +882,10 @@ function showBookModal(book) {
                     </div>
                     <div class="form-group">
                         <label for="bookPublisher">Verlag *</label>
-                        <select id="bookPublisher" required>
-                            <option value="">Verlag wählen</option>
-                        </select>
+                        <div class="autocomplete-container">
+                            <input type="text" id="bookPublisher" placeholder="Verlag eingeben..." required>
+                            <div id="publisherSuggestions" class="autocomplete-suggestions"></div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="bookPublishDate">Erscheinungsdatum *</label>
@@ -795,10 +900,12 @@ function showBookModal(book) {
                         <input type="text" id="bookVolume" value="${book.volume || ''}">
                     </div>
                     <div class="form-group">
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="bookIsRead" ${(book.isRead || book.is_read) ? 'checked' : ''}>
-                            <label for="bookIsRead">Gelesen</label>
-                        </div>
+                        <label for="bookStatus">Status</label>
+                        <select id="bookStatus">
+                            <option value="Ungelesen" ${(book.status === 'Ungelesen' || (!book.status && !(book.isRead || book.is_read))) ? 'selected' : ''}>Ungelesen</option>
+                            <option value="Am Lesen" ${book.status === 'Am Lesen' ? 'selected' : ''}>Am Lesen</option>
+                            <option value="Gelesen" ${(book.status === 'Gelesen' || (!book.status && (book.isRead || book.is_read))) ? 'selected' : ''}>Gelesen</option>
+                        </select>
                     </div>
                 </div>
                 
@@ -817,7 +924,7 @@ function showBookModal(book) {
         loadGenresForSelect('bookGenre', book.genre);
     }
     if (document.getElementById('bookPublisher')) {
-        loadPublishersForSelect('bookPublisher', book.publisher);
+        setupPublisherAutocomplete('bookPublisher', book.publisher);
     }
     
     // Event-Listener für neues Buch
@@ -867,19 +974,137 @@ async function loadGenresForSelect(selectId, selectedValue = '') {
 }
 
 async function loadPublishersForSelect(selectId, selectedValue = '') {
+    // Diese Funktion wird jetzt für das Autocomplete-System verwendet
+    setupPublisherAutocomplete(selectId, selectedValue);
+}
+
+// Neues Publisher-Autocomplete-System
+async function setupPublisherAutocomplete(inputId, initialValue = '') {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    
+    // Setze den initialen Wert
+    if (initialValue) {
+        input.value = initialValue;
+    }
+    
+    // Hole alle Verlage für die Vorschläge
+    let allPublishers = [];
     try {
-        const publishers = await apiCall('/publishers');
-        const select = document.getElementById(selectId);
-        
-        publishers.forEach(publisher => {
-            const option = document.createElement('option');
-            option.value = publisher.name;
-            option.textContent = publisher.name;
-            option.selected = publisher.name === selectedValue;
-            select.appendChild(option);
-        });
+        allPublishers = await apiCall('/publishers');
     } catch (error) {
         console.error('Fehler beim Laden der Verlage:', error);
+    }
+    
+    // Suggestions Container finden
+    let suggestionsContainer = document.getElementById('publisherSuggestions');
+    if (!suggestionsContainer) {
+        suggestionsContainer = document.getElementById('wishlistPublisherSuggestions');
+    }
+    if (!suggestionsContainer) {
+        suggestionsContainer = document.getElementById('editWishlistPublisherSuggestions');
+    }
+    
+    if (!suggestionsContainer) {
+        console.error('Suggestions Container nicht gefunden für:', inputId);
+        return;
+    }
+    
+    // Event Listener für Input
+    input.addEventListener('input', function(e) {
+        const query = e.target.value.trim();
+        showPublisherSuggestions(query, allPublishers, suggestionsContainer, input);
+    });
+    
+    // Event Listener für Focus
+    input.addEventListener('focus', function(e) {
+        const query = e.target.value.trim();
+        if (query.length > 0) {
+            showPublisherSuggestions(query, allPublishers, suggestionsContainer, input);
+        }
+    });
+    
+    // Event Listener für das Schließen bei Klick außerhalb
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+            suggestionsContainer.classList.remove('show');
+        }
+    });
+    
+    // Keydown Event für Navigation
+    input.addEventListener('keydown', function(e) {
+        const suggestions = suggestionsContainer.querySelectorAll('.autocomplete-suggestion');
+        const selected = suggestionsContainer.querySelector('.autocomplete-suggestion.selected');
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            let next = selected ? selected.nextElementSibling : suggestions[0];
+            if (next) {
+                if (selected) selected.classList.remove('selected');
+                next.classList.add('selected');
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            let prev = selected ? selected.previousElementSibling : suggestions[suggestions.length - 1];
+            if (prev) {
+                if (selected) selected.classList.remove('selected');
+                prev.classList.add('selected');
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (selected) {
+                input.value = selected.textContent.replace(' erstellen', '');
+                suggestionsContainer.classList.remove('show');
+            }
+        } else if (e.key === 'Escape') {
+            suggestionsContainer.classList.remove('show');
+        }
+    });
+}
+
+function showPublisherSuggestions(query, allPublishers, container, input) {
+    container.innerHTML = '';
+    
+    if (!query || query.length < 1) {
+        container.classList.remove('show');
+        return;
+    }
+    
+    // Filtere Verlage nach Eingabe (case-insensitive)
+    const filteredPublishers = allPublishers.filter(publisher => 
+        publisher.name.toLowerCase().includes(query.toLowerCase())
+    );
+    
+    // Zeige passende Verlage
+    filteredPublishers.forEach(publisher => {
+        const suggestion = document.createElement('div');
+        suggestion.className = 'autocomplete-suggestion';
+        suggestion.textContent = publisher.name;
+        suggestion.addEventListener('click', function() {
+            input.value = publisher.name;
+            container.classList.remove('show');
+        });
+        container.appendChild(suggestion);
+    });
+    
+    // Zeige "Neu erstellen" Option wenn kein exakter Match
+    const exactMatch = filteredPublishers.find(p => p.name.toLowerCase() === query.toLowerCase());
+    if (!exactMatch && query.length > 0) {
+        const createNew = document.createElement('div');
+        createNew.className = 'autocomplete-suggestion create-new';
+        createNew.innerHTML = `<i class="fas fa-plus"></i> "${query}" erstellen`;
+        createNew.addEventListener('click', function() {
+            input.value = query;
+            container.classList.remove('show');
+        });
+        container.appendChild(createNew);
+    }
+    
+    // Zeige Container wenn Vorschläge vorhanden
+    if (container.children.length > 0) {
+        container.classList.add('show');
+    } else {
+        container.classList.remove('show');
     }
 }
 
@@ -919,27 +1144,6 @@ async function deleteGenre(genreId) {
         showMessage(null, 'Genre erfolgreich gelöscht!', 'success');
     } catch (error) {
         showMessage(null, 'Fehler beim Löschen: ' + error.message, 'error');
-    }
-}
-
-async function addPublisher() {
-    const name = document.getElementById('newPublisher').value.trim();
-    if (!name) {
-        showMessage(null, 'Bitte geben Sie einen Verlag-Namen ein.', 'error');
-        return;
-    }
-    
-    try {
-        await apiCall('/publishers', {
-            method: 'POST',
-            body: { name }
-        });
-        
-        document.getElementById('newPublisher').value = '';
-        loadPublisherList();
-        showMessage(null, 'Verlag erfolgreich hinzugefügt!', 'success');
-    } catch (error) {
-        showMessage(null, 'Fehler beim Hinzufügen: ' + error.message, 'error');
     }
 }
 
@@ -1154,12 +1358,8 @@ async function loadSettings() {
             <div class="settings-section">
                 <h3>Verlage verwalten</h3>
                 <div class="publisher-management">
-                    <div class="form-group">
-                        <label for="newPublisher">Neuen Verlag hinzufügen</label>
-                        <div class="input-group">
-                            <input type="text" id="newPublisher" placeholder="Verlag-Name">
-                            <button class="btn btn-primary" onclick="addPublisher()">Hinzufügen</button>
-                        </div>
+                    <div class="info-box">
+                        <p><strong>Hinweis:</strong> Neue Verlage werden automatisch erstellt, wenn Sie sie beim Hinzufügen von Büchern oder Wunschlisten-Einträgen eingeben.</p>
                     </div>
                     <div class="publisher-list" id="publisherList">
                         <p>Lade Verlage...</p>
@@ -1534,7 +1734,7 @@ async function createBook() {
             publish_date: document.getElementById('bookPublishDate').value,
             series: document.getElementById('bookSeries').value,
             volume: volumeValue ? parseInt(volumeValue) : 0,
-            is_read: document.getElementById('bookIsRead').checked
+            status: document.getElementById('bookStatus').value
         };
         
         const response = await apiCall('/books', {
@@ -1596,7 +1796,7 @@ async function saveBasicInfo(bookId) {
             publish_date: document.getElementById('bookPublishDate').value,
             series: document.getElementById('bookSeries').value,
             volume: volumeValue ? parseInt(volumeValue) : 0,
-            is_read: document.getElementById('bookIsRead').checked
+            status: document.getElementById('bookStatus').value
         };
         
         await apiCall(`/books/${bookId}`, {
@@ -1780,6 +1980,9 @@ function createWishlistItem(item) {
             <div class="wishlist-meta">${escapeHtml(item.publisher)} • ${formatDate(item.publish_date || item.publishDate)}</div>
         </div>
         <div class="wishlist-actions">
+            <button class="btn btn-primary" onclick="showWishlistDetails(${item.id})">
+                <i class="fas fa-eye"></i> Details
+            </button>
             <button class="btn btn-success" onclick="buyWishlistItem(${item.id})">
                 <i class="fas fa-shopping-cart"></i> Gekauft
             </button>
@@ -1826,9 +2029,10 @@ function showAddWishlistModal() {
                 </div>
                 <div class="form-group">
                     <label for="wishlistPublisher">Verlag</label>
-                    <select id="wishlistPublisher">
-                        <option value="">Verlag wählen</option>
-                    </select>
+                    <div class="autocomplete-container">
+                        <input type="text" id="wishlistPublisher" placeholder="Verlag eingeben...">
+                        <div id="wishlistPublisherSuggestions" class="autocomplete-suggestions"></div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="wishlistPublishDate">Erscheinungsdatum</label>
@@ -1855,7 +2059,7 @@ function showAddWishlistModal() {
     
     // Load genres and publishers
     loadGenresForSelect('wishlistGenre');
-    loadPublishersForSelect('wishlistPublisher');
+    setupPublisherAutocomplete('wishlistPublisher');
     
     document.getElementById('wishlistForm').onsubmit = async (e) => {
         e.preventDefault();
@@ -1908,166 +2112,309 @@ function showAddWishlistModal() {
     };
 }
 
-async function buyWishlistItem(itemId) {
+async function showWishlistDetails(wishlistId) {
     try {
-        const item = await apiCall(`/wishlist/${itemId}`);
+        const item = await apiCall(`/wishlist/${wishlistId}`);
         
-        // Zeige Modal für Formatauswahl
+        const coverImageUrl = item.cover_image 
+            ? `${currentServerUrl}/uploads/covers/${item.cover_image}` 
+            : (item.coverImage ? `${currentServerUrl}/uploads/covers/${item.coverImage}` : null);
+        
         const modalBody = `
-            <div class="format-selection">
-                <p>Buch wird zu "Meine Bücher" hinzugefügt. Bitte wählen Sie das Format:</p>
-                <div class="format-options">
-                    <div class="format-option" data-format="Hardcover">
-                        <i class="fas fa-book"></i>
-                        <span>Hardcover</span>
-                    </div>
-                    <div class="format-option" data-format="Paperback">
-                        <i class="fas fa-book-open"></i>
-                        <span>Paperback</span>
-                    </div>
-                    <div class="format-option" data-format="eBook">
-                        <i class="fas fa-tablet-alt"></i>
-                        <span>eBook</span>
+            <form id="editWishlistForm">
+                <input type="hidden" id="wishlistId" value="${item.id}">
+                
+                <!-- Cover Upload für Wunschliste -->
+                <div class="form-group">
+                    <label for="editWishlistCover">Cover hochladen (optional)</label>
+                    <input type="file" id="editWishlistCover" accept="image/*" onchange="previewEditWishlistCover(this)">
+                    <small>Unterstützte Formate: JPG, PNG, WebP</small>
+                    <div id="editWishlistCoverPreview" class="cover-preview" ${coverImageUrl ? '' : 'style="display: none;"'}>
+                        <img id="editWishlistPreviewImage" src="${coverImageUrl || ''}" alt="Vorschau">
                     </div>
                 </div>
-                <div class="modal-actions">
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="editWishlistTitle">Titel *</label>
+                        <input type="text" id="editWishlistTitle" value="${escapeHtml(item.title)}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editWishlistAuthor">Autor *</label>
+                        <input type="text" id="editWishlistAuthor" value="${escapeHtml(item.author)}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editWishlistGenre">Genre</label>
+                        <select id="editWishlistGenre">
+                            <option value="">Genre wählen</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editWishlistPages">Seiten</label>
+                        <input type="number" id="editWishlistPages" value="${item.pages || ''}" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="editWishlistPublisher">Verlag</label>
+                        <div class="autocomplete-container">
+                            <input type="text" id="editWishlistPublisher" value="${escapeHtml(item.publisher || '')}" placeholder="Verlag eingeben...">
+                            <div id="editWishlistPublisherSuggestions" class="autocomplete-suggestions"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="editWishlistPublishDate">Erscheinungsdatum</label>
+                        <input type="date" id="editWishlistPublishDate" value="${item.publish_date ? item.publish_date.split('T')[0] : (item.publishDate ? item.publishDate.split('T')[0] : '')}">
+                    </div>
+                    <div class="form-group">
+                        <label for="editWishlistSeries">Reihe</label>
+                        <input type="text" id="editWishlistSeries" value="${escapeHtml(item.series || '')}">
+                    </div>
+                    <div class="form-group">
+                        <label for="editWishlistVolume">Band</label>
+                        <input type="text" id="editWishlistVolume" value="${item.volume || ''}">
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
                     <button type="button" class="btn btn-secondary" onclick="closeModal()">Abbrechen</button>
-                    <button type="button" class="btn btn-primary" id="confirmBuyBtn" disabled onclick="confirmBuyWishlistItem(${itemId})">Hinzufügen</button>
+                    <button type="submit" class="btn btn-primary">Speichern</button>
                 </div>
-            </div>
+            </form>
         `;
         
-        showModal('Buch kaufen', modalBody);
+        showModal('Wunschliste-Eintrag bearbeiten', modalBody);
         
-        // Format Selection Event Listeners
-        document.querySelectorAll('.format-option').forEach(option => {
-            option.addEventListener('click', function() {
-                document.querySelectorAll('.format-option').forEach(opt => opt.classList.remove('selected'));
-                this.classList.add('selected');
-                document.getElementById('confirmBuyBtn').disabled = false;
-            });
-        });
+        // Load genres and setup publisher autocomplete
+        loadGenresForSelect('editWishlistGenre', item.genre);
+        setupPublisherAutocomplete('editWishlistPublisher', item.publisher);
+        
+        document.getElementById('editWishlistForm').onsubmit = async (e) => {
+            e.preventDefault();
+            await updateWishlistItem(item.id);
+        };
         
     } catch (error) {
-        console.error('Error buying wishlist item:', error);
-        showMessage(null, 'Fehler beim Laden des Wishlist-Items: ' + error.message, 'error');
+        console.error('Fehler beim Laden der Wunschliste-Details:', error);
+        showMessage(null, 'Fehler beim Laden der Details: ' + error.message, 'error');
     }
 }
 
-async function confirmBuyWishlistItem(itemId) {
+async function updateWishlistItem(wishlistId) {
     try {
-        const selectedFormat = document.querySelector('.format-option.selected');
-        if (!selectedFormat) {
-            showMessage(null, 'Bitte wählen Sie ein Format aus.', 'error');
-            return;
-        }
-        
-        const format = selectedFormat.dataset.format;
-        const item = await apiCall(`/wishlist/${itemId}`);
-        
-        // Convert wishlist item to book
-        const bookData = {
-            title: item.title,
-            author: item.author,
-            genre: item.genre || '',
-            pages: item.pages || 0,
-            publisher: item.publisher || '',
-            publish_date: item.publish_date || '',
-            series: item.series || '',
-            volume: item.volume || 0,
-            format: format,
-            is_read: false
+        const volumeValue = document.getElementById('editWishlistVolume').value.trim();
+        const wishlistData = {
+            title: document.getElementById('editWishlistTitle').value.trim(),
+            author: document.getElementById('editWishlistAuthor').value.trim(),
+            genre: document.getElementById('editWishlistGenre').value,
+            pages: parseInt(document.getElementById('editWishlistPages').value) || 0,
+            publisher: document.getElementById('editWishlistPublisher').value.trim(),
+            publish_date: document.getElementById('editWishlistPublishDate').value,
+            series: document.getElementById('editWishlistSeries').value.trim(),
+            volume: volumeValue ? parseInt(volumeValue) : 0,
         };
         
-        const newBook = await apiCall('/books', {
-            method: 'POST',
-            body: bookData
-        });
-        
-        // Copy cover if exists
-        if (item.cover_image) {
+        // Cover Upload verarbeiten
+        const coverFile = document.getElementById('editWishlistCover').files[0];
+        if (coverFile) {
+            const coverFormData = new FormData();
+            coverFormData.append('cover', coverFile);
+            
             try {
-                await apiCall(`/wishlist/${itemId}/move-cover/${newBook.id}`, {
-                    method: 'POST'
+                await apiCall(`/wishlist/${wishlistId}/cover`, {
+                    method: 'POST',
+                    body: coverFormData,
+                    isFormData: true
                 });
             } catch (coverError) {
-                console.warn('Cover konnte nicht übertragen werden:', coverError);
+                console.error('Cover-Upload Fehler:', coverError);
+                showMessage(null, 'Warnung: Cover konnte nicht hochgeladen werden: ' + coverError.message, 'warning');
             }
         }
         
-        // Delete from wishlist
-        await apiCall(`/wishlist/${itemId}`, {
-            method: 'DELETE'
+        // Wunschliste-Item aktualisieren
+        await apiCall(`/wishlist/${wishlistId}`, {
+            method: 'PUT',
+            body: wishlistData
         });
         
+        showMessage(null, 'Wunschliste-Eintrag erfolgreich aktualisiert!', 'success');
         closeModal();
         loadWishlist();
-        showMessage(null, 'Buch erfolgreich zur Bibliothek hinzugefügt!', 'success');
+        
     } catch (error) {
-        console.error('Error buying wishlist item:', error);
-        showMessage(null, 'Fehler beim Hinzufügen: ' + error.message, 'error');
+        console.error('Fehler beim Aktualisieren:', error);
+        showMessage(null, 'Fehler beim Aktualisieren: ' + error.message, 'error');
     }
 }
 
-async function deleteWishlistItem(itemId) {
-    if (!confirm('Sind Sie sicher, dass Sie diesen Eintrag löschen möchten?')) {
-        return;
-    }
+function previewEditWishlistCover(input) {
+    const file = input.files[0];
+    const preview = document.getElementById('editWishlistCoverPreview');
+    const img = document.getElementById('editWishlistPreviewImage');
     
-    try {
-        await apiCall(`/wishlist/${itemId}`, {
-            method: 'DELETE'
-        });
-        
-        loadWishlist();
-        showMessage(null, 'Eintrag erfolgreich gelöscht!', 'success');
-    } catch (error) {
-        console.error('Error deleting wishlist item:', error);
-        alert('Fehler beim Löschen: ' + error.message);
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            img.src = e.target.result;
+            preview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    } else {
+        preview.style.display = 'none';
     }
 }
 
-// Quotes Funktionen
-async function loadQuotes(search = '') {
+// Zitate-Funktionen
+async function loadQuotes() {
     try {
-        const quotes = await apiCall(`/quotes${search ? `?search=${encodeURIComponent(search)}` : ''}`);
-        const quotesListEl = document.getElementById('quotesList');
+        console.log('Loading quotes...');
+        const quotes = await apiCall('/quotes');
+        console.log('Quotes loaded:', quotes);
         
-        quotesListEl.innerHTML = '';
+        const quotesContainer = document.getElementById('quotesList');
         
-        if (quotes.length > 0) {
-            quotes.forEach(quote => {
-                const quoteItem = createQuoteItem(quote);
-                quotesListEl.appendChild(quoteItem);
-            });
-        } else {
-            quotesListEl.innerHTML = '<div class="quote-item"><p>Keine Zitate gefunden.</p></div>';
+        if (!quotesContainer) {
+            console.error('Quotes container element not found');
+            return;
         }
+        
+        if (quotes.length === 0) {
+            quotesContainer.innerHTML = '<p>Noch keine Zitate vorhanden.</p>';
+            return;
+        }
+        
+        console.log('Rendering quotes...');
+        quotesContainer.innerHTML = quotes.map(quote => {
+            console.log('Processing quote:', quote);
+            return `
+            <div class="quote-card">
+                <div class="quote-content">
+                    <blockquote>${escapeHtml(quote.quote)}</blockquote>
+                    <div class="quote-meta">
+                        <p><strong>Aus:</strong> ${escapeHtml(quote.book)}</p>
+                        ${quote.page ? `<p><strong>Seite:</strong> ${quote.page}</p>` : ''}
+                    </div>
+                </div>
+                <div class="quote-actions">
+                    <button class="btn btn-danger btn-sm" onclick="deleteQuote(${quote.id})">
+                        <i class="fas fa-trash"></i> Löschen
+                    </button>
+                </div>
+            </div>
+        `;
+        }).join('');
+        
+        console.log('Quotes rendered successfully');
+        
     } catch (error) {
         console.error('Fehler beim Laden der Zitate:', error);
+        const quotesContainer = document.getElementById('quotesList');
+        if (quotesContainer) {
+            quotesContainer.innerHTML = '<p>Fehler beim Laden der Zitate.</p>';
+        }
+        showMessage(null, 'Fehler beim Laden der Zitate: ' + error.message, 'error');
     }
 }
 
-function searchQuotes() {
-    const search = document.getElementById('quotesSearch').value;
-    loadQuotes(search);
+async function searchQuotes() {
+    const searchTerm = document.getElementById('quotesSearch').value.toLowerCase();
+    
+    try {
+        const quotes = await apiCall('/quotes');
+        const filteredQuotes = quotes.filter(quote => 
+            quote.quote.toLowerCase().includes(searchTerm) ||
+            quote.book.toLowerCase().includes(searchTerm)
+        );
+        
+        const quotesContainer = document.getElementById('quotesList');
+        
+        if (!quotesContainer) {
+            console.error('Quotes container element not found');
+            return;
+        }
+        
+        if (filteredQuotes.length === 0) {
+            quotesContainer.innerHTML = '<p>Keine Zitate gefunden.</p>';
+            return;
+        }
+        
+        quotesContainer.innerHTML = filteredQuotes.map(quote => `
+            <div class="quote-card">
+                <div class="quote-content">
+                    <blockquote>${escapeHtml(quote.quote)}</blockquote>
+                    <div class="quote-meta">
+                        <p><strong>Aus:</strong> ${escapeHtml(quote.book)}</p>
+                        ${quote.page ? `<p><strong>Seite:</strong> ${quote.page}</p>` : ''}
+                    </div>
+                </div>
+                <div class="quote-actions">
+                    <button class="btn btn-danger btn-sm" onclick="deleteQuote(${quote.id})">
+                        <i class="fas fa-trash"></i> Löschen
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Fehler beim Suchen der Zitate:', error);
+        showMessage(null, 'Fehler beim Suchen der Zitate: ' + error.message, 'error');
+    }
 }
 
-function createQuoteItem(quote) {
-    const item = document.createElement('div');
-    item.className = 'quote-item';
-    
-    item.innerHTML = `
-        <div class="quote-text">"${escapeHtml(quote.quote)}"</div>
-        <div class="quote-meta">
-            <div class="quote-source">${escapeHtml(quote.book)}, Seite ${quote.page}</div>
-            <button class="btn btn-danger" onclick="deleteQuote(${quote.id})">
-                <i class="fas fa-trash"></i> Löschen
-            </button>
-        </div>
+function showAddQuoteModal() {
+    const modalBody = `
+        <form id="addQuoteForm">
+            <div class="form-group">
+                <label for="quoteText">Zitat *</label>
+                <textarea id="quoteText" rows="4" required placeholder="Das Zitat eingeben..."></textarea>
+            </div>
+            <div class="form-group">
+                <label for="quoteBookTitle">Buchtitel *</label>
+                <input type="text" id="quoteBookTitle" required placeholder="Titel des Buchs">
+            </div>
+            <div class="form-group">
+                <label for="quotePage">Seite (optional)</label>
+                <input type="number" id="quotePage" min="1" placeholder="Seitenzahl">
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Abbrechen</button>
+                <button type="submit" class="btn btn-primary">Zitat hinzufügen</button>
+            </div>
+        </form>
     `;
     
-    return item;
+    showModal('Neues Zitat hinzufügen', modalBody);
+    
+    document.getElementById('addQuoteForm').onsubmit = async (e) => {
+        e.preventDefault();
+        await addQuote();
+    };
+}
+
+async function addQuote() {
+    try {
+        const quoteData = {
+            quote: document.getElementById('quoteText').value.trim(),
+            book: document.getElementById('quoteBookTitle').value.trim(),
+            page: parseInt(document.getElementById('quotePage').value) || 0
+        };
+        
+        if (!quoteData.quote || !quoteData.book) {
+            showMessage(null, 'Bitte füllen Sie alle Pflichtfelder aus.', 'error');
+            return;
+        }
+        
+        await apiCall('/quotes', {
+            method: 'POST',
+            body: quoteData
+        });
+        
+        showMessage(null, 'Zitat erfolgreich hinzugefügt!', 'success');
+        closeModal();
+        loadQuotes();
+        
+    } catch (error) {
+        console.error('Fehler beim Hinzufügen des Zitats:', error);
+        showMessage(null, 'Fehler beim Hinzufügen: ' + error.message, 'error');
+    }
 }
 
 async function deleteQuote(quoteId) {
@@ -2080,78 +2427,17 @@ async function deleteQuote(quoteId) {
             method: 'DELETE'
         });
         
-        loadQuotes();
         showMessage(null, 'Zitat erfolgreich gelöscht!', 'success');
+        loadQuotes();
+        
     } catch (error) {
-        alert('Fehler beim Löschen: ' + error.message);
+        console.error('Fehler beim Löschen des Zitats:', error);
+        showMessage(null, 'Fehler beim Löschen: ' + error.message, 'error');
     }
 }
 
-function showAddQuoteModal() {
-    const modalBody = `
-        <form id="quoteForm">
-            <div class="form-group">
-                <label for="quoteText">Zitat *</label>
-                <textarea id="quoteText" placeholder="Das Zitat..." required></textarea>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="quoteBook">Buch *</label>
-                    <input type="text" id="quoteBook" placeholder="Buchtitel" required>
-                </div>
-                <div class="form-group">
-                    <label for="quotePage">Seite *</label>
-                    <input type="number" id="quotePage" placeholder="Seitenzahl" required min="1">
-                </div>
-            </div>
-            
-            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
-                <button type="button" class="btn btn-secondary" onclick="closeModal()">Abbrechen</button>
-                <button type="submit" class="btn btn-primary">Hinzufügen</button>
-            </div>
-        </form>
-    `;
-    
-    showModal('Neues Zitat hinzufügen', modalBody);
-    
-    document.getElementById('quoteForm').onsubmit = async (e) => {
-        e.preventDefault();
-        
-        try {
-            const quoteData = {
-                quote: document.getElementById('quoteText').value.trim(),
-                book: document.getElementById('quoteBook').value.trim(),
-                page: parseInt(document.getElementById('quotePage').value)
-            };
-            
-            if (!quoteData.quote || !quoteData.book || !quoteData.page) {
-                alert('Bitte füllen Sie alle Felder aus.');
-                return;
-            }
-            
-            await apiCall('/quotes', {
-                method: 'POST',
-                body: quoteData
-            });
-            
-            closeModal();
-            loadQuotes();
-            showMessage(null, 'Zitat erfolgreich hinzugefügt!', 'success');
-        } catch (error) {
-            console.error('Error adding quote:', error);
-            alert('Fehler beim Hinzufügen: ' + error.message);
-        }
-    };
-}
-
-// Fehlende showAddBookModal Funktion
-function showAddBookModal() {
-    const book = {}; // Leeres Buch für neues Buch
-    showBookModal(book);
-}
-
-// Cover Preview Funktion für Wunschliste hinzufügen
-function previewNewWishlistCover(input) {
+// Fehlende Funktionen für Wunschliste
+async function previewNewWishlistCover(input) {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -2164,5 +2450,156 @@ function previewNewWishlistCover(input) {
             }
         };
         reader.readAsDataURL(input.files[0]);
+    }
+}
+
+async function buyWishlistItem(wishlistId) {
+    try {
+        // Hole Wunschliste-Details
+        const wishlistItem = await apiCall(`/wishlist/${wishlistId}`);
+        
+        // Zeige Format-Auswahl Modal
+        const modalBody = `
+            <form id="buyWishlistForm">
+                <h3>Buch zur Bibliothek hinzufügen</h3>
+                <p><strong>${escapeHtml(wishlistItem.title)}</strong> von ${escapeHtml(wishlistItem.author)}</p>
+                
+                <div class="form-group">
+                    <label for="bookFormat">Format auswählen:</label>
+                    <select id="bookFormat" required>
+                        <option value="">Format wählen</option>
+                        <option value="Taschenbuch">Taschenbuch</option>
+                        <option value="Hardcover">Hardcover</option>
+                        <option value="E-Book">E-Book</option>
+                        <option value="Hörbuch">Hörbuch</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Abbrechen</button>
+                    <button type="submit" class="btn btn-success">Zur Bibliothek hinzufügen</button>
+                </div>
+            </form>
+        `;
+        
+        showModal('Buch gekauft', modalBody);
+        
+        document.getElementById('buyWishlistForm').onsubmit = async (e) => {
+            e.preventDefault();
+            
+            const format = document.getElementById('bookFormat').value;
+            if (!format) {
+                showMessage(null, 'Bitte wählen Sie ein Format aus.', 'error');
+                return;
+            }
+            
+            try {
+                // Erstelle Buch aus Wunschliste
+                const bookData = {
+                    title: wishlistItem.title,
+                    author: wishlistItem.author,
+                    genre: wishlistItem.genre,
+                    pages: wishlistItem.pages || 0,
+                    format: format,
+                    publisher: wishlistItem.publisher,
+                    publish_date: wishlistItem.publish_date,
+                    series: wishlistItem.series,
+                    volume: wishlistItem.volume || 0,
+                    is_read: false,
+                    reading_progress: 0
+                };
+                
+                const newBook = await apiCall('/books', {
+                    method: 'POST',
+                    body: bookData
+                });
+                
+                // Übertrage Cover falls vorhanden
+                if (wishlistItem.cover_image) {
+                    try {
+                        // Verwende das normale Cover-Upload-System
+                        const response = await fetch(`${currentServerUrl}/uploads/covers/${wishlistItem.cover_image}`);
+                        if (response.ok) {
+                            const blob = await response.blob();
+                            const formData = new FormData();
+                            formData.append('cover', blob, wishlistItem.cover_image);
+                            
+                            await fetch(`${currentServerUrl}/api/books/${newBook.id}/cover`, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${currentToken}`
+                                },
+                                body: formData
+                            });
+                        }
+                    } catch (coverError) {
+                        console.error('Cover-Übertragung fehlgeschlagen:', coverError);
+                        // Cover-Übertragung ist optional, Fehler nicht blockierend
+                    }
+                }
+                
+                // Lösche Wunschliste-Eintrag
+                await apiCall(`/wishlist/${wishlistId}`, {
+                    method: 'DELETE'
+                });
+                
+                closeModal();
+                loadWishlist();
+                showMessage(null, 'Buch erfolgreich zur Bibliothek hinzugefügt!', 'success');
+                
+            } catch (error) {
+                console.error('Fehler beim Hinzufügen zur Bibliothek:', error);
+                showMessage(null, 'Fehler beim Hinzufügen: ' + error.message, 'error');
+            }
+        };
+        
+    } catch (error) {
+        console.error('Fehler beim Laden der Wunschliste:', error);
+        showMessage(null, 'Fehler beim Laden: ' + error.message, 'error');
+    }
+}
+
+async function deleteWishlistItem(wishlistId) {
+    if (!confirm('Sind Sie sicher, dass Sie diesen Eintrag löschen möchten?')) {
+        return;
+    }
+    
+    try {
+        await apiCall(`/wishlist/${wishlistId}`, {
+            method: 'DELETE'
+        });
+        
+        loadWishlist();
+        showMessage(null, 'Wunschliste-Eintrag erfolgreich gelöscht!', 'success');
+    } catch (error) {
+        console.error('Fehler beim Löschen:', error);
+        showMessage(null, 'Fehler beim Löschen: ' + error.message, 'error');
+    }
+}
+
+// Funktion zum Ändern des Buchstatus
+async function changeBookStatus(bookId, newStatus) {
+    try {
+        await apiCall(`/books/${bookId}/status`, {
+            method: 'PUT',
+            body: { status: newStatus }
+        });
+        
+        // Erfolgsmeldung anzeigen
+        showMessage(null, `Status erfolgreich auf "${newStatus}" geändert!`, 'success');
+        
+        // Bücherliste neu laden wenn wir auf der Bücher-Seite sind
+        if (currentPage === 'books') {
+            loadBooks();
+        }
+        
+        // Dashboard neu laden wenn wir auf der Dashboard-Seite sind
+        if (currentPage === 'dashboard') {
+            loadDashboard();
+        }
+        
+    } catch (error) {
+        console.error('Fehler beim Ändern des Status:', error);
+        showMessage(null, 'Fehler beim Ändern des Status: ' + error.message, 'error');
     }
 }

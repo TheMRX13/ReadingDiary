@@ -39,7 +39,7 @@ type Book struct {
 	Pages           int       `json:"pages"`
 	Format          string    `json:"format"`
 	Publisher       string    `json:"publisher"`
-	IsRead          bool      `json:"is_read" gorm:"default:false"`
+	Status          string    `json:"status" gorm:"default:'Ungelesen'"`
 	PublishDate     string    `json:"publish_date"`
 	Series          string    `json:"series"`
 	Volume          int       `json:"volume"`
@@ -245,7 +245,7 @@ func main() {
 func (g *ServerGUI) setupGUI() {
 	g.app = app.New()
 	g.app.SetIcon(nil) // Hier könnte ein Icon gesetzt werden
-	
+
 	// Setze Light Theme für bessere Lesbarkeit
 	g.app.Settings().SetTheme(theme.LightTheme())
 
@@ -634,7 +634,7 @@ func startServerOnly() {
 	serverApp := app.New()
 	// Setze Light Theme für bessere Lesbarkeit
 	serverApp.Settings().SetTheme(theme.LightTheme())
-	
+
 	serverWindow := serverApp.NewWindow("Reading Diary Server")
 	serverWindow.Resize(fyne.NewSize(500, 300))
 	serverWindow.CenterOnScreen()
@@ -754,6 +754,35 @@ func setupRoutes(router *gin.Engine) {
 			c.Data(200, "application/javascript", data)
 			return
 		}
+		if path == "/manifest.json" {
+			data, err := webFiles.ReadFile("web/manifest.json")
+			if err != nil {
+				c.String(404, "Not found")
+				return
+			}
+			c.Data(200, "application/json", data)
+			return
+		}
+		if path == "/sw.js" {
+			data, err := webFiles.ReadFile("web/sw.js")
+			if err != nil {
+				c.String(404, "Not found")
+				return
+			}
+			c.Data(200, "application/javascript", data)
+			return
+		}
+		// Handle icon files
+		if strings.HasPrefix(path, "/icons/") {
+			iconPath := "web" + path
+			data, err := webFiles.ReadFile(iconPath)
+			if err != nil {
+				c.String(404, "Not found")
+				return
+			}
+			c.Data(200, "image/png", data)
+			return
+		}
 		c.String(404, "Not found")
 	})
 
@@ -784,10 +813,12 @@ func setupRoutes(router *gin.Engine) {
 			protected.DELETE("/books/:id", deleteBook)
 			protected.POST("/books/:id/cover", uploadBookCover)
 			protected.GET("/books/:id/progress-history", getProgressHistory)
+			protected.PUT("/books/:id/status", updateBookStatus)
 
 			protected.GET("/wishlist", getWishlist)
 			protected.GET("/wishlist/:id", getWishlistItem)
 			protected.POST("/wishlist", createWishlistItem)
+			protected.PUT("/wishlist/:id", updateWishlistItem)
 			protected.DELETE("/wishlist/:id", deleteWishlistItem)
 			protected.POST("/wishlist/:id/buy", buyWishlistItem)
 			protected.POST("/wishlist/:id/cover", uploadWishlistCover)
@@ -918,6 +949,13 @@ func createBook(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "Verlag ist erforderlich"})
 		return
 	}
+
+	// Automatisches Erstellen des Verlags falls er nicht existiert
+	if err := ensurePublisherExists(book.Publisher); err != nil {
+		logger.Error(fmt.Sprintf("createBook: Fehler beim Erstellen des Verlags: %v", err))
+		c.JSON(500, gin.H{"error": fmt.Sprintf("Fehler beim Verarbeiten des Verlags: %v", err)})
+		return
+	}
 	if book.PublishDate == "" {
 		logger.Warning(fmt.Sprintf("createBook: Erscheinungsdatum fehlt: '%s'", book.PublishDate))
 		c.JSON(400, gin.H{"error": "Erscheinungsdatum ist erforderlich"})
@@ -982,6 +1020,14 @@ func updateBook(c *gin.Context) {
 	}
 	if publisher, ok := requestData["publisher"].(string); ok {
 		updatedBook.Publisher = publisher
+		// Automatisches Erstellen des Verlags falls er nicht existiert
+		if publisher != "" {
+			if err := ensurePublisherExists(publisher); err != nil {
+				logger.Error(fmt.Sprintf("updateBook: Fehler beim Erstellen des Verlags: %v", err))
+				c.JSON(500, gin.H{"error": fmt.Sprintf("Fehler beim Verarbeiten des Verlags: %v", err)})
+				return
+			}
+		}
 	}
 	if publishDate, ok := requestData["publish_date"].(string); ok {
 		updatedBook.PublishDate = publishDate
@@ -1024,11 +1070,21 @@ func updateBook(c *gin.Context) {
 		updatedBook.ReadingProgress = int(readingProgress)
 	}
 
-	// Boolean Felder - beide Varianten prüfen (camelCase und snake_case)
-	if isRead, ok := requestData["is_read"].(bool); ok {
-		updatedBook.IsRead = isRead
+	// Status Feld - sowohl status als auch is_read für Rückwärtskompatibilität
+	if status, ok := requestData["status"].(string); ok {
+		updatedBook.Status = status
+	} else if isRead, ok := requestData["is_read"].(bool); ok {
+		if isRead {
+			updatedBook.Status = "Gelesen"
+		} else {
+			updatedBook.Status = "Ungelesen"
+		}
 	} else if isRead, ok := requestData["isRead"].(bool); ok {
-		updatedBook.IsRead = isRead
+		if isRead {
+			updatedBook.Status = "Gelesen"
+		} else {
+			updatedBook.Status = "Ungelesen"
+		}
 	}
 
 	if fiction, ok := requestData["fiction"].(bool); ok {
@@ -1181,68 +1237,80 @@ func uploadBookCover(c *gin.Context) {
 func uploadWishlistCover(c *gin.Context) {
 	id := c.Param("id")
 
-	// File aus dem Request holen
-	file, err := c.FormFile("cover")
-	if err != nil {
-		c.JSON(400, gin.H{"error": "Keine Datei empfangen"})
-		return
-	}
-
-	// Erlaubte Dateitypen prüfen
-	allowedTypes := []string{"image/jpeg", "image/jpg", "image/png", "image/webp"}
-	fileType := file.Header.Get("Content-Type")
-	isAllowed := false
-	for _, t := range allowedTypes {
-		if t == fileType {
-			isAllowed = true
-			break
-		}
-	}
-
-	if !isAllowed {
-		c.JSON(400, gin.H{"error": "Nur JPEG, PNG und WebP Dateien sind erlaubt"})
-		return
-	}
-
-	// Uploads-Ordner erstellen falls nicht vorhanden
-	uploadsDir := "./web/uploads/covers"
-	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
-		c.JSON(500, gin.H{"error": "Fehler beim Erstellen des Upload-Ordners"})
-		return
-	}
-
-	// Dateinamen generieren
-	ext := filepath.Ext(file.Filename)
-	filename := fmt.Sprintf("wishlist_%s_%d%s", id, time.Now().Unix(), ext)
-
-	// Datei speichern
-	dst := filepath.Join(uploadsDir, filename)
-	if err := c.SaveUploadedFile(file, dst); err != nil {
-		c.JSON(500, gin.H{"error": "Fehler beim Speichern der Datei"})
-		return
-	}
-
-	// Datenbankeinträge aktualisieren
+	// Prüfen ob das Wunschliste-Item existiert
 	var wishlistItem Wishlist
 	if err := db.First(&wishlistItem, id).Error; err != nil {
 		c.JSON(404, gin.H{"error": "Wunschliste-Eintrag nicht gefunden"})
 		return
 	}
 
-	// Altes Cover löschen falls vorhanden
-	if wishlistItem.CoverImage != "" {
-		oldPath := filepath.Join(uploadsDir, wishlistItem.CoverImage)
-		os.Remove(oldPath)
+	// Datei aus dem Request lesen
+	file, header, err := c.Request.FormFile("cover")
+	if err != nil {
+		c.JSON(400, gin.H{"error": "Keine Cover-Datei gefunden"})
+		return
+	}
+	defer file.Close()
+
+	// Dateierweiterung prüfen
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" {
+		c.JSON(400, gin.H{"error": "Nur JPG, PNG und WebP Dateien sind erlaubt"})
+		return
 	}
 
-	// Cover-Dateiname in Datenbank aktualisieren
-	wishlistItem.CoverImage = filename
-	db.Save(&wishlistItem)
+	// Upload-Verzeichnis erstellen (gleicher Pfad wie bei Büchern)
+	uploadDir := filepath.Join("uploads", "covers")
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		logger.Error(fmt.Sprintf("Konnte Upload-Verzeichnis nicht erstellen: %v", err))
+		c.JSON(500, gin.H{"error": "Server-Fehler"})
+		return
+	}
 
+	// Altes Cover löschen, falls vorhanden
+	if wishlistItem.CoverImage != "" {
+		oldCoverPath := filepath.Join(uploadDir, wishlistItem.CoverImage)
+		if _, err := os.Stat(oldCoverPath); err == nil {
+			if err := os.Remove(oldCoverPath); err != nil {
+				logger.Error(fmt.Sprintf("Konnte altes Wunschliste-Cover nicht löschen: %v", err))
+			}
+		}
+	}
+
+	// Neuen Dateinamen generieren
+	filename := fmt.Sprintf("wishlist_%s_%d%s", id, time.Now().Unix(), ext)
+	filePath := filepath.Join(uploadDir, filename)
+
+	// Datei speichern
+	dst, err := os.Create(filePath)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Konnte Wunschliste-Cover-Datei nicht erstellen: %v", err))
+		c.JSON(500, gin.H{"error": "Konnte Cover nicht speichern"})
+		return
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, file); err != nil {
+		logger.Error(fmt.Sprintf("Konnte Wunschliste-Cover-Datei nicht kopieren: %v", err))
+		c.JSON(500, gin.H{"error": "Konnte Cover nicht speichern"})
+		return
+	}
+
+	// Wunschliste-Item in der Datenbank aktualisieren
+	wishlistItem.CoverImage = filename
+	if err := db.Save(&wishlistItem).Error; err != nil {
+		logger.Error(fmt.Sprintf("Konnte Wunschliste-Cover in Datenbank nicht aktualisieren: %v", err))
+		// Hochgeladene Datei wieder löschen
+		os.Remove(filePath)
+		c.JSON(500, gin.H{"error": "Konnte Cover-Referenz nicht speichern"})
+		return
+	}
+
+	logger.Info(fmt.Sprintf("Cover für Wunschliste-Item ID %s erfolgreich hochgeladen: %s", id, filename))
 	c.JSON(200, gin.H{
-		"success":  true,
-		"filename": filename,
-		"message":  "Cover erfolgreich hochgeladen",
+		"message":     "Cover erfolgreich hochgeladen",
+		"cover_image": filename,
+		"wishlist":    wishlistItem,
 	})
 }
 
@@ -1285,6 +1353,15 @@ func createWishlistItem(c *gin.Context) {
 	if err := c.ShouldBindJSON(&item); err != nil {
 		c.JSON(400, gin.H{"error": fmt.Sprintf("Ungültige Daten: %v", err)})
 		return
+	}
+
+	// Automatisches Erstellen des Verlags falls er nicht existiert (falls Verlag angegeben)
+	if item.Publisher != "" {
+		if err := ensurePublisherExists(item.Publisher); err != nil {
+			logger.Error(fmt.Sprintf("createWishlistItem: Fehler beim Erstellen des Verlags: %v", err))
+			c.JSON(500, gin.H{"error": fmt.Sprintf("Fehler beim Verarbeiten des Verlags: %v", err)})
+			return
+		}
 	}
 
 	if err := db.Create(&item).Error; err != nil {
@@ -1333,7 +1410,17 @@ func buyWishlistItem(c *gin.Context) {
 		PublishDate: wishlistItem.PublishDate,
 		Series:      wishlistItem.Series,
 		Volume:      wishlistItem.Volume,
-		IsRead:      false,
+		CoverImage:  wishlistItem.CoverImage, // Cover automatisch übertragen
+		Status:      "Ungelesen",
+	}
+
+	// Automatisches Erstellen des Verlags falls er nicht existiert (falls Verlag angegeben)
+	if book.Publisher != "" {
+		if err := ensurePublisherExists(book.Publisher); err != nil {
+			logger.Error(fmt.Sprintf("buyWishlistItem: Fehler beim Erstellen des Verlags: %v", err))
+			c.JSON(500, gin.H{"error": fmt.Sprintf("Fehler beim Verarbeiten des Verlags: %v", err)})
+			return
+		}
 	}
 
 	if err := db.Create(&book).Error; err != nil {
@@ -1397,17 +1484,21 @@ func getStats(c *gin.Context) {
 	var totalQuotes int64
 
 	db.Model(&Book{}).Count(&totalBooks)
-	db.Model(&Book{}).Where("is_read = ?", true).Count(&readBooks)
+	db.Model(&Book{}).Where("status = ?", "Gelesen").Count(&readBooks)
 	db.Model(&Quote{}).Count(&totalQuotes)
 
 	var recentBooks []Book
 	db.Order("created_at DESC").Limit(6).Find(&recentBooks)
 
+	var currentlyReading []Book
+	db.Where("status = ?", "Am Lesen").Order("updated_at DESC").Find(&currentlyReading)
+
 	stats := gin.H{
-		"totalBooks":  totalBooks,
-		"readBooks":   readBooks,
-		"totalQuotes": totalQuotes,
-		"recentBooks": recentBooks,
+		"totalBooks":       totalBooks,
+		"readBooks":        readBooks,
+		"totalQuotes":      totalQuotes,
+		"recentBooks":      recentBooks,
+		"currentlyReading": currentlyReading,
 	}
 
 	c.JSON(200, stats)
@@ -1471,7 +1562,7 @@ func getReadingGoal(c *gin.Context) {
 	yearEnd := time.Date(currentYear+1, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	db.Model(&Book{}).
-		Where("is_read = ? AND updated_at >= ? AND updated_at < ?", true, yearStart, yearEnd).
+		Where("status = ? AND updated_at >= ? AND updated_at < ?", "Gelesen", yearStart, yearEnd).
 		Count(&readCount)
 
 	c.JSON(200, gin.H{
@@ -1533,7 +1624,7 @@ func updateReadingGoal(c *gin.Context) {
 	yearEnd := time.Date(currentYear+1, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	db.Model(&Book{}).
-		Where("is_read = ? AND updated_at >= ? AND updated_at < ?", true, yearStart, yearEnd).
+		Where("status = ? AND updated_at >= ? AND updated_at < ?", "Gelesen", yearStart, yearEnd).
 		Count(&readCount)
 
 	c.JSON(200, gin.H{
@@ -1660,4 +1751,139 @@ func moveCoverFromWishlistToBook(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"message": "Cover erfolgreich übertragen"})
+}
+
+// Hilfsfunktion zum Erstellen eines Verlags falls er nicht existiert
+func ensurePublisherExists(publisherName string) error {
+	if publisherName == "" {
+		return fmt.Errorf("verlagsname ist leer")
+	}
+
+	// Prüfe ob Verlag bereits existiert
+	var existingPublisher Publisher
+	if err := db.Where("name = ?", publisherName).First(&existingPublisher).Error; err == nil {
+		// Verlag existiert bereits
+		return nil
+	}
+
+	// Erstelle neuen Verlag
+	newPublisher := Publisher{Name: publisherName}
+	if err := db.Create(&newPublisher).Error; err != nil {
+		logger.Error(fmt.Sprintf("Fehler beim Erstellen des Verlags '%s': %v", publisherName, err))
+		return err
+	}
+
+	logger.Info(fmt.Sprintf("Neuer Verlag automatisch erstellt: %s", publisherName))
+	return nil
+}
+
+func updateWishlistItem(c *gin.Context) {
+	id := c.Param("id")
+	var existingItem Wishlist
+
+	if err := db.First(&existingItem, id).Error; err != nil {
+		c.JSON(404, gin.H{"error": "Wunschliste-Eintrag nicht gefunden"})
+		return
+	}
+
+	var requestData map[string]interface{}
+	if err := c.ShouldBindJSON(&requestData); err != nil {
+		logger.Error(fmt.Sprintf("updateWishlistItem: Fehler beim Parsen der JSON-Daten: %v", err))
+		c.JSON(400, gin.H{"error": "Ungültige Daten"})
+		return
+	}
+
+	// Erstelle ein neues Wishlist-Objekt basierend auf dem bestehenden Eintrag
+	updatedItem := existingItem
+
+	// Manuell die Felder aktualisieren, die im Request enthalten sind
+	if title, ok := requestData["title"].(string); ok {
+		updatedItem.Title = title
+	}
+	if author, ok := requestData["author"].(string); ok {
+		updatedItem.Author = author
+	}
+	if genre, ok := requestData["genre"].(string); ok {
+		updatedItem.Genre = genre
+	}
+	if publisher, ok := requestData["publisher"].(string); ok {
+		updatedItem.Publisher = publisher
+		// Automatisches Erstellen des Verlags falls er nicht existiert
+		if publisher != "" {
+			if err := ensurePublisherExists(publisher); err != nil {
+				logger.Error(fmt.Sprintf("updateWishlistItem: Fehler beim Erstellen des Verlags: %v", err))
+				c.JSON(500, gin.H{"error": fmt.Sprintf("Fehler beim Verarbeiten des Verlags: %v", err)})
+				return
+			}
+		}
+	}
+	if publishDate, ok := requestData["publish_date"].(string); ok {
+		updatedItem.PublishDate = publishDate
+	}
+	if series, ok := requestData["series"].(string); ok {
+		updatedItem.Series = series
+	}
+
+	// Numerische Felder
+	if pages, ok := requestData["pages"].(float64); ok {
+		updatedItem.Pages = int(pages)
+	}
+	if volume, ok := requestData["volume"].(float64); ok {
+		updatedItem.Volume = int(volume)
+	}
+
+	if err := db.Save(&updatedItem).Error; err != nil {
+		logger.Error(fmt.Sprintf("updateWishlistItem: Datenbankfehler beim Speichern: %v", err))
+		c.JSON(500, gin.H{"error": "Konnte Wunschliste-Eintrag nicht aktualisieren"})
+		return
+	}
+
+	logger.Info(fmt.Sprintf("updateWishlistItem: Wunschliste-Eintrag erfolgreich aktualisiert - ID: %d, Titel: %s", updatedItem.ID, updatedItem.Title))
+	c.JSON(200, updatedItem)
+}
+
+func updateBookStatus(c *gin.Context) {
+	id := c.Param("id")
+	var book Book
+
+	if err := db.First(&book, id).Error; err != nil {
+		c.JSON(404, gin.H{"error": "Buch nicht gefunden"})
+		return
+	}
+
+	var request struct {
+		Status string `json:"status"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(400, gin.H{"error": "Ungültige Anfrage"})
+		return
+	}
+
+	// Validiere den Status
+	validStatuses := []string{"Ungelesen", "Am Lesen", "Gelesen"}
+	isValid := false
+	for _, validStatus := range validStatuses {
+		if request.Status == validStatus {
+			isValid = true
+			break
+		}
+	}
+
+	if !isValid {
+		c.JSON(400, gin.H{"error": "Ungültiger Status. Erlaubt sind: Ungelesen, Am Lesen, Gelesen"})
+		return
+	}
+
+	// Status aktualisieren
+	book.Status = request.Status
+
+	if err := db.Save(&book).Error; err != nil {
+		logger.Error(fmt.Sprintf("updateBookStatus: Fehler beim Speichern: %v", err))
+		c.JSON(500, gin.H{"error": "Fehler beim Speichern"})
+		return
+	}
+
+	logger.Info(fmt.Sprintf("updateBookStatus: Status von Buch %d auf '%s' geändert", book.ID, request.Status))
+	c.JSON(200, gin.H{"message": "Status erfolgreich geändert", "book": book})
 }
