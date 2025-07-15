@@ -1,0 +1,29 @@
+name: "✨ Feature Request"
+description: "Schlage ein neues Feature oder eine Verbesserung vor."
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: input
+    id: kurzbeschreibung
+    attributes:
+      label: "Kurze Beschreibung"
+      description: "Worum geht es bei dem Feature?"
+    validations:
+      required: true
+  - type: textarea
+    id: nutzen
+    attributes:
+      label: "Welchen Nutzen/Vorteil hätte das Feature?"
+      description: "Warum sollte dieses Feature umgesetzt werden?"
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: "Details oder Alternativen"
+      description: "Wie könnte die Umsetzung aussehen? Gibt es Alternativlösungen?"
+  - type: textarea
+    id: weitereinfos
+    attributes:
+      label: "Weitere Informationen (optional)"
+      description: "Screenshots, Beispiele, Kontext etc. (falls vorhanden)"
