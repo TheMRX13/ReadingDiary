@@ -27,27 +27,41 @@ window.addEventListener('beforeinstallprompt', (e) => {
 });
 
 function showInstallPromotion() {
+    // Prüfe ob bereits installiert
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+        console.log('App is already installed');
+        return;
+    }
+
     // Zeige einen Install-Button in der App
     const installButton = document.createElement('button');
     installButton.className = 'btn btn-primary install-btn';
     installButton.innerHTML = '<i class="fas fa-download"></i> App installieren';
+    
+    // Mobile-optimiertes Styling
+    const isMobile = window.innerWidth <= 768;
     installButton.style.cssText = `
         position: fixed;
-        bottom: 20px;
-        right: 20px;
+        bottom: ${isMobile ? '80px' : '20px'};
+        right: ${isMobile ? '16px' : '20px'};
         z-index: 1000;
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        border-radius: 50px;
+        padding: ${isMobile ? '10px 16px' : '12px 20px'};
+        font-size: ${isMobile ? '14px' : '16px'};
+        white-space: nowrap;
+        animation: pulse 2s infinite;
     `;
     
     installButton.addEventListener('click', installApp);
     document.body.appendChild(installButton);
     
-    // Verstecke Button nach 10 Sekunden
+    // Verstecke Button nach 15 Sekunden auf Mobile, 10 auf Desktop
     setTimeout(() => {
         if (installButton.parentNode) {
             installButton.remove();
         }
-    }, 10000);
+    }, isMobile ? 15000 : 10000);
 }
 
 async function installApp() {
