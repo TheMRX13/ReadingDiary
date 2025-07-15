@@ -55,9 +55,11 @@ Ein lokales Buchverwaltungssystem mit Web-Interface für Windows.
 - Keine Benutzerregistrierung nötig
 
 
-## 🔧 Geplante Features
+## 🔧 Geplante Features oder Clients
 
- - Kommt bald
+ - Android app
+ - IOS App
+ - Windows Program
 
 ---
 
