@@ -179,28 +179,44 @@ func GinLoggerMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 
-		// Request Info
-		if logger != nil {
-			logger.Info(fmt.Sprintf("→ %s %s from %s", c.Request.Method, c.Request.URL.Path, c.ClientIP()))
+		// Nur wichtige Anfragen loggen (nicht statische Dateien und API-Health-Checks)
+		shouldLog := true
+		path := c.Request.URL.Path
+		method := c.Request.Method
+		
+		// Filtere häufige, unwichtige Anfragen heraus
+		if strings.HasPrefix(path, "/static/") || 
+		   strings.HasPrefix(path, "/uploads/") ||
+		   (path == "/api/stats" && method == "GET") ||
+		   (path == "/api/reading-goal" && method == "GET") {
+			shouldLog = false
+		}
+
+		// Request Info (nur für wichtige Anfragen)
+		if shouldLog && logger != nil {
+			logger.Info(fmt.Sprintf("→ %s %s from %s", method, path, c.ClientIP()))
 		}
 
 		c.Next()
 
-		// Response Info
+		// Response Info (nur für Fehler oder wichtige Anfragen)
 		if logger != nil {
 			duration := time.Since(start)
 			status := c.Writer.Status()
 			size := c.Writer.Size()
 
-			statusLevel := "INFO"
-			if status >= 400 && status < 500 {
-				statusLevel = "WARN"
-			} else if status >= 500 {
-				statusLevel = "ERROR"
-			}
+			// Nur bei Fehlern oder wichtigen Anfragen loggen
+			if status >= 400 || shouldLog {
+				statusLevel := "INFO"
+				if status >= 400 && status < 500 {
+					statusLevel = "WARN"
+				} else if status >= 500 {
+					statusLevel = "ERROR"
+				}
 
-			logger.Log(statusLevel, fmt.Sprintf("← %d %s (%v) %d bytes",
-				status, c.Request.URL.Path, duration, size))
+				logger.Log(statusLevel, fmt.Sprintf("← %d %s (%v) %d bytes",
+					status, path, duration, size))
+			}
 		}
 	}
 }
@@ -214,7 +230,7 @@ type ServerGUI struct {
 	passwordEntry *widget.Entry
 	startButton   *widget.Button
 	logText       *widget.Label
-	ipList        *widget.List
+	ipContainer   *fyne.Container
 	uptimeLabel   *widget.Label
 	startTime     time.Time
 }
@@ -288,16 +304,8 @@ func (g *ServerGUI) setupGUI() {
 	logger.Info("GUI-System initialisiert")
 	logger.Info("Reading Diary Server v1.0 - Coded by TheMRX")
 
-	// IP-Adressen Liste
-	g.ipList = widget.NewList(
-		func() int { return len(ipAddresses) },
-		func() fyne.CanvasObject { return widget.NewLabel("") },
-		func(id int, o fyne.CanvasObject) {
-			if id < len(ipAddresses) {
-				o.(*widget.Label).SetText(ipAddresses[id])
-			}
-		},
-	)
+	// IP-Adressen Container als einfache Labels
+	g.ipContainer = container.NewVBox()
 
 	// Layout
 	settingsForm := container.NewVBox(
@@ -317,7 +325,7 @@ func (g *ServerGUI) setupGUI() {
 	ipContainer := container.NewVBox(
 		widget.NewLabel("Verfügbare URLs"),
 		refreshIPButton,
-		g.ipList,
+		g.ipContainer,
 	)
 
 	topContainer := container.NewHBox(settingsForm, statusContainer, ipContainer)
@@ -434,12 +442,14 @@ func (g *ServerGUI) startServer() {
 	setupRoutes(router)
 	logger.Info("API-Routen registriert")
 
+	// HTTP-Server konfigurieren
 	httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%d", serverPort),
 		Handler: router,
 	}
 
 	go func() {
+		// Nur HTTP-Server starten
 		logger.Info(fmt.Sprintf("Starte HTTP-Server auf Port %d...", serverPort))
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error(fmt.Sprintf("HTTP-Server Fehler: %v", err))
@@ -448,14 +458,53 @@ func (g *ServerGUI) startServer() {
 
 	serverRunning = true
 	g.startTime = time.Now()
-	g.statusLabel.SetText(fmt.Sprintf("Server läuft auf Port %d", serverPort))
+	
+	// Status-Text für HTTP-Server
+	statusText := fmt.Sprintf("Server läuft auf Port %d (HTTP)", serverPort)
+	webInterface := fmt.Sprintf("http://localhost:%d", serverPort)
+	
+	g.statusLabel.SetText(statusText)
 	g.startButton.SetText("Server Stoppen")
 	g.portEntry.Disable()
 	g.passwordEntry.Disable()
 
 	g.addLog("Server erfolgreich gestartet!")
 	g.addLog(fmt.Sprintf("Passwort: %s", serverPassword))
-	g.addLog(fmt.Sprintf("Web-Interface: http://localhost:%d", serverPort))
+	g.addLog(fmt.Sprintf("Web-Interface: %s", webInterface))
+	
+	// Lokale IP-Adressen für mobile Verbindungen anzeigen
+	g.addLog("Lokale IP-Adressen für mobile Geräte:")
+	g.addLog(fmt.Sprintf("  - Desktop: %s", webInterface))
+	
+	// Sammle lokale IP-Adressen
+	interfaces, err := net.Interfaces()
+	if err == nil {
+		for _, iface := range interfaces {
+			if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+				continue
+			}
+			
+			addrs, err := iface.Addrs()
+			if err != nil {
+				continue
+			}
+			
+			for _, addr := range addrs {
+				var ip net.IP
+				switch v := addr.(type) {
+				case *net.IPNet:
+					ip = v.IP
+				case *net.IPAddr:
+					ip = v.IP
+				}
+				
+				if ip != nil && ip.To4() != nil {
+					g.addLog(fmt.Sprintf("  - Mobile: http://%s:%d", ip.String(), serverPort))
+				}
+			}
+		}
+	}
+	
 	logger.Info("🚀 Server erfolgreich gestartet!")
 	logger.Info(fmt.Sprintf("🔑 Login-Passwort: %s", serverPassword))
 	logger.Info(fmt.Sprintf("🌐 Web-Interface verfügbar: http://localhost:%d", serverPort))
@@ -522,7 +571,7 @@ func (g *ServerGUI) openWebInterface() {
 }
 
 func (g *ServerGUI) refreshIPAddresses() {
-	logger.Debug("Aktualisiere verfügbare IP-Adressen...")
+	// Entferne übermäßiges Debug-Logging
 	ipAddresses = []string{}
 	ipAddresses = append(ipAddresses, fmt.Sprintf("http://localhost:%d", serverPort))
 
@@ -560,13 +609,36 @@ func (g *ServerGUI) refreshIPAddresses() {
 			if ip.To4() != nil {
 				url := fmt.Sprintf("http://%s:%d", ip.String(), serverPort)
 				ipAddresses = append(ipAddresses, url)
-				logger.Debug(fmt.Sprintf("Gefundene IP-Adresse: %s", url))
+				// Entferne übermäßiges Debug-Logging
+				// logger.Debug(fmt.Sprintf("Gefundene IP-Adresse: %s", url))
 				interfaceCount++
 			}
 		}
 	}
 
-	g.ipList.Refresh()
+	// IP-Container leeren und neu füllen
+	g.ipContainer.Objects = nil
+	
+	// Alle IP-Adressen als kompakte Labels hinzufügen
+	for _, ip := range ipAddresses {
+		// Mache die IPs kopierbar durch Klick
+		ipLabel := widget.NewLabel(ip)
+		ipLabel.Wrapping = fyne.TextWrapWord
+		
+		// Erstelle einen Button für jede IP-Adresse
+		ipButton := widget.NewButton(ip, func(url string) func() {
+			return func() {
+				// Kopiere URL in die Zwischenablage
+				g.window.Clipboard().SetContent(url)
+				g.addLog(fmt.Sprintf("URL kopiert: %s", url))
+			}
+		}(ip))
+		
+		ipButton.Importance = widget.LowImportance
+		g.ipContainer.Add(ipButton)
+	}
+	
+	g.ipContainer.Refresh()
 	g.addLog("IP-Adressen aktualisiert")
 	logger.Info(fmt.Sprintf("IP-Adressen aktualisiert - %d Netzwerk-Interfaces gefunden", interfaceCount))
 }
@@ -679,6 +751,16 @@ func startServerOnly() {
 
 	logText.SetText(logText.Text + fmt.Sprintf("Server running on http://localhost:%d\n", serverPort))
 	logText.SetText(logText.Text + fmt.Sprintf("Password: %s\n", serverPassword))
+	
+	// Lokale IP-Adressen für mobile Verbindungen anzeigen
+	localIPs := getLocalIPs()
+	for _, ip := range localIPs {
+		if !ip.IsLoopback() && ip.To4() != nil {
+			mobileURL := fmt.Sprintf("http://%s:%d", ip.String(), serverPort)
+			logText.SetText(logText.Text + fmt.Sprintf("Mobile: %s\n", mobileURL))
+		}
+	}
+	
 	statusLabel.SetText("Server Running")
 
 	content := container.NewVBox(
@@ -844,6 +926,54 @@ func setupRoutes(router *gin.Engine) {
 			protected.PUT("/reading-goal", updateReadingGoal)
 		}
 	}
+
+	// PWA-Installation Hilfe
+	router.GET("/pwa-help", func(c *gin.Context) {
+		helpHTML := `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PWA Installation Hilfe</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+        h1 { color: #333; }
+        .step { margin: 15px 0; padding: 10px; background: #e8f4f8; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 PWA Installation Hilfe</h1>
+        
+        <h2>PWA-Installation</h2>
+        <div class="step">
+            <strong>1.</strong> Öffnen Sie die Reading Diary App in Ihrem Browser
+        </div>
+        <div class="step">
+            <strong>2.</strong> Suchen Sie nach dem "Installieren" Button oder "Zum Startbildschirm hinzufügen"
+        </div>
+        <div class="step">
+            <strong>3.</strong> Folgen Sie den Anweisungen Ihres Browsers
+        </div>
+
+        <h2>🔧 Browser-spezifische Anweisungen</h2>
+        <div class="step">
+            <strong>Chrome:</strong> Suchen Sie nach dem "Installieren" Symbol in der Adressleiste
+        </div>
+        <div class="step">
+            <strong>Firefox:</strong> Menü → "Diese Seite installieren"
+        </div>
+        <div class="step">
+            <strong>Safari:</strong> Teilen → "Zum Home-Bildschirm hinzufügen"
+        </div>
+
+        <p><a href="/">← Zurück zur App</a></p>
+    </div>
+</body>
+</html>`
+		c.Data(200, "text/html; charset=utf-8", []byte(helpHTML))
+	})
 }
 
 // Auth middleware
@@ -917,8 +1047,8 @@ func createBook(c *gin.Context) {
 		return
 	}
 
-	// Debug: Alle eingehenden Daten loggen
-	logger.Debug(fmt.Sprintf("createBook: Empfangene Daten: %+v", book))
+	// Debug: Alle eingehenden Daten loggen (nur bei Fehlern)
+	// logger.Debug(fmt.Sprintf("createBook: Empfangene Daten: %+v", book))
 
 	// Validierung der Pflichtfelder
 	if book.Title == "" {
@@ -962,7 +1092,7 @@ func createBook(c *gin.Context) {
 		return
 	}
 
-	logger.Debug("createBook: Alle Validierungen bestanden, erstelle Buch")
+	// logger.Debug("createBook: Alle Validierungen bestanden, erstelle Buch")
 
 	if err := db.Create(&book).Error; err != nil {
 		logger.Error(fmt.Sprintf("createBook: Datenbankfehler: %v", err))
@@ -1002,7 +1132,7 @@ func updateBook(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "Ungültige Daten"})
 		return
 	}
-	logger.Debug(fmt.Sprintf("updateBook: Empfangene Daten: %+v", requestData))
+	// logger.Debug(fmt.Sprintf("updateBook: Empfangene Daten: %+v", requestData))
 
 	// Erstelle ein neues Book-Objekt basierend auf dem bestehenden Buch
 	var updatedBook Book
@@ -1094,7 +1224,7 @@ func updateBook(c *gin.Context) {
 		updatedBook.Fiction = fictionStr == "true" || fictionStr == "Fiction"
 	}
 
-	logger.Debug(fmt.Sprintf("updateBook: Verarbeitete Buchdaten: %+v", updatedBook))
+	// logger.Debug(fmt.Sprintf("updateBook: Verarbeitete Buchdaten: %+v", updatedBook))
 
 	if err := db.Save(&updatedBook).Error; err != nil {
 		logger.Error(fmt.Sprintf("updateBook: Datenbankfehler beim Speichern: %v", err))
@@ -1853,6 +1983,7 @@ func updateBookStatus(c *gin.Context) {
 
 	var request struct {
 		Status string `json:"status"`
+
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -1887,3 +2018,42 @@ func updateBookStatus(c *gin.Context) {
 	logger.Info(fmt.Sprintf("updateBookStatus: Status von Buch %d auf '%s' geändert", book.ID, request.Status))
 	c.JSON(200, gin.H{"message": "Status erfolgreich geändert", "book": book})
 }
+
+// getLocalIPs gibt alle lokalen IP-Adressen zurück
+func getLocalIPs() []net.IP {
+	var ips []net.IP
+	
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return ips
+	}
+	
+	for _, iface := range interfaces {
+		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		
+		addresses, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+		
+		for _, addr := range addresses {
+			var ip net.IP
+			switch v := addr.(type) {
+			case *net.IPNet:
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
+			}
+			
+			if ip != nil && !ip.IsLoopback() {
+				ips = append(ips, ip)
+			}
+		}
+	}
+	
+	return ips
+}
+
+// Ende der Datei

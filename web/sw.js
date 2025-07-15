@@ -5,124 +5,157 @@ const urlsToCache = [
   '/static/app.js',
   '/static/manifest.json',
   '/static/icons/icon-192x192.png',
-  '/static/icons/icon-512x512.png',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css'
+  '/static/icons/icon-512x512.png'
 ];
 
 // Install Event - Cache resources
 self.addEventListener('install', event => {
-  console.log('Service Worker: Installing...');
+  console.log('[SW] Installing...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Service Worker: Caching files');
-        return cache.addAll(urlsToCache);
-      })
-      .then(() => {
-        console.log('Service Worker: All files cached');
-        self.skipWaiting();
-      })
-  );
-});
-
-// Activate Event - Clean up old caches
-self.addEventListener('activate', event => {
-  console.log('Service Worker: Activating...');
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cache => {
-          if (cache !== CACHE_NAME) {
-            console.log('Service Worker: Deleting old cache:', cache);
-            return caches.delete(cache);
-          }
-        })
-      );
-    }).then(() => {
-      console.log('Service Worker: Activated');
-      self.clients.claim();
-    })
-  );
-});
-
-// Fetch Event - Serve from cache, fallback to network
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
-        
-        // Clone the request
-        const fetchRequest = event.request.clone();
-        
-        return fetch(fetchRequest).then(response => {
-          // Check if we received a valid response
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-          
-          // Clone the response
-          const responseToCache = response.clone();
-          
-          caches.open(CACHE_NAME)
-            .then(cache => {
-              cache.put(event.request, responseToCache);
-            });
-          
-          return response;
+        console.log('[SW] Caching files');
+        return cache.addAll(urlsToCache.map(url => {
+          // Verwende relatives URL für bessere Kompatibilität
+          return new Request(url, { mode: 'no-cors' });
+        })).catch(err => {
+          console.log('[SW] Cache error:', err);
+          // Fallback: Cache nur die wichtigsten Dateien
+          return cache.addAll(['/', '/static/style.css', '/static/app.js']);
         });
       })
+      .then(() => {
+        console.log('[SW] All files cached');
+        self.skipWaiting();
+      })
+      .catch(err => {
+        console.log('[SW] Install error:', err);
+      })
   );
 });
 
 // Activate Event - Clean up old caches
 self.addEventListener('activate', event => {
+  console.log('[SW] Activating...');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
+            console.log('[SW] Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
+    }).then(() => {
+      console.log('[SW] Activated');
+      self.clients.claim();
     })
   );
 });
 
-// Background Sync for offline functionality
-self.addEventListener('sync', event => {
-  if (event.tag === 'background-sync') {
-    event.waitUntil(doBackgroundSync());
+// Fetch Event - Serve from cache with network fallback
+self.addEventListener('fetch', event => {
+  // Ignoriere Chrome-Extensions und andere Nicht-HTTP-Requests
+  if (!event.request.url.startsWith('http')) {
+    return;
+  }
+
+  // Ignoriere API-Requests für Live-Daten
+  if (event.request.url.includes('/api/')) {
+    return;
+  }
+
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => {
+        // Cache hit - return response
+        if (response) {
+          console.log('[SW] Cache hit:', event.request.url);
+          return response;
+        }
+
+        // Network request mit Fehlerbehandlung
+        return fetch(event.request)
+          .then(response => {
+            // Prüfe ob es eine gültige Antwort ist
+            if (!response || response.status !== 200 || response.type !== 'basic') {
+              return response;
+            }
+
+            // Clone die Antwort für Cache
+            const responseToCache = response.clone();
+
+            caches.open(CACHE_NAME)
+              .then(cache => {
+                cache.put(event.request, responseToCache);
+              })
+              .catch(err => {
+                console.log('[SW] Cache put error:', err);
+              });
+
+            return response;
+          })
+          .catch(err => {
+            console.log('[SW] Fetch error:', err);
+            
+            // Fallback für HTML-Requests
+            if (event.request.headers.get('accept').includes('text/html')) {
+              return caches.match('/');
+            }
+            
+            // Für andere Requests, gib einen leeren Response zurück
+            return new Response('', {
+              status: 200,
+              statusText: 'OK',
+              headers: { 'Content-Type': 'text/plain' }
+            });
+          });
+      })
+  );
+});
+
+// Message Event - Handle messages from main thread
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
   }
 });
 
-function doBackgroundSync() {
-  // Hier könntest du offline gespeicherte Daten synchronisieren
-  return Promise.resolve();
-}
-
-// Push notifications (für zukünftige Features)
-self.addEventListener('push', event => {
-  if (event.data) {
-    const options = {
-      body: event.data.text(),
-      icon: '/static/icons/icon-192x192.png',
-      badge: '/static/icons/icon-72x72.png',
-      vibrate: [100, 50, 100],
-      data: {
-        dateOfArrival: Date.now(),
-        primaryKey: 1
-      }
-    };
-    
+// Sync Event - Background sync (optional)
+self.addEventListener('sync', event => {
+  if (event.tag === 'background-sync') {
     event.waitUntil(
-      self.registration.showNotification('Reading Diary', options)
+      // Hier können Sie Background-Sync-Logik hinzufügen
+      Promise.resolve()
     );
   }
 });
+
+// Push Event - Push notifications (optional)
+self.addEventListener('push', event => {
+  if (event.data) {
+    const data = event.data.json();
+    const options = {
+      body: data.body,
+      icon: '/static/icons/icon-192x192.png',
+      badge: '/static/icons/icon-72x72.png',
+      tag: 'reading-diary-notification'
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(data.title, options)
+    );
+  }
+});
+
+// Notification Click Event
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+
+  event.waitUntil(
+    clients.openWindow('/')
+  );
+});
+
+console.log('[SW] Service Worker loaded');

@@ -53,6 +53,7 @@ Ein lokales Buchverwaltungssystem mit Web-Interface für Windows.
 - Lokale Datenspeicherung (keine Cloud)
 - Passwort-Schutz für Web-Interface
 - Keine Benutzerregistrierung nötig
+- Kompatibel mit nginx
 
 
 ## 🔧 Geplante Features oder Clients

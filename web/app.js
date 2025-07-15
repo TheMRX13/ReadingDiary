@@ -10,19 +10,21 @@ if ('serviceWorker' in navigator) {
             .then(function(registration) {
                 console.log('ServiceWorker registration successful with scope: ', registration.scope);
             }, function(err) {
-                console.log('ServiceWorker registration failed: ', err);
+                console.warn('ServiceWorker registration failed:', err);
             });
     });
 }
 
 // PWA Install Prompt
 let deferredPrompt;
+let installButton;
+
 window.addEventListener('beforeinstallprompt', (e) => {
     // Prevent Chrome 67 and earlier from automatically showing the prompt
     e.preventDefault();
     // Stash the event so it can be triggered later
     deferredPrompt = e;
-    // Show install button or banner
+    // Show install button
     showInstallPromotion();
 });
 
@@ -33,33 +35,40 @@ function showInstallPromotion() {
         return;
     }
 
-    // Zeige einen Install-Button in der App
-    const installButton = document.createElement('button');
-    installButton.className = 'btn btn-primary install-btn';
-    installButton.innerHTML = '<i class="fas fa-download"></i> App installieren';
-    
-    // Mobile-optimiertes Styling
-    const isMobile = window.innerWidth <= 768;
-    installButton.style.cssText = `
-        position: fixed;
-        bottom: ${isMobile ? '80px' : '20px'};
-        right: ${isMobile ? '16px' : '20px'};
-        z-index: 1000;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        border-radius: 50px;
-        padding: ${isMobile ? '10px 16px' : '12px 20px'};
-        font-size: ${isMobile ? '14px' : '16px'};
-        white-space: nowrap;
-        animation: pulse 2s infinite;
-    `;
-    
-    installButton.addEventListener('click', installApp);
-    document.body.appendChild(installButton);
+    // Floating Button erstellen (für bessere Sichtbarkeit)
+    if (!installButton) {
+        installButton = document.createElement('button');
+        installButton.className = 'btn btn-primary install-btn';
+        installButton.innerHTML = '<i class="fas fa-download"></i> App installieren';
+        
+        // Mobile-optimiertes Styling
+        const isMobile = window.innerWidth <= 768;
+        installButton.style.cssText = `
+            position: fixed;
+            bottom: ${isMobile ? '80px' : '20px'};
+            right: ${isMobile ? '16px' : '20px'};
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            border-radius: 50px;
+            padding: ${isMobile ? '10px 16px' : '12px 20px'};
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            font-weight: 600;
+            white-space: nowrap;
+            animation: pulseInstall 2s infinite;
+        `;
+        
+        installButton.addEventListener('click', installApp);
+        document.body.appendChild(installButton);
+    }
     
     // Verstecke Button nach 15 Sekunden auf Mobile, 10 auf Desktop
+    const isMobile = window.innerWidth <= 768;
     setTimeout(() => {
-        if (installButton.parentNode) {
+        if (installButton && installButton.parentNode) {
             installButton.remove();
+            installButton = null;
         }
     }, isMobile ? 15000 : 10000);
 }
@@ -71,14 +80,65 @@ async function installApp() {
         // Wait for the user to respond to the prompt
         const { outcome } = await deferredPrompt.userChoice;
         console.log(`User response to the install prompt: ${outcome}`);
+        
+        if (outcome === 'accepted') {
+            hideInstallButton();
+            showMessage(null, 'Reading Diary wird installiert...', 'success');
+        }
+        
         // Clear the deferredPrompt variable
         deferredPrompt = null;
+    } else {
+        // Fallback für Browser ohne beforeinstallprompt
+        showInstallInstructions();
+    }
+}
+
+function hideInstallButton() {
+    if (installButton && installButton.parentNode) {
+        installButton.remove();
+        installButton = null;
+    }
+}
+
+function showInstallInstructions() {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+    
+    let instructions = '';
+    
+    if (isIOS) {
+        instructions = 'Tippen Sie auf das Teilen-Symbol und dann auf "Zum Home-Bildschirm"';
+    } else if (isAndroid) {
+        instructions = 'Tippen Sie auf das Menü und dann auf "Zum Startbildschirm hinzufügen"';
+    } else {
+        instructions = 'Verwenden Sie das Browser-Menü, um diese App zu installieren';
+    }
+    
+    // Zeige einfache Installationsanweisungen für manuelle Installation
+    const instructionsDiv = document.createElement('div');
+    instructionsDiv.id = 'manual-install-instructions';
+    instructionsDiv.innerHTML = `
+        <div style="background: #e3f2fd; border: 1px solid #2196f3; padding: 15px; border-radius: 8px; margin: 10px 0;">
+            <h4>📱 PWA Installation</h4>
+            <p><strong>Anleitung:</strong> ${instructions}</p>
+            <p><strong>Detaillierte Anleitung:</strong> <a href="/pwa-help" target="_blank" style="color: #2196f3; text-decoration: underline;">PWA-Hilfe →</a></p>
+        </div>
+    `;
+    
+    const dashboard = document.querySelector('.dashboard-section');
+    if (dashboard) {
+        dashboard.insertBefore(instructionsDiv, dashboard.firstChild);
         
-        // Remove install button
-        const installBtn = document.querySelector('.install-btn');
-        if (installBtn) {
-            installBtn.remove();
-        }
+        // Nachricht nach 25 Sekunden ausblenden
+        setTimeout(() => {
+            const instrMsg = document.getElementById('manual-install-instructions');
+            if (instrMsg) {
+                instrMsg.style.opacity = '0';
+                instrMsg.style.transition = 'opacity 0.5s';
+                setTimeout(() => instrMsg.remove(), 500);
+            }
+        }, 25000);
     }
 }
 
@@ -275,10 +335,13 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeApp() {
-    // Dynamische Server-URL basierend auf dem aktuellen Host setzen
-    const currentHost = window.location.hostname;
-    const currentPort = window.location.port || '7443';
-    currentServerUrl = `http://${currentHost}:${currentPort}`;
+    // Verwende relative URLs für API-Aufrufe
+    // Das funktioniert sowohl mit direktem Zugriff als auch mit Nginx Reverse Proxy
+    // Nginx sollte die API-Aufrufe an das Backend weiterleiten
+    currentServerUrl = '';  // Leer = relative URLs
+    
+    console.log('Verwende relative URLs für API-Aufrufe');
+    console.log('Window location:', window.location.href);
     
     // Gespeicherte Anmeldedaten laden
     const savedToken = localStorage.getItem('token');
@@ -534,8 +597,8 @@ function createBookCard(book) {
     card.onclick = () => showBookDetails(book.id);
     
     const coverImageUrl = book.cover_image 
-        ? `${currentServerUrl}/uploads/covers/${book.cover_image}` 
-        : (book.coverImage ? `${currentServerUrl}/uploads/covers/${book.coverImage}` : null);
+        ? `/uploads/covers/${book.cover_image}` 
+        : (book.coverImage ? `/uploads/covers/${book.coverImage}` : null);
     
     card.innerHTML = `
         <div class="book-card-cover">
@@ -575,8 +638,8 @@ function createBookListItem(book) {
     `;
     
     const coverImageUrl = book.cover_image 
-        ? `${currentServerUrl}/uploads/covers/${book.cover_image}` 
-        : (book.coverImage ? `${currentServerUrl}/uploads/covers/${book.coverImage}` : null);
+        ? `/uploads/covers/${book.cover_image}` 
+        : (book.coverImage ? `/uploads/covers/${book.coverImage}` : null);
     
     item.innerHTML = `
         <div class="book-cover">
@@ -624,7 +687,7 @@ function showBookModal(book) {
                     </div>
                     <div class="cover-display">
                         ${(book.cover_image || book.coverImage) ? 
-                            `<img src="${currentServerUrl}/uploads/covers/${book.cover_image || book.coverImage}" alt="Book Cover" class="book-cover-large">` : 
+                            `<img src="/uploads/covers/${book.cover_image || book.coverImage}" alt="Book Cover" class="book-cover-large">` : 
                             '<div class="no-cover"><i class="fas fa-book"></i><p>Kein Cover vorhanden</p></div>'
                         }
                     </div>
@@ -1762,7 +1825,7 @@ async function createBook() {
             const formData = new FormData();
             formData.append('cover', coverFile.files[0]);
             
-            await fetch(`${currentServerUrl}/api/books/${response.id}/cover`, {
+            await fetch(`/api/books/${response.id}/cover`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${currentToken}`
@@ -1788,6 +1851,7 @@ async function deleteBook(bookId) {
         await apiCall(`/books/${bookId}`, {
             method: 'DELETE'
         });
+        
         
         closeModal();
         loadBooks();
@@ -1926,7 +1990,7 @@ async function uploadCover(bookId) {
         const formData = new FormData();
         formData.append('cover', fileInput.files[0]);
         
-        const response = await fetch(`${currentServerUrl}/api/books/${bookId}/cover`, {
+        const response = await fetch(`/api/books/${bookId}/cover`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${currentToken}`
@@ -1981,8 +2045,8 @@ function createWishlistItem(item) {
     element.className = 'wishlist-item';
     
     const coverImageUrl = item.cover_image 
-        ? `${currentServerUrl}/uploads/covers/${item.cover_image}` 
-        : (item.coverImage ? `${currentServerUrl}/uploads/covers/${item.coverImage}` : null);
+        ? `/uploads/covers/${item.cover_image}` 
+        : (item.coverImage ? `/uploads/covers/${item.coverImage}` : null);
     
     element.innerHTML = `
         <div class="wishlist-cover">
@@ -2107,7 +2171,7 @@ function showAddWishlistModal() {
                 const formData = new FormData();
                 formData.append('cover', coverFile.files[0]);
                 
-                await fetch(`${currentServerUrl}/api/wishlist/${response.id}/cover`, {
+                await fetch(`/api/wishlist/${response.id}/cover`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${currentToken}`
@@ -2131,8 +2195,8 @@ async function showWishlistDetails(wishlistId) {
         const item = await apiCall(`/wishlist/${wishlistId}`);
         
         const coverImageUrl = item.cover_image 
-            ? `${currentServerUrl}/uploads/covers/${item.cover_image}` 
-            : (item.coverImage ? `${currentServerUrl}/uploads/covers/${item.coverImage}` : null);
+            ? `/uploads/covers/${item.cover_image}` 
+            : (item.coverImage ? `/uploads/covers/${item.coverImage}` : null);
         
         const modalBody = `
             <form id="editWishlistForm">
@@ -2233,11 +2297,17 @@ async function updateWishlistItem(wishlistId) {
             coverFormData.append('cover', coverFile);
             
             try {
-                await apiCall(`/wishlist/${wishlistId}/cover`, {
+                const response = await fetch(`/api/wishlist/${wishlistId}/cover`, {
                     method: 'POST',
-                    body: coverFormData,
-                    isFormData: true
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: coverFormData
                 });
+                
+                if (!response.ok) {
+                    throw new Error('Cover-Upload fehlgeschlagen');
+                }
             } catch (coverError) {
                 console.error('Cover-Upload Fehler:', coverError);
                 showMessage(null, 'Warnung: Cover konnte nicht hochgeladen werden: ' + coverError.message, 'warning');
@@ -2450,170 +2520,3 @@ async function deleteQuote(quoteId) {
     }
 }
 
-// Fehlende Funktionen für Wunschliste
-async function previewNewWishlistCover(input) {
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const preview = document.getElementById('newWishlistCoverPreview');
-            const previewImage = document.getElementById('newWishlistPreviewImage');
-            
-            if (preview && previewImage) {
-                previewImage.src = e.target.result;
-                preview.style.display = 'block';
-            }
-        };
-        reader.readAsDataURL(input.files[0]);
-    }
-}
-
-async function buyWishlistItem(wishlistId) {
-    try {
-        // Hole Wunschliste-Details
-        const wishlistItem = await apiCall(`/wishlist/${wishlistId}`);
-        
-        // Zeige Format-Auswahl Modal
-        const modalBody = `
-            <form id="buyWishlistForm">
-                <h3>Buch zur Bibliothek hinzufügen</h3>
-                <p><strong>${escapeHtml(wishlistItem.title)}</strong> von ${escapeHtml(wishlistItem.author)}</p>
-                
-                <div class="form-group">
-                    <label for="bookFormat">Format auswählen:</label>
-                    <select id="bookFormat" required>
-                        <option value="">Format wählen</option>
-                        <option value="Taschenbuch">Taschenbuch</option>
-                        <option value="Hardcover">Hardcover</option>
-                        <option value="E-Book">E-Book</option>
-                        <option value="Hörbuch">Hörbuch</option>
-                    </select>
-                </div>
-                
-                <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Abbrechen</button>
-                    <button type="submit" class="btn btn-success">Zur Bibliothek hinzufügen</button>
-                </div>
-            </form>
-        `;
-        
-        showModal('Buch gekauft', modalBody);
-        
-        document.getElementById('buyWishlistForm').onsubmit = async (e) => {
-            e.preventDefault();
-            
-            const format = document.getElementById('bookFormat').value;
-            if (!format) {
-                showMessage(null, 'Bitte wählen Sie ein Format aus.', 'error');
-                return;
-            }
-            
-            try {
-                // Erstelle Buch aus Wunschliste
-                const bookData = {
-                    title: wishlistItem.title,
-                    author: wishlistItem.author,
-                    genre: wishlistItem.genre,
-                    pages: wishlistItem.pages || 0,
-                    format: format,
-                    publisher: wishlistItem.publisher,
-                    publish_date: wishlistItem.publish_date,
-                    series: wishlistItem.series,
-                    volume: wishlistItem.volume || 0,
-                    is_read: false,
-                    reading_progress: 0
-                };
-                
-                const newBook = await apiCall('/books', {
-                    method: 'POST',
-                    body: bookData
-                });
-                
-                // Übertrage Cover falls vorhanden
-                if (wishlistItem.cover_image) {
-                    try {
-                        // Verwende das normale Cover-Upload-System
-                        const response = await fetch(`${currentServerUrl}/uploads/covers/${wishlistItem.cover_image}`);
-                        if (response.ok) {
-                            const blob = await response.blob();
-                            const formData = new FormData();
-                            formData.append('cover', blob, wishlistItem.cover_image);
-                            
-                            await fetch(`${currentServerUrl}/api/books/${newBook.id}/cover`, {
-                                method: 'POST',
-                                headers: {
-                                    'Authorization': `Bearer ${currentToken}`
-                                },
-                                body: formData
-                            });
-                        }
-                    } catch (coverError) {
-                        console.error('Cover-Übertragung fehlgeschlagen:', coverError);
-                        // Cover-Übertragung ist optional, Fehler nicht blockierend
-                    }
-                }
-                
-                // Lösche Wunschliste-Eintrag
-                await apiCall(`/wishlist/${wishlistId}`, {
-                    method: 'DELETE'
-                });
-                
-                closeModal();
-                loadWishlist();
-                showMessage(null, 'Buch erfolgreich zur Bibliothek hinzugefügt!', 'success');
-                
-            } catch (error) {
-                console.error('Fehler beim Hinzufügen zur Bibliothek:', error);
-                showMessage(null, 'Fehler beim Hinzufügen: ' + error.message, 'error');
-            }
-        };
-        
-    } catch (error) {
-        console.error('Fehler beim Laden der Wunschliste:', error);
-        showMessage(null, 'Fehler beim Laden: ' + error.message, 'error');
-    }
-}
-
-async function deleteWishlistItem(wishlistId) {
-    if (!confirm('Sind Sie sicher, dass Sie diesen Eintrag löschen möchten?')) {
-        return;
-    }
-    
-    try {
-        await apiCall(`/wishlist/${wishlistId}`, {
-            method: 'DELETE'
-        });
-        
-        loadWishlist();
-        showMessage(null, 'Wunschliste-Eintrag erfolgreich gelöscht!', 'success');
-    } catch (error) {
-        console.error('Fehler beim Löschen:', error);
-        showMessage(null, 'Fehler beim Löschen: ' + error.message, 'error');
-    }
-}
-
-// Funktion zum Ändern des Buchstatus
-async function changeBookStatus(bookId, newStatus) {
-    try {
-        await apiCall(`/books/${bookId}/status`, {
-            method: 'PUT',
-            body: { status: newStatus }
-        });
-        
-        // Erfolgsmeldung anzeigen
-        showMessage(null, `Status erfolgreich auf "${newStatus}" geändert!`, 'success');
-        
-        // Bücherliste neu laden wenn wir auf der Bücher-Seite sind
-        if (currentPage === 'books') {
-            loadBooks();
-        }
-        
-        // Dashboard neu laden wenn wir auf der Dashboard-Seite sind
-        if (currentPage === 'dashboard') {
-            loadDashboard();
-        }
-        
-    } catch (error) {
-        console.error('Fehler beim Ändern des Status:', error);
-        showMessage(null, 'Fehler beim Ändern des Status: ' + error.message, 'error');
-    }
-}

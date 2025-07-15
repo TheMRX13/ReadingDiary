@@ -1620,6 +1620,37 @@ input[type="file"]:focus {
     }
 }
 
+/* PWA Install Button Animation */
+@keyframes pulseInstall {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+}
+
+.install-btn {
+    animation: pulseInstall 2s infinite;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.install-btn:hover {
+    animation: none;
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
 /* iOS Safari spezifische Anpassungen */
 @media (max-width: 768px) and (-webkit-min-device-pixel-ratio: 2) {
     .install-btn {
