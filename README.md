@@ -61,7 +61,7 @@ Ein lokales Buchverwaltungssystem mit Web-Interface für Windows.
  - Android app
  - IOS App
  - Windows Program
-
+ - Virtuelle Bibliothek (Für das Lesen eigener E-Books oder für denn Verleih von E-Books)
 ---
 
 **📚 Reading Diary** - *Lokale Buchverwaltung für Windows*
