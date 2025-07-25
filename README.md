@@ -64,6 +64,11 @@ Ein lokales Buchverwaltungssystem mit Web-Interface für Windows.
  - Virtuelle Bibliothek (Für das Lesen eigener E-Books oder für denn Verleih von E-Books)
 ---
 
+# Discord
+
+Betrete jetzt auch meinen Discord. Hier bekomsmt du hilfe und rat für alles und hast direkten kontakt zum Entwickler 
+[Jetzt Betreten](https://discord.gg/T5yPWAbRdz)
+
 **📚 Reading Diary** - *Lokale Buchverwaltung für Windows*
 
 *Entwickelt mit ❤️ für Buchliebhaber*
