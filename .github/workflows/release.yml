@@ -38,7 +38,7 @@ jobs:
       
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
+        if: github.event_name == 'release'
         with:
           files: bin/reading-diary-server.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
