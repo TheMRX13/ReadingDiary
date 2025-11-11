@@ -183,12 +183,12 @@ func GinLoggerMiddleware() gin.HandlerFunc {
 		shouldLog := true
 		path := c.Request.URL.Path
 		method := c.Request.Method
-		
+
 		// Filtere häufige, unwichtige Anfragen heraus
-		if strings.HasPrefix(path, "/static/") || 
-		   strings.HasPrefix(path, "/uploads/") ||
-		   (path == "/api/stats" && method == "GET") ||
-		   (path == "/api/reading-goal" && method == "GET") {
+		if strings.HasPrefix(path, "/static/") ||
+			strings.HasPrefix(path, "/uploads/") ||
+			(path == "/api/stats" && method == "GET") ||
+			(path == "/api/reading-goal" && method == "GET") {
 			shouldLog = false
 		}
 
@@ -458,11 +458,11 @@ func (g *ServerGUI) startServer() {
 
 	serverRunning = true
 	g.startTime = time.Now()
-	
+
 	// Status-Text für HTTP-Server
 	statusText := fmt.Sprintf("Server läuft auf Port %d (HTTP)", serverPort)
 	webInterface := fmt.Sprintf("http://localhost:%d", serverPort)
-	
+
 	g.statusLabel.SetText(statusText)
 	g.startButton.SetText("Server Stoppen")
 	g.portEntry.Disable()
@@ -471,11 +471,11 @@ func (g *ServerGUI) startServer() {
 	g.addLog("Server erfolgreich gestartet!")
 	g.addLog(fmt.Sprintf("Passwort: %s", serverPassword))
 	g.addLog(fmt.Sprintf("Web-Interface: %s", webInterface))
-	
+
 	// Lokale IP-Adressen für mobile Verbindungen anzeigen
 	g.addLog("Lokale IP-Adressen für mobile Geräte:")
 	g.addLog(fmt.Sprintf("  - Desktop: %s", webInterface))
-	
+
 	// Sammle lokale IP-Adressen
 	interfaces, err := net.Interfaces()
 	if err == nil {
@@ -483,12 +483,12 @@ func (g *ServerGUI) startServer() {
 			if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
 				continue
 			}
-			
+
 			addrs, err := iface.Addrs()
 			if err != nil {
 				continue
 			}
-			
+
 			for _, addr := range addrs {
 				var ip net.IP
 				switch v := addr.(type) {
@@ -497,14 +497,14 @@ func (g *ServerGUI) startServer() {
 				case *net.IPAddr:
 					ip = v.IP
 				}
-				
+
 				if ip != nil && ip.To4() != nil {
 					g.addLog(fmt.Sprintf("  - Mobile: http://%s:%d", ip.String(), serverPort))
 				}
 			}
 		}
 	}
-	
+
 	logger.Info("🚀 Server erfolgreich gestartet!")
 	logger.Info(fmt.Sprintf("🔑 Login-Passwort: %s", serverPassword))
 	logger.Info(fmt.Sprintf("🌐 Web-Interface verfügbar: http://localhost:%d", serverPort))
@@ -618,13 +618,13 @@ func (g *ServerGUI) refreshIPAddresses() {
 
 	// IP-Container leeren und neu füllen
 	g.ipContainer.Objects = nil
-	
+
 	// Alle IP-Adressen als kompakte Labels hinzufügen
 	for _, ip := range ipAddresses {
 		// Mache die IPs kopierbar durch Klick
 		ipLabel := widget.NewLabel(ip)
 		ipLabel.Wrapping = fyne.TextWrapWord
-		
+
 		// Erstelle einen Button für jede IP-Adresse
 		ipButton := widget.NewButton(ip, func(url string) func() {
 			return func() {
@@ -633,11 +633,11 @@ func (g *ServerGUI) refreshIPAddresses() {
 				g.addLog(fmt.Sprintf("URL kopiert: %s", url))
 			}
 		}(ip))
-		
+
 		ipButton.Importance = widget.LowImportance
 		g.ipContainer.Add(ipButton)
 	}
-	
+
 	g.ipContainer.Refresh()
 	g.addLog("IP-Adressen aktualisiert")
 	logger.Info(fmt.Sprintf("IP-Adressen aktualisiert - %d Netzwerk-Interfaces gefunden", interfaceCount))
@@ -675,7 +675,7 @@ func (g *ServerGUI) addLogWithLevel(level string, message string) {
 
 	logEntry := fmt.Sprintf("[%s] %s [%s] %s\n", timestamp, levelColor, level, message)
 	currentText := g.logText.Text
-	
+
 	// Begrenze die Log-Größe (letzte 1000 Zeilen behalten) - optimiert
 	// Nur prüfen und begrenzen wenn Text zu groß wird
 	if len(currentText) > 150000 { // ~150KB, ungefähr 1500-2000 Zeilen
@@ -689,7 +689,7 @@ func (g *ServerGUI) addLogWithLevel(level string, message string) {
 			}
 		}
 	}
-	
+
 	newText := currentText + logEntry
 	g.logText.SetText(newText)
 }
@@ -758,7 +758,7 @@ func startServerOnly() {
 
 	logText.SetText(logText.Text + fmt.Sprintf("Server running on http://localhost:%d\n", serverPort))
 	logText.SetText(logText.Text + fmt.Sprintf("Password: %s\n", serverPassword))
-	
+
 	// Lokale IP-Adressen für mobile Verbindungen anzeigen
 	localIPs := getLocalIPs()
 	for _, ip := range localIPs {
@@ -767,7 +767,7 @@ func startServerOnly() {
 			logText.SetText(logText.Text + fmt.Sprintf("Mobile: %s\n", mobileURL))
 		}
 	}
-	
+
 	statusLabel.SetText("Server Running")
 
 	content := container.NewVBox(
@@ -812,10 +812,10 @@ func initDatabase() error {
 		}
 		return err
 	}
-	
+
 	// Optimiere Connection Settings für bessere Performance
-	sqlDB.SetMaxOpenConns(5)        // Maximal 5 gleichzeitige Verbindungen
-	sqlDB.SetMaxIdleConns(2)        // Halte 2 Verbindungen im Leerlauf
+	sqlDB.SetMaxOpenConns(5)            // Maximal 5 gleichzeitige Verbindungen
+	sqlDB.SetMaxIdleConns(2)            // Halte 2 Verbindungen im Leerlauf
 	sqlDB.SetConnMaxLifetime(time.Hour) // Verbindungen maximal 1 Stunde halten
 
 	if logger != nil {
@@ -834,7 +834,7 @@ func initDatabase() error {
 	if logger != nil {
 		logger.Info("Erstelle Datenbank-Indizes...")
 	}
-	
+
 	// Index für Status-Filter (häufig in Queries verwendet)
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_books_status ON books(status)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_books_genre ON books(genre)")
@@ -842,7 +842,7 @@ func initDatabase() error {
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_books_series ON books(series)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_books_updated_at ON books(updated_at)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_books_created_at ON books(created_at)")
-	
+
 	// Index für Progress History
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_progress_history_book_id ON progress_histories(book_id)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_progress_history_date ON progress_histories(date)")
@@ -1716,7 +1716,7 @@ func getBooksReadThisYear() int64 {
 	db.Model(&Book{}).
 		Where("status = ? AND updated_at >= ? AND updated_at < ?", "Gelesen", yearStart, yearEnd).
 		Count(&readCount)
-	
+
 	return readCount
 }
 
@@ -1929,21 +1929,20 @@ func ensurePublisherExists(publisherName string) error {
 		return fmt.Errorf("verlagsname ist leer")
 	}
 
-	// Prüfe ob Verlag bereits existiert
-	var existingPublisher Publisher
-	if err := db.Where("name = ?", publisherName).First(&existingPublisher).Error; err == nil {
-		// Verlag existiert bereits
-		return nil
+	// Verwende FirstOrCreate für atomare Operation (effizienter als separate Check + Create)
+	publisher := Publisher{Name: publisherName}
+	result := db.Where(Publisher{Name: publisherName}).FirstOrCreate(&publisher)
+
+	if result.Error != nil {
+		logger.Error(fmt.Sprintf("Fehler beim Erstellen des Verlags '%s': %v", publisherName, result.Error))
+		return result.Error
 	}
 
-	// Erstelle neuen Verlag
-	newPublisher := Publisher{Name: publisherName}
-	if err := db.Create(&newPublisher).Error; err != nil {
-		logger.Error(fmt.Sprintf("Fehler beim Erstellen des Verlags '%s': %v", publisherName, err))
-		return err
+	// Log nur wenn tatsächlich neu erstellt wurde
+	if result.RowsAffected > 0 {
+		logger.Info(fmt.Sprintf("Neuer Verlag automatisch erstellt: %s", publisherName))
 	}
 
-	logger.Info(fmt.Sprintf("Neuer Verlag automatisch erstellt: %s", publisherName))
 	return nil
 }
 
@@ -2023,7 +2022,6 @@ func updateBookStatus(c *gin.Context) {
 
 	var request struct {
 		Status string `json:"status"`
-
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -2062,22 +2060,22 @@ func updateBookStatus(c *gin.Context) {
 // getLocalIPs gibt alle lokalen IP-Adressen zurück
 func getLocalIPs() []net.IP {
 	var ips []net.IP
-	
+
 	interfaces, err := net.Interfaces()
 	if err != nil {
 		return ips
 	}
-	
+
 	for _, iface := range interfaces {
 		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
 			continue
 		}
-		
+
 		addresses, err := iface.Addrs()
 		if err != nil {
 			continue
 		}
-		
+
 		for _, addr := range addresses {
 			var ip net.IP
 			switch v := addr.(type) {
@@ -2086,13 +2084,13 @@ func getLocalIPs() []net.IP {
 			case *net.IPAddr:
 				ip = v.IP
 			}
-			
+
 			if ip != nil && !ip.IsLoopback() {
 				ips = append(ips, ip)
 			}
 		}
 	}
-	
+
 	return ips
 }
 
