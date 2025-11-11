@@ -3,6 +3,60 @@ let currentToken = '';
 let currentServerUrl = '';
 let currentPage = 'dashboard';
 
+// ===== THEME MANAGEMENT =====
+// Theme-System: Dark Mode Support
+function initTheme() {
+    // Versuche gespeichertes Theme zu laden
+    const savedTheme = localStorage.getItem('readingDiaryTheme');
+    
+    // Wenn kein gespeichertes Theme vorhanden, verwende System-Präferenz
+    if (savedTheme) {
+        setTheme(savedTheme);
+    } else {
+        // Prüfe System-Theme-Präferenz
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        setTheme(prefersDark ? 'dark' : 'light');
+    }
+    
+    // Event-Listener für Theme-Toggle hinzufügen
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('change', (e) => {
+            const newTheme = e.target.checked ? 'dark' : 'light';
+            setTheme(newTheme);
+            localStorage.setItem('readingDiaryTheme', newTheme);
+        });
+    }
+    
+    // System-Theme-Änderungen überwachen
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        // Nur automatisch wechseln wenn Nutzer keine manuelle Präferenz gesetzt hat
+        if (!localStorage.getItem('readingDiaryTheme')) {
+            setTheme(e.matches ? 'dark' : 'light');
+        }
+    });
+}
+
+function setTheme(theme) {
+    const html = document.documentElement;
+    const themeToggle = document.getElementById('themeToggle');
+    
+    if (theme === 'dark') {
+        html.setAttribute('data-theme', 'dark');
+        if (themeToggle) themeToggle.checked = true;
+    } else {
+        html.removeAttribute('data-theme');
+        if (themeToggle) themeToggle.checked = false;
+    }
+}
+
+function getTheme() {
+    return document.documentElement.getAttribute('data-theme') || 'light';
+}
+
+// Theme beim Seitenload initialisieren (vor allen anderen Scripts)
+initTheme();
+
 // Service Worker Registration für PWA
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
@@ -1409,6 +1463,19 @@ async function loadSettings() {
         
         settingsContent.innerHTML = `
             <div class="settings-section">
+                <h3>Darstellung</h3>
+                <div class="theme-toggle-container">
+                    <span class="theme-toggle-label">
+                        <i class="fas fa-moon"></i> Dark Mode
+                    </span>
+                    <label class="theme-toggle">
+                        <input type="checkbox" id="themeToggle">
+                        <span class="theme-slider"></span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="settings-section">
                 <h3>Leseziel</h3>
                 <div class="reading-goal-settings" id="readingGoalSettings">
                     <div class="form-group">
@@ -1454,6 +1521,20 @@ async function loadSettings() {
                 </div>
             </div>
         `;
+        
+        // Initialize theme toggle after loading settings
+        const themeToggle = document.getElementById('themeToggle');
+        if (themeToggle) {
+            // Setze Initial-State basierend auf aktuellem Theme
+            const currentTheme = getTheme();
+            themeToggle.checked = currentTheme === 'dark';
+            
+            themeToggle.addEventListener('change', (e) => {
+                const newTheme = e.target.checked ? 'dark' : 'light';
+                setTheme(newTheme);
+                localStorage.setItem('readingDiaryTheme', newTheme);
+            });
+        }
         
         // Load current reading goal
         loadCurrentReadingGoal();
