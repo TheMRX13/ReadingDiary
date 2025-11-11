@@ -2623,7 +2623,27 @@ function initScanner() {
     Quagga.onDetected(function(result) {
         if (result && result.codeResult && result.codeResult.code) {
             const isbn = result.codeResult.code;
-            console.log("Barcode erkannt:", isbn);
+            console.log("Barcode erkannt:", isbn, "Länge:", isbn.length);
+            
+            // Validiere ISBN-Länge (ISBN-10 oder ISBN-13)
+            // Entferne nicht-numerische Zeichen außer X (für ISBN-10)
+            const cleanIsbn = isbn.replace(/[^0-9X]/gi, '');
+            
+            if (cleanIsbn.length !== 10 && cleanIsbn.length !== 13) {
+                console.warn("Ungültige ISBN-Länge:", cleanIsbn.length, "- Erwartet: 10 oder 13 Zeichen. Ignoriere Scan.");
+                // Zeige kurz Feedback aber scanne weiter
+                const interactive = document.getElementById('interactive');
+                if (interactive) {
+                    const originalBorder = interactive.style.border;
+                    interactive.style.border = '3px solid #ef4444';
+                    setTimeout(() => {
+                        interactive.style.border = originalBorder;
+                    }, 300);
+                }
+                return; // Ignoriere diesen Scan und scanne weiter
+            }
+            
+            console.log("Gültige ISBN erkannt:", cleanIsbn);
             
             // Stop scanner
             const savedContext = currentScannerContext;
@@ -2632,13 +2652,13 @@ function initScanner() {
             
             // Fill ISBN field and trigger search
             if (savedContext === 'book') {
-                document.getElementById('bookISBN').value = isbn;
+                document.getElementById('bookISBN').value = cleanIsbn;
                 searchByISBN();
             } else if (savedContext === 'wishlist') {
-                document.getElementById('wishlistISBN').value = isbn;
+                document.getElementById('wishlistISBN').value = cleanIsbn;
                 searchByISBNWishlist();
             } else if (savedContext === 'edit') {
-                document.getElementById('bookISBN').value = isbn;
+                document.getElementById('bookISBN').value = cleanIsbn;
                 searchByISBNEdit(null, savedBookId);
             }
         }
