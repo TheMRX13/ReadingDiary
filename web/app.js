@@ -806,9 +806,6 @@ function showBookModal(book) {
                         <input type="file" id="editBookCover" accept="image/*" onchange="previewEditBookCover(this)">
                         <small>Unterstützte Formate: JPG, PNG, WebP</small>
                         <div id="editCoverErrorMessage" style="margin-top: 8px;"></div>
-                        <div id="editBookCoverPreview" class="cover-preview" style="display: none;">
-                            <img id="editBookPreviewImage" alt="Vorschau">
-                        </div>
                     </div>
                     
                     <div class="form-grid">
@@ -2957,33 +2954,6 @@ async function saveBasicInfo(bookId) {
             body: bookData
         });
         
-        // Check if manual cover was uploaded
-        const editCoverInput = document.getElementById('editBookCover');
-        if (editCoverInput && editCoverInput.files && editCoverInput.files.length > 0) {
-            console.log('[Save] Manuelles Cover wird hochgeladen...');
-            try {
-                const formData = new FormData();
-                formData.append('cover', editCoverInput.files[0]);
-                
-                const response = await fetch(`${currentServerUrl}/api/books/${bookId}/cover`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${currentToken}`
-                    },
-                    body: formData
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Cover-Upload fehlgeschlagen');
-                }
-                
-                console.log('[Save] Manuelles Cover erfolgreich hochgeladen');
-            } catch (coverError) {
-                console.error('[Save] Fehler beim Upload des manuellen Covers:', coverError);
-                showMessage(null, 'Cover konnte nicht hochgeladen werden: ' + coverError.message, 'error');
-            }
-        }
-        
         // Check if cover from ISBN should be downloaded
         // Verwende globale Variable als Fallback (wichtig für Mobile!)
         console.log('[Save] Globale Cover-Daten:', editModeCoverData);
@@ -3031,7 +3001,29 @@ async function saveBasicInfo(bookId) {
                 // Continue anyway, book data is saved
             }
         } else {
-            console.log('[Save] Kein ISBN-Cover zum Herunterladen vorhanden');
+            // Cover upload if file selected (like in createBook)
+            const editCoverInput = document.getElementById('editBookCover');
+            if (editCoverInput && editCoverInput.files && editCoverInput.files.length > 0) {
+                try {
+                    const formData = new FormData();
+                    formData.append('cover', editCoverInput.files[0]);
+                    
+                    const uploadResponse = await fetch(`${currentServerUrl}/api/books/${bookId}/cover`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${currentToken}`
+                        },
+                        body: formData
+                    });
+                    
+                    if (!uploadResponse.ok) {
+                        throw new Error('Upload fehlgeschlagen');
+                    }
+                } catch (uploadError) {
+                    console.error('Cover-Upload Fehler:', uploadError);
+                    showMessage(null, 'Cover-Upload fehlgeschlagen', 'error');
+                }
+            }
         }
         
         // Reload book details
@@ -3133,23 +3125,23 @@ function previewNewBookCover(input) {
 
 function previewEditBookCover(input) {
     if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // Validiere Dateityp
+        if (!file.type.startsWith('image/')) {
+            showMessage(null, 'Bitte wählen Sie eine Bilddatei aus', 'error');
+            input.value = '';
+            return;
+        }
+        
         const reader = new FileReader();
         reader.onload = function(e) {
-            const preview = document.getElementById('editBookCoverPreview');
-            const previewImage = document.getElementById('editBookPreviewImage');
-            
-            if (preview && previewImage) {
-                previewImage.src = e.target.result;
-                preview.style.display = 'block';
-            }
-            
-            // Update auch das Cover Display
             const editCoverDisplay = document.getElementById('editCoverDisplay');
             if (editCoverDisplay) {
                 editCoverDisplay.innerHTML = `<img src="${e.target.result}" alt="Book Cover" class="book-cover-large">`;
             }
         };
-        reader.readAsDataURL(input.files[0]);
+        reader.readAsDataURL(file);
     }
 }
 
