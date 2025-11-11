@@ -113,6 +113,18 @@ select,
 button,
 .btn {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+button:focus,
+.btn:focus {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
 }
 
 /* Reset und Basis-Stile */
@@ -190,7 +202,10 @@ body {
     color: var(--text-primary);
     border-radius: 8px;
     font-size: 16px;
+    font-family: inherit;
     transition: border-color 0.3s;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 .form-group input:focus {
@@ -216,6 +231,7 @@ body {
 .btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     padding: 12px 20px;
     border: none;
@@ -225,6 +241,11 @@ body {
     cursor: pointer;
     transition: all 0.3s;
     text-decoration: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 
 .btn-primary {
@@ -601,6 +622,7 @@ body {
     max-width: 600px;
     max-height: 90vh;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .modal-header {
@@ -763,6 +785,20 @@ body {
     display: flex;
     justify-content: center;
     gap: 12px;
+}
+
+.scanner-controls .btn {
+    flex: 0 1 auto;
+}
+
+#toggleTorchBtn.active {
+    background: var(--accent-primary);
+    color: white;
+    border-color: var(--accent-primary);
+}
+
+#toggleTorchBtn.active:hover {
+    background: var(--accent-hover);
 }
 
 .scanner-info {
@@ -1806,6 +1842,30 @@ input[type="file"]:focus {
         padding: 16px;
     }
     
+    .stats-cards {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+    }
+    
+    .stat-card {
+        padding: 20px 16px !important;
+        min-width: 0 !important;
+    }
+    
+    .stat-card .stat-icon {
+        font-size: 28px !important;
+        margin-bottom: 8px !important;
+    }
+    
+    .stat-card .stat-value {
+        font-size: 32px !important;
+    }
+    
+    .stat-card .stat-label {
+        font-size: 11px !important;
+    }
+    
     .page-header {
         flex-direction: column;
         align-items: flex-start;
@@ -1948,12 +2008,15 @@ input[type="file"]:focus {
 }
 
 /* iOS Safari spezifische Anpassungen */
-@media (max-width: 768px) and (-webkit-min-device-pixel-ratio: 2) {
+@media (max-width: 768px) {
     .install-btn {
         -webkit-appearance: none !important;
+        -moz-appearance: none !important;
+        appearance: none !important;
         -webkit-tap-highlight-color: transparent !important;
         -webkit-touch-callout: none !important;
         -webkit-user-select: none !important;
+        -moz-user-select: none !important;
         user-select: none !important;
     }
 }

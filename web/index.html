@@ -238,12 +238,16 @@
             </div>
             <div id="interactive" class="viewport"></div>
             <div class="scanner-controls">
+                <button id="toggleTorchBtn" class="btn btn-secondary" style="display:none;">
+                    <i class="fas fa-lightbulb"></i> Taschenlampe
+                </button>
                 <button id="cancelScanBtn" class="btn btn-danger">
                     <i class="fas fa-times"></i> Abbrechen
                 </button>
             </div>
             <div class="scanner-info">
                 <p>Richten Sie die Kamera auf den Barcode aus</p>
+                <p id="torchStatusMessage" style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;"></p>
             </div>
         </div>
     </div>

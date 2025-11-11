@@ -797,8 +797,18 @@ function showBookModal(book) {
                                 '<div class="no-cover"><i class="fas fa-book"></i><p>Kein Cover vorhanden</p></div>'
                             }
                         </div>
-                        <small>Cover wird automatisch aktualisiert wenn ISBN-Daten abgerufen werden</small>
+                        <small>Cover wird automatisch aktualisiert wenn ISBN-Daten abgerufen werden oder manuell hochgeladen</small>
+                    </div>
+                    
+                    <!-- Cover Upload für Edit-Modus -->
+                    <div class="form-group full-width">
+                        <label for="editBookCover">Cover manuell hochladen (optional)</label>
+                        <input type="file" id="editBookCover" accept="image/*" onchange="previewEditBookCover(this)">
+                        <small>Unterstützte Formate: JPG, PNG, WebP</small>
                         <div id="editCoverErrorMessage" style="margin-top: 8px;"></div>
+                        <div id="editBookCoverPreview" class="cover-preview" style="display: none;">
+                            <img id="editBookPreviewImage" alt="Vorschau">
+                        </div>
                     </div>
                     
                     <div class="form-grid">
@@ -2564,7 +2574,8 @@ function initScanner() {
                 width: { min: 640, ideal: 1280, max: 1920 },
                 height: { min: 480, ideal: 720, max: 1080 },
                 facingMode: "environment", // Rückkamera auf Mobilgeräten
-                aspectRatio: { min: 1, max: 2 }
+                aspectRatio: { min: 1, max: 2 },
+                advanced: [{ torch: true }] // Versuche Taschenlampe direkt zu aktivieren
             },
             area: { // defines rectangle of the detection/localization area
                 top: "0%",    // top offset
@@ -2667,6 +2678,97 @@ function initScanner() {
     // Close button
     document.getElementById('closeScannerBtn').onclick = stopScanner;
     document.getElementById('cancelScanBtn').onclick = stopScanner;
+    
+    // Torch/Flashlight toggle - check if device supports it
+    const torchBtn = document.getElementById('toggleTorchBtn');
+    const torchStatus = document.getElementById('torchStatusMessage');
+    if (torchBtn) {
+        // Wait a bit for camera to be ready
+        setTimeout(() => {
+            const track = Quagga.CameraAccess.getActiveTrack();
+            console.log('Checking torch support - Track:', track);
+            
+            if (!track) {
+                if (torchStatus) {
+                    torchStatus.textContent = '⚠️ Kein Kamera-Track gefunden';
+                    torchStatus.style.color = '#ef4444';
+                }
+                return;
+            }
+            
+            const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+            const settings = track.getSettings ? track.getSettings() : {};
+            console.log('Track capabilities:', capabilities);
+            console.log('Track settings:', settings);
+            
+            // Prüfe ob torch in capabilities oder settings vorhanden ist
+            const hasTorchCapability = capabilities.torch === true;
+            const hasTorchInSettings = 'torch' in settings;
+            
+            if (hasTorchCapability || hasTorchInSettings) {
+                // Device supports torch
+                torchBtn.style.display = '';
+                torchBtn.onclick = toggleTorch;
+                if (torchStatus) {
+                    torchStatus.textContent = settings.torch ? '💡 Taschenlampe ist AN' : '💡 Taschenlampe verfügbar - Klicken zum Einschalten';
+                    torchStatus.style.color = '#10b981';
+                }
+                // Wenn torch bereits aktiv ist (durch constraints), setze Button-Status
+                if (settings.torch) {
+                    torchEnabled = true;
+                    torchBtn.classList.add('active');
+                    torchBtn.innerHTML = '<i class="fas fa-lightbulb"></i> Taschenlampe AN';
+                }
+            } else {
+                if (torchStatus) {
+                    torchStatus.innerHTML = '⚠️ Taschenlampe wird vom Browser nicht unterstützt<br><small>Versuche Chrome oder öffne in externem Browser</small>';
+                    torchStatus.style.color = '#f59e0b';
+                }
+            }
+        }, 1500); // Längere Wartezeit für mobile Geräte
+    }
+}
+
+let torchEnabled = false;
+
+function toggleTorch() {
+    try {
+        const track = Quagga.CameraAccess.getActiveTrack();
+        if (!track) {
+            console.warn('Kein aktiver Video-Track gefunden');
+            return;
+        }
+        
+        const capabilities = track.getCapabilities();
+        if (!capabilities || !capabilities.torch) {
+            console.warn('Gerät unterstützt keine Taschenlampe');
+            showMessage(null, 'Ihr Gerät unterstützt keine Taschenlampe', 'error');
+            return;
+        }
+        
+        torchEnabled = !torchEnabled;
+        
+        track.applyConstraints({
+            advanced: [{ torch: torchEnabled }]
+        }).then(() => {
+            console.log('Taschenlampe:', torchEnabled ? 'AN' : 'AUS');
+            const torchBtn = document.getElementById('toggleTorchBtn');
+            if (torchBtn) {
+                if (torchEnabled) {
+                    torchBtn.classList.add('active');
+                    torchBtn.innerHTML = '<i class="fas fa-lightbulb"></i> Taschenlampe AN';
+                } else {
+                    torchBtn.classList.remove('active');
+                    torchBtn.innerHTML = '<i class="fas fa-lightbulb"></i> Taschenlampe';
+                }
+            }
+        }).catch(err => {
+            console.error('Fehler beim Umschalten der Taschenlampe:', err);
+            showMessage(null, 'Taschenlampe konnte nicht umgeschaltet werden', 'error');
+        });
+    } catch (err) {
+        console.error('Fehler beim Zugriff auf Taschenlampe:', err);
+    }
 }
 
 function stopScanner() {
@@ -2676,6 +2778,21 @@ function stopScanner() {
     const scannerModal = document.getElementById('barcodeScannerModal');
     scannerModal.classList.remove('active');
     currentScannerContext = null;
+    
+    // Reset torch state
+    torchEnabled = false;
+    const torchBtn = document.getElementById('toggleTorchBtn');
+    if (torchBtn) {
+        torchBtn.style.display = 'none';
+        torchBtn.classList.remove('active');
+        torchBtn.innerHTML = '<i class="fas fa-lightbulb"></i> Taschenlampe';
+    }
+    
+    // Clear status message
+    const torchStatus = document.getElementById('torchStatusMessage');
+    if (torchStatus) {
+        torchStatus.textContent = '';
+    }
 }
 
 // Buch-Management-Funktionen
@@ -2840,6 +2957,33 @@ async function saveBasicInfo(bookId) {
             body: bookData
         });
         
+        // Check if manual cover was uploaded
+        const editCoverInput = document.getElementById('editBookCover');
+        if (editCoverInput && editCoverInput.files && editCoverInput.files.length > 0) {
+            console.log('[Save] Manuelles Cover wird hochgeladen...');
+            try {
+                const formData = new FormData();
+                formData.append('cover', editCoverInput.files[0]);
+                
+                const response = await fetch(`${currentServerUrl}/api/books/${bookId}/cover`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Cover-Upload fehlgeschlagen');
+                }
+                
+                console.log('[Save] Manuelles Cover erfolgreich hochgeladen');
+            } catch (coverError) {
+                console.error('[Save] Fehler beim Upload des manuellen Covers:', coverError);
+                showMessage(null, 'Cover konnte nicht hochgeladen werden: ' + coverError.message, 'error');
+            }
+        }
+        
         // Check if cover from ISBN should be downloaded
         // Verwende globale Variable als Fallback (wichtig für Mobile!)
         console.log('[Save] Globale Cover-Daten:', editModeCoverData);
@@ -2987,6 +3131,28 @@ function previewNewBookCover(input) {
     }
 }
 
+function previewEditBookCover(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById('editBookCoverPreview');
+            const previewImage = document.getElementById('editBookPreviewImage');
+            
+            if (preview && previewImage) {
+                previewImage.src = e.target.result;
+                preview.style.display = 'block';
+            }
+            
+            // Update auch das Cover Display
+            const editCoverDisplay = document.getElementById('editCoverDisplay');
+            if (editCoverDisplay) {
+                editCoverDisplay.innerHTML = `<img src="${e.target.result}" alt="Book Cover" class="book-cover-large">`;
+            }
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
 async function uploadCover(bookId) {
     const fileInput = document.getElementById('coverFile');
     if (!fileInput.files.length) {
@@ -3101,7 +3267,7 @@ function showAddWishlistModal() {
 
             <!-- Cover Upload für Wunschliste -->
             <div class="form-group">
-                <label for="newWishlistCover">Cover hochladen (optional)</label>
+                <label for="newWishlistCover">Cover hochladen</label>
                 <input type="file" id="newWishlistCover" accept="image/*" onchange="previewNewWishlistCover(this)">
                 <small>Unterstützte Formate: JPG, PNG, WebP</small>
                 <div id="wishlistCoverErrorMessage" style="margin-top: 8px;"></div>
