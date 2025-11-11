@@ -1247,12 +1247,22 @@ async function loadStatistics() {
         const stats = await apiCall('/stats');
         const statisticsContent = document.getElementById('statisticsContent');
         
-        // Berechne gelesene Seiten
+        // Berechne gelesene Seiten - hole alle Bücher um korrekte Statistik zu erhalten
         let totalPagesRead = 0;
-        if (stats.recentBooks && stats.recentBooks.length > 0) {
-            totalPagesRead = stats.recentBooks
-                .filter(book => book.is_read)
-                .reduce((sum, book) => sum + (book.pages || 0), 0);
+        try {
+            const allBooks = await apiCall('/books');
+            totalPagesRead = allBooks.reduce((sum, book) => {
+                if (book.status === 'Gelesen') {
+                    // Vollständig gelesene Bücher: alle Seiten zählen
+                    return sum + (book.pages || 0);
+                } else if (book.status === 'Am Lesen') {
+                    // Bücher die gerade gelesen werden: nur Fortschritt zählen
+                    return sum + (book.reading_progress || book.readingProgress || 0);
+                }
+                return sum;
+            }, 0);
+        } catch (error) {
+            console.error('Fehler beim Berechnen der gelesenen Seiten:', error);
         }
         
         statisticsContent.innerHTML = `
