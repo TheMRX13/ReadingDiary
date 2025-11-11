@@ -675,15 +675,22 @@ func (g *ServerGUI) addLogWithLevel(level string, message string) {
 
 	logEntry := fmt.Sprintf("[%s] %s [%s] %s\n", timestamp, levelColor, level, message)
 	currentText := g.logText.Text
-	newText := currentText + logEntry
-
-	// Begrenze die Log-Größe (letzte 1000 Zeilen behalten)
-	lines := strings.Split(newText, "\n")
-	if len(lines) > 1000 {
-		lines = lines[len(lines)-1000:]
-		newText = strings.Join(lines, "\n")
+	
+	// Begrenze die Log-Größe (letzte 1000 Zeilen behalten) - optimiert
+	// Nur prüfen und begrenzen wenn Text zu groß wird
+	if len(currentText) > 150000 { // ~150KB, ungefähr 1500-2000 Zeilen
+		// Finde Position nach der wir beginnen wollen (letzte ~100KB)
+		cutPos := len(currentText) - 100000
+		if cutPos > 0 {
+			// Finde nächsten Zeilenumbruch um komplette Zeilen zu behalten
+			nextNewline := strings.Index(currentText[cutPos:], "\n")
+			if nextNewline != -1 {
+				currentText = currentText[cutPos+nextNewline+1:]
+			}
+		}
 	}
-
+	
+	newText := currentText + logEntry
 	g.logText.SetText(newText)
 }
 
@@ -787,13 +794,29 @@ func initDatabase() error {
 	}
 
 	var err error
-	db, err = gorm.Open(sqlite.Open("reading_diary.db"), &gorm.Config{})
+	db, err = gorm.Open(sqlite.Open("reading_diary.db"), &gorm.Config{
+		PrepareStmt: true, // Verwende Prepared Statements für bessere Performance
+	})
 	if err != nil {
 		if logger != nil {
 			logger.Error(fmt.Sprintf("Datenbankverbindung fehlgeschlagen: %v", err))
 		}
 		return err
 	}
+
+	// Konfiguriere SQLite Connection Pool
+	sqlDB, err := db.DB()
+	if err != nil {
+		if logger != nil {
+			logger.Error(fmt.Sprintf("Fehler beim Abrufen der DB-Instanz: %v", err))
+		}
+		return err
+	}
+	
+	// Optimiere Connection Settings für bessere Performance
+	sqlDB.SetMaxOpenConns(5)        // Maximal 5 gleichzeitige Verbindungen
+	sqlDB.SetMaxIdleConns(2)        // Halte 2 Verbindungen im Leerlauf
+	sqlDB.SetConnMaxLifetime(time.Hour) // Verbindungen maximal 1 Stunde halten
 
 	if logger != nil {
 		logger.Info("Führe Datenbank-Migration durch...")
@@ -806,6 +829,23 @@ func initDatabase() error {
 		}
 		return err
 	}
+
+	// Erstelle Indizes für häufig abgefragte Felder
+	if logger != nil {
+		logger.Info("Erstelle Datenbank-Indizes...")
+	}
+	
+	// Index für Status-Filter (häufig in Queries verwendet)
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_books_status ON books(status)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_books_genre ON books(genre)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_books_publisher ON books(publisher)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_books_series ON books(series)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_books_updated_at ON books(updated_at)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_books_created_at ON books(created_at)")
+	
+	// Index für Progress History
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_progress_history_book_id ON progress_histories(book_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_progress_history_date ON progress_histories(date)")
 
 	if logger != nil {
 		logger.Info("✅ Datenbank erfolgreich initialisiert und migriert")
@@ -1666,6 +1706,20 @@ func getPublisherStats(c *gin.Context) {
 	c.JSON(200, results)
 }
 
+// Helper function to calculate books read this year (cached for performance)
+func getBooksReadThisYear() int64 {
+	var readCount int64
+	currentYear := time.Now().Year()
+	yearStart := time.Date(currentYear, 1, 1, 0, 0, 0, 0, time.UTC)
+	yearEnd := time.Date(currentYear+1, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	db.Model(&Book{}).
+		Where("status = ? AND updated_at >= ? AND updated_at < ?", "Gelesen", yearStart, yearEnd).
+		Count(&readCount)
+	
+	return readCount
+}
+
 // Reading Goal Funktionen
 func getReadingGoal(c *gin.Context) {
 	var goal ReadingGoal
@@ -1686,14 +1740,7 @@ func getReadingGoal(c *gin.Context) {
 	}
 
 	// Berechne aktuelle Anzahl gelesener Bücher in diesem Jahr
-	var readCount int64
-	currentYear := time.Now().Year()
-	yearStart := time.Date(currentYear, 1, 1, 0, 0, 0, 0, time.UTC)
-	yearEnd := time.Date(currentYear+1, 1, 1, 0, 0, 0, 0, time.UTC)
-
-	db.Model(&Book{}).
-		Where("status = ? AND updated_at >= ? AND updated_at < ?", "Gelesen", yearStart, yearEnd).
-		Count(&readCount)
+	readCount := getBooksReadThisYear()
 
 	c.JSON(200, gin.H{
 		"enabled": goal.Enabled,
@@ -1748,14 +1795,7 @@ func updateReadingGoal(c *gin.Context) {
 	}
 
 	// Berechne aktuelle Anzahl gelesener Bücher in diesem Jahr
-	var readCount int64
-	currentYear := time.Now().Year()
-	yearStart := time.Date(currentYear, 1, 1, 0, 0, 0, 0, time.UTC)
-	yearEnd := time.Date(currentYear+1, 1, 1, 0, 0, 0, 0, time.UTC)
-
-	db.Model(&Book{}).
-		Where("status = ? AND updated_at >= ? AND updated_at < ?", "Gelesen", yearStart, yearEnd).
-		Count(&readCount)
+	readCount := getBooksReadThisYear()
 
 	c.JSON(200, gin.H{
 		"message": "Leseziel erfolgreich aktualisiert",

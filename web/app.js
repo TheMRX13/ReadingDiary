@@ -3,6 +3,15 @@ let currentToken = '';
 let currentServerUrl = '';
 let currentPage = 'dashboard';
 
+// DOM Element Cache für bessere Performance
+const domCache = {
+    navButtons: null,
+    pages: null,
+    modal: null,
+    loginSection: null,
+    mainApp: null
+};
+
 // Service Worker Registration für PWA
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
@@ -355,12 +364,19 @@ function initializeApp() {
 }
 
 function setupEventListeners() {
+    // Cache häufig verwendete DOM-Elemente
+    domCache.navButtons = document.querySelectorAll('.nav-btn');
+    domCache.pages = document.querySelectorAll('.page');
+    domCache.modal = document.getElementById('modal');
+    domCache.loginSection = document.getElementById('loginSection');
+    domCache.mainApp = document.getElementById('mainApp');
+    
     // Login-Events
     document.getElementById('login').addEventListener('click', login);
     document.getElementById('logout').addEventListener('click', logout);
     
     // Navigation
-    document.querySelectorAll('.nav-btn').forEach(btn => {
+    domCache.navButtons.forEach(btn => {
         btn.addEventListener('click', (e) => {
             const page = e.currentTarget.dataset.page;
             navigateToPage(page);
@@ -369,7 +385,7 @@ function setupEventListeners() {
     
     // Modal
     document.getElementById('closeModal').addEventListener('click', closeModal);
-    document.getElementById('modal').addEventListener('click', (e) => {
+    domCache.modal.addEventListener('click', (e) => {
         if (e.target === e.currentTarget) {
             closeModal();
         }
@@ -463,8 +479,12 @@ function logout() {
 }
 
 function showMainApp() {
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('mainApp').style.display = 'flex';
+    // Verwende gecachte Elemente wenn verfügbar
+    const loginScreen = document.getElementById('loginScreen');
+    const mainApp = domCache.mainApp || document.getElementById('mainApp');
+    
+    loginScreen.style.display = 'none';
+    mainApp.style.display = 'flex';
     
     // Dashboard laden
     loadDashboard();
@@ -473,9 +493,9 @@ function showMainApp() {
 
 // Navigation
 function navigateToPage(page) {
-    // Aktive Klassen entfernen
-    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('.page').forEach(pageEl => pageEl.classList.remove('active'));
+    // Aktive Klassen entfernen - verwende gecachte Elemente
+    domCache.navButtons.forEach(btn => btn.classList.remove('active'));
+    domCache.pages.forEach(pageEl => pageEl.classList.remove('active'));
     
     // Neue Seite aktivieren
     document.querySelector(`[data-page="${page}"]`).classList.add('active');
@@ -1581,7 +1601,8 @@ function showModal(title, body) {
 }
 
 function closeModal() {
-    const modal = document.getElementById('modal');
+    // Verwende gecachtes Modal-Element
+    const modal = domCache.modal || document.getElementById('modal');
     modal.style.display = 'none';
 }
 
