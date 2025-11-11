@@ -117,6 +117,9 @@ var (
 	httpServer     *http.Server
 	ipAddresses    []string
 	guiInstance    *ServerGUI // Globale Referenz für Logging
+
+	// Cache für statische Dateien aus dem embedded filesystem
+	staticFileCache = make(map[string][]byte)
 )
 
 // Custom Logger Interface
@@ -854,58 +857,81 @@ func initDatabase() error {
 	return nil
 }
 
+// Lade häufig verwendete statische Dateien in den Cache
+func loadStaticFilesCache() {
+	staticFiles := []string{
+		"web/style.css",
+		"web/app.js",
+		"web/manifest.json",
+		"web/sw.js",
+	}
+
+	for _, filePath := range staticFiles {
+		if data, err := webFiles.ReadFile(filePath); err == nil {
+			staticFileCache[filePath] = data
+			if logger != nil {
+				logger.Debug(fmt.Sprintf("Statische Datei gecacht: %s (%d bytes)", filePath, len(data)))
+			}
+		}
+	}
+}
+
 func setupRoutes(router *gin.Engine) {
-	// Static files from embedded filesystem
+	// Lade statische Dateien in den Cache beim ersten Setup
+	loadStaticFilesCache()
+
+	// Static files from embedded filesystem (mit Caching)
 	router.GET("/static/*filepath", func(c *gin.Context) {
 		path := c.Param("filepath")
-		if path == "/style.css" {
-			data, err := webFiles.ReadFile("web/style.css")
-			if err != nil {
+
+		// Versuche aus Cache zu lesen
+		var contentType string
+		var filePath string
+
+		switch path {
+		case "/style.css":
+			filePath = "web/style.css"
+			contentType = "text/css"
+		case "/app.js":
+			filePath = "web/app.js"
+			contentType = "application/javascript"
+		case "/manifest.json":
+			filePath = "web/manifest.json"
+			contentType = "application/json"
+		case "/sw.js":
+			filePath = "web/sw.js"
+			contentType = "application/javascript"
+		default:
+			// Handle icon files
+			if strings.HasPrefix(path, "/icons/") {
+				filePath = "web" + path
+				contentType = "image/png"
+			} else {
 				c.String(404, "Not found")
 				return
 			}
-			c.Data(200, "text/css", data)
+		}
+
+		// Prüfe Cache
+		if data, exists := staticFileCache[filePath]; exists {
+			// Setze Cache-Header für Browser-Caching (statische Dateien ändern sich selten)
+			c.Header("Cache-Control", "public, max-age=3600") // 1 Stunde
+			c.Data(200, contentType, data)
 			return
 		}
-		if path == "/app.js" {
-			data, err := webFiles.ReadFile("web/app.js")
-			if err != nil {
-				c.String(404, "Not found")
-				return
-			}
-			c.Data(200, "application/javascript", data)
+
+		// Falls nicht im Cache, lese aus embedded FS
+		data, err := webFiles.ReadFile(filePath)
+		if err != nil {
+			c.String(404, "Not found")
 			return
 		}
-		if path == "/manifest.json" {
-			data, err := webFiles.ReadFile("web/manifest.json")
-			if err != nil {
-				c.String(404, "Not found")
-				return
-			}
-			c.Data(200, "application/json", data)
-			return
-		}
-		if path == "/sw.js" {
-			data, err := webFiles.ReadFile("web/sw.js")
-			if err != nil {
-				c.String(404, "Not found")
-				return
-			}
-			c.Data(200, "application/javascript", data)
-			return
-		}
-		// Handle icon files
-		if strings.HasPrefix(path, "/icons/") {
-			iconPath := "web" + path
-			data, err := webFiles.ReadFile(iconPath)
-			if err != nil {
-				c.String(404, "Not found")
-				return
-			}
-			c.Data(200, "image/png", data)
-			return
-		}
-		c.String(404, "Not found")
+
+		// Speichere im Cache für zukünftige Requests
+		staticFileCache[filePath] = data
+		// Setze Cache-Header für Browser-Caching
+		c.Header("Cache-Control", "public, max-age=3600") // 1 Stunde
+		c.Data(200, contentType, data)
 	})
 
 	// Cover images serving
