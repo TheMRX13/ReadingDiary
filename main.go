@@ -190,12 +190,12 @@ func GinLoggerMiddleware() gin.HandlerFunc {
 		shouldLog := true
 		path := c.Request.URL.Path
 		method := c.Request.Method
-		
+
 		// Filtere häufige, unwichtige Anfragen heraus
-		if strings.HasPrefix(path, "/static/") || 
-		   strings.HasPrefix(path, "/uploads/") ||
-		   (path == "/api/stats" && method == "GET") ||
-		   (path == "/api/reading-goal" && method == "GET") {
+		if strings.HasPrefix(path, "/static/") ||
+			strings.HasPrefix(path, "/uploads/") ||
+			(path == "/api/stats" && method == "GET") ||
+			(path == "/api/reading-goal" && method == "GET") {
 			shouldLog = false
 		}
 
@@ -465,11 +465,11 @@ func (g *ServerGUI) startServer() {
 
 	serverRunning = true
 	g.startTime = time.Now()
-	
+
 	// Status-Text für HTTP-Server
 	statusText := fmt.Sprintf("Server läuft auf Port %d (HTTP)", serverPort)
 	webInterface := fmt.Sprintf("http://localhost:%d", serverPort)
-	
+
 	g.statusLabel.SetText(statusText)
 	g.startButton.SetText("Server Stoppen")
 	g.portEntry.Disable()
@@ -478,11 +478,11 @@ func (g *ServerGUI) startServer() {
 	g.addLog("Server erfolgreich gestartet!")
 	g.addLog(fmt.Sprintf("Passwort: %s", serverPassword))
 	g.addLog(fmt.Sprintf("Web-Interface: %s", webInterface))
-	
+
 	// Lokale IP-Adressen für mobile Verbindungen anzeigen
 	g.addLog("Lokale IP-Adressen für mobile Geräte:")
 	g.addLog(fmt.Sprintf("  - Desktop: %s", webInterface))
-	
+
 	// Sammle lokale IP-Adressen
 	interfaces, err := net.Interfaces()
 	if err == nil {
@@ -490,12 +490,12 @@ func (g *ServerGUI) startServer() {
 			if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
 				continue
 			}
-			
+
 			addrs, err := iface.Addrs()
 			if err != nil {
 				continue
 			}
-			
+
 			for _, addr := range addrs {
 				var ip net.IP
 				switch v := addr.(type) {
@@ -504,14 +504,14 @@ func (g *ServerGUI) startServer() {
 				case *net.IPAddr:
 					ip = v.IP
 				}
-				
+
 				if ip != nil && ip.To4() != nil {
 					g.addLog(fmt.Sprintf("  - Mobile: http://%s:%d", ip.String(), serverPort))
 				}
 			}
 		}
 	}
-	
+
 	logger.Info("🚀 Server erfolgreich gestartet!")
 	logger.Info(fmt.Sprintf("🔑 Login-Passwort: %s", serverPassword))
 	logger.Info(fmt.Sprintf("🌐 Web-Interface verfügbar: http://localhost:%d", serverPort))
@@ -625,13 +625,13 @@ func (g *ServerGUI) refreshIPAddresses() {
 
 	// IP-Container leeren und neu füllen
 	g.ipContainer.Objects = nil
-	
+
 	// Alle IP-Adressen als kompakte Labels hinzufügen
 	for _, ip := range ipAddresses {
 		// Mache die IPs kopierbar durch Klick
 		ipLabel := widget.NewLabel(ip)
 		ipLabel.Wrapping = fyne.TextWrapWord
-		
+
 		// Erstelle einen Button für jede IP-Adresse
 		ipButton := widget.NewButton(ip, func(url string) func() {
 			return func() {
@@ -640,11 +640,11 @@ func (g *ServerGUI) refreshIPAddresses() {
 				g.addLog(fmt.Sprintf("URL kopiert: %s", url))
 			}
 		}(ip))
-		
+
 		ipButton.Importance = widget.LowImportance
 		g.ipContainer.Add(ipButton)
 	}
-	
+
 	g.ipContainer.Refresh()
 	g.addLog("IP-Adressen aktualisiert")
 	logger.Info(fmt.Sprintf("IP-Adressen aktualisiert - %d Netzwerk-Interfaces gefunden", interfaceCount))
@@ -758,7 +758,7 @@ func startServerOnly() {
 
 	logText.SetText(logText.Text + fmt.Sprintf("Server running on http://localhost:%d\n", serverPort))
 	logText.SetText(logText.Text + fmt.Sprintf("Password: %s\n", serverPassword))
-	
+
 	// Lokale IP-Adressen für mobile Verbindungen anzeigen
 	localIPs := getLocalIPs()
 	for _, ip := range localIPs {
@@ -767,7 +767,7 @@ func startServerOnly() {
 			logText.SetText(logText.Text + fmt.Sprintf("Mobile: %s\n", mobileURL))
 		}
 	}
-	
+
 	statusLabel.SetText("Server Running")
 
 	content := container.NewVBox(
@@ -898,7 +898,7 @@ func setupRoutes(router *gin.Engine) {
 				"author":  AppAuthor,
 			})
 		})
-		
+
 		api.POST("/login", login)
 
 		// Protected routes
@@ -1999,7 +1999,6 @@ func updateBookStatus(c *gin.Context) {
 
 	var request struct {
 		Status string `json:"status"`
-
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -2038,22 +2037,22 @@ func updateBookStatus(c *gin.Context) {
 // getLocalIPs gibt alle lokalen IP-Adressen zurück
 func getLocalIPs() []net.IP {
 	var ips []net.IP
-	
+
 	interfaces, err := net.Interfaces()
 	if err != nil {
 		return ips
 	}
-	
+
 	for _, iface := range interfaces {
 		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
 			continue
 		}
-		
+
 		addresses, err := iface.Addrs()
 		if err != nil {
 			continue
 		}
-		
+
 		for _, addr := range addresses {
 			var ip net.IP
 			switch v := addr.(type) {
@@ -2062,13 +2061,13 @@ func getLocalIPs() []net.IP {
 			case *net.IPAddr:
 				ip = v.IP
 			}
-			
+
 			if ip != nil && !ip.IsLoopback() {
 				ips = append(ips, ip)
 			}
 		}
 	}
-	
+
 	return ips
 }
 
