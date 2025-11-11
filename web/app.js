@@ -801,9 +801,10 @@ function showBookModal(book) {
                         </div>
                         <div class="form-group">
                             <label for="bookGenre">Genre *</label>
-                            <select id="bookGenre" required>
-                                <option value="">Genre wählen</option>
-                            </select>
+                            <div class="autocomplete-container">
+                                <input type="text" id="bookGenre" placeholder="Genre eingeben..." required>
+                                <div id="genreSuggestions" class="autocomplete-suggestions"></div>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label for="bookPages">Seiten *</label>
@@ -994,9 +995,10 @@ function showBookModal(book) {
                     </div>
                     <div class="form-group">
                         <label for="bookGenre">Genre *</label>
-                        <select id="bookGenre" required>
-                            <option value="">Genre wählen</option>
-                        </select>
+                        <div class="autocomplete-container">
+                            <input type="text" id="bookGenre" placeholder="Genre eingeben..." required>
+                            <div id="genreSuggestions" class="autocomplete-suggestions"></div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="bookPages">Seiten *</label>
@@ -1052,7 +1054,7 @@ function showBookModal(book) {
     
     // Genres und Verlage laden
     if (document.getElementById('bookGenre')) {
-        loadGenresForSelect('bookGenre', book.genre);
+        setupGenreAutocomplete('bookGenre', book.genre);
     }
     if (document.getElementById('bookPublisher')) {
         setupPublisherAutocomplete('bookPublisher', book.publisher);
@@ -1239,28 +1241,137 @@ function showPublisherSuggestions(query, allPublishers, container, input) {
     }
 }
 
-// Genre und Publisher Management
-async function addGenre() {
-    const name = document.getElementById('newGenre').value.trim();
-    if (!name) {
-        showMessage(null, 'Bitte geben Sie einen Genre-Namen ein.', 'error');
+// Neues Genre-Autocomplete-System (analog zu Publisher)
+async function setupGenreAutocomplete(inputId, initialValue = '') {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    
+    // Setze den initialen Wert
+    if (initialValue) {
+        input.value = initialValue;
+    }
+    
+    // Hole alle Genres für die Vorschläge
+    let allGenres = [];
+    try {
+        allGenres = await apiCall('/genres');
+    } catch (error) {
+        console.error('Fehler beim Laden der Genres:', error);
+    }
+    
+    // Suggestions Container finden
+    let suggestionsContainer = document.getElementById('genreSuggestions');
+    if (!suggestionsContainer) {
+        suggestionsContainer = document.getElementById('wishlistGenreSuggestions');
+    }
+    if (!suggestionsContainer) {
+        suggestionsContainer = document.getElementById('editWishlistGenreSuggestions');
+    }
+    
+    if (!suggestionsContainer) {
+        console.error('Genre Suggestions Container nicht gefunden für:', inputId);
         return;
     }
     
-    try {
-        await apiCall('/genres', {
-            method: 'POST',
-            body: { name }
-        });
+    // Event Listener für Input
+    input.addEventListener('input', function(e) {
+        const query = e.target.value.trim();
+        showGenreSuggestions(query, allGenres, suggestionsContainer, input);
+    });
+    
+    // Event Listener für Focus
+    input.addEventListener('focus', function(e) {
+        const query = e.target.value.trim();
+        if (query.length > 0) {
+            showGenreSuggestions(query, allGenres, suggestionsContainer, input);
+        }
+    });
+    
+    // Event Listener für das Schließen bei Klick außerhalb
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+            suggestionsContainer.classList.remove('show');
+        }
+    });
+    
+    // Keydown Event für Navigation
+    input.addEventListener('keydown', function(e) {
+        const suggestions = suggestionsContainer.querySelectorAll('.autocomplete-suggestion');
+        const selected = suggestionsContainer.querySelector('.autocomplete-suggestion.selected');
         
-        document.getElementById('newGenre').value = '';
-        loadGenreList();
-        showMessage(null, 'Genre erfolgreich hinzugefügt!', 'success');
-    } catch (error) {
-        showMessage(null, 'Fehler beim Hinzufügen: ' + error.message, 'error');
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            let next = selected ? selected.nextElementSibling : suggestions[0];
+            if (next) {
+                if (selected) selected.classList.remove('selected');
+                next.classList.add('selected');
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            let prev = selected ? selected.previousElementSibling : suggestions[suggestions.length - 1];
+            if (prev) {
+                if (selected) selected.classList.remove('selected');
+                prev.classList.add('selected');
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (selected) {
+                input.value = selected.textContent.replace(' erstellen', '');
+                suggestionsContainer.classList.remove('show');
+            }
+        } else if (e.key === 'Escape') {
+            suggestionsContainer.classList.remove('show');
+        }
+    });
+}
+
+function showGenreSuggestions(query, allGenres, container, input) {
+    container.innerHTML = '';
+    
+    if (!query || query.length < 1) {
+        container.classList.remove('show');
+        return;
+    }
+    
+    // Filtere Genres nach Eingabe (case-insensitive)
+    const filteredGenres = allGenres.filter(genre => 
+        genre.name.toLowerCase().includes(query.toLowerCase())
+    );
+    
+    // Zeige passende Genres
+    filteredGenres.forEach(genre => {
+        const suggestion = document.createElement('div');
+        suggestion.className = 'autocomplete-suggestion';
+        suggestion.textContent = genre.name;
+        suggestion.addEventListener('click', function() {
+            input.value = genre.name;
+            container.classList.remove('show');
+        });
+        container.appendChild(suggestion);
+    });
+    
+    // Zeige "Neu erstellen" Option wenn kein exakter Match
+    const exactMatch = filteredGenres.find(g => g.name.toLowerCase() === query.toLowerCase());
+    if (!exactMatch && query.length > 0) {
+        const createNew = document.createElement('div');
+        createNew.className = 'autocomplete-suggestion create-new';
+        createNew.innerHTML = `<i class="fas fa-plus"></i> "${query}" erstellen`;
+        createNew.addEventListener('click', function() {
+            input.value = query;
+            container.classList.remove('show');
+        });
+        container.appendChild(createNew);
+    }
+    
+    // Zeige Container wenn Vorschläge vorhanden
+    if (container.children.length > 0) {
+        container.classList.add('show');
+    } else {
+        container.classList.remove('show');
     }
 }
 
+// Genre und Publisher Management
 async function deleteGenre(genreId) {
     if (!confirm('Sind Sie sicher, dass Sie dieses Genre löschen möchten?')) {
         return;
@@ -1496,12 +1607,8 @@ async function loadSettings() {
             <div class="settings-section">
                 <h3>Genres verwalten</h3>
                 <div class="genre-management">
-                    <div class="form-group">
-                        <label for="newGenre">Neues Genre hinzufügen</label>
-                        <div class="input-group">
-                            <input type="text" id="newGenre" placeholder="Genre-Name">
-                            <button class="btn btn-primary" onclick="addGenre()">Hinzufügen</button>
-                        </div>
+                    <div class="info-box">
+                        <p><strong>Hinweis:</strong> Neue Genres werden automatisch erstellt, wenn Sie sie beim Hinzufügen von Büchern oder Wunschlisten-Einträgen eingeben.</p>
                     </div>
                     <div class="genre-list" id="genreList">
                         <p>Lade Genres...</p>
@@ -2188,9 +2295,10 @@ function showAddWishlistModal() {
                 </div>
                 <div class="form-group">
                     <label for="wishlistGenre">Genre</label>
-                    <select id="wishlistGenre">
-                        <option value="">Genre wählen</option>
-                    </select>
+                    <div class="autocomplete-container">
+                        <input type="text" id="wishlistGenre" placeholder="Genre eingeben...">
+                        <div id="wishlistGenreSuggestions" class="autocomplete-suggestions"></div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="wishlistPages">Seiten</label>
@@ -2227,7 +2335,7 @@ function showAddWishlistModal() {
     showModal('Zur Wunschliste hinzufügen', modalBody);
     
     // Load genres and publishers
-    loadGenresForSelect('wishlistGenre');
+    setupGenreAutocomplete('wishlistGenre');
     setupPublisherAutocomplete('wishlistPublisher');
     
     document.getElementById('wishlistForm').onsubmit = async (e) => {
@@ -2314,9 +2422,10 @@ async function showWishlistDetails(wishlistId) {
                     </div>
                     <div class="form-group">
                         <label for="editWishlistGenre">Genre</label>
-                        <select id="editWishlistGenre">
-                            <option value="">Genre wählen</option>
-                        </select>
+                        <div class="autocomplete-container">
+                            <input type="text" id="editWishlistGenre" placeholder="Genre eingeben...">
+                            <div id="editWishlistGenreSuggestions" class="autocomplete-suggestions"></div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="editWishlistPages">Seiten</label>
@@ -2353,7 +2462,7 @@ async function showWishlistDetails(wishlistId) {
         showModal('Wunschliste-Eintrag bearbeiten', modalBody);
         
         // Load genres and setup publisher autocomplete
-        loadGenresForSelect('editWishlistGenre', item.genre);
+        setupGenreAutocomplete('editWishlistGenre', item.genre);
         setupPublisherAutocomplete('editWishlistPublisher', item.publisher);
         
         document.getElementById('editWishlistForm').onsubmit = async (e) => {

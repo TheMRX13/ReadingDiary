@@ -1102,6 +1102,14 @@ func createBook(c *gin.Context) {
 		c.JSON(500, gin.H{"error": fmt.Sprintf("Fehler beim Verarbeiten des Verlags: %v", err)})
 		return
 	}
+
+	// Automatisches Erstellen des Genres falls es nicht existiert
+	if err := ensureGenreExists(book.Genre); err != nil {
+		logger.Error(fmt.Sprintf("createBook: Fehler beim Erstellen des Genres: %v", err))
+		c.JSON(500, gin.H{"error": fmt.Sprintf("Fehler beim Verarbeiten des Genres: %v", err)})
+		return
+	}
+
 	if book.PublishDate == "" {
 		logger.Warning(fmt.Sprintf("createBook: Erscheinungsdatum fehlt: '%s'", book.PublishDate))
 		c.JSON(400, gin.H{"error": "Erscheinungsdatum ist erforderlich"})
@@ -1163,6 +1171,14 @@ func updateBook(c *gin.Context) {
 	}
 	if genre, ok := requestData["genre"].(string); ok {
 		updatedBook.Genre = genre
+		// Automatisches Erstellen des Genres falls es nicht existiert
+		if genre != "" {
+			if err := ensureGenreExists(genre); err != nil {
+				logger.Error(fmt.Sprintf("updateBook: Fehler beim Erstellen des Genres: %v", err))
+				c.JSON(500, gin.H{"error": fmt.Sprintf("Fehler beim Verarbeiten des Genres: %v", err)})
+				return
+			}
+		}
 	}
 	if publisher, ok := requestData["publisher"].(string); ok {
 		updatedBook.Publisher = publisher
@@ -1506,6 +1522,15 @@ func createWishlistItem(c *gin.Context) {
 		if err := ensurePublisherExists(item.Publisher); err != nil {
 			logger.Error(fmt.Sprintf("createWishlistItem: Fehler beim Erstellen des Verlags: %v", err))
 			c.JSON(500, gin.H{"error": fmt.Sprintf("Fehler beim Verarbeiten des Verlags: %v", err)})
+			return
+		}
+	}
+
+	// Automatisches Erstellen des Genres falls es nicht existiert (falls Genre angegeben)
+	if item.Genre != "" {
+		if err := ensureGenreExists(item.Genre); err != nil {
+			logger.Error(fmt.Sprintf("createWishlistItem: Fehler beim Erstellen des Genres: %v", err))
+			c.JSON(500, gin.H{"error": fmt.Sprintf("Fehler beim Verarbeiten des Genres: %v", err)})
 			return
 		}
 	}
@@ -1923,6 +1948,30 @@ func ensurePublisherExists(publisherName string) error {
 	return nil
 }
 
+// Hilfsfunktion zum Erstellen eines Genres falls es nicht existiert
+func ensureGenreExists(genreName string) error {
+	if genreName == "" {
+		return fmt.Errorf("genre-name ist leer")
+	}
+
+	// Prüfe ob Genre bereits existiert
+	var existingGenre Genre
+	if err := db.Where("name = ?", genreName).First(&existingGenre).Error; err == nil {
+		// Genre existiert bereits
+		return nil
+	}
+
+	// Erstelle neues Genre
+	newGenre := Genre{Name: genreName}
+	if err := db.Create(&newGenre).Error; err != nil {
+		logger.Error(fmt.Sprintf("Fehler beim Erstellen des Genres '%s': %v", genreName, err))
+		return err
+	}
+
+	logger.Info(fmt.Sprintf("Neues Genre automatisch erstellt: %s", genreName))
+	return nil
+}
+
 func updateWishlistItem(c *gin.Context) {
 	id := c.Param("id")
 	var existingItem Wishlist
@@ -1951,6 +2000,14 @@ func updateWishlistItem(c *gin.Context) {
 	}
 	if genre, ok := requestData["genre"].(string); ok {
 		updatedItem.Genre = genre
+		// Automatisches Erstellen des Genres falls es nicht existiert
+		if genre != "" {
+			if err := ensureGenreExists(genre); err != nil {
+				logger.Error(fmt.Sprintf("updateWishlistItem: Fehler beim Erstellen des Genres: %v", err))
+				c.JSON(500, gin.H{"error": fmt.Sprintf("Fehler beim Verarbeiten des Genres: %v", err)})
+				return
+			}
+		}
 	}
 	if publisher, ok := requestData["publisher"].(string); ok {
 		updatedItem.Publisher = publisher
