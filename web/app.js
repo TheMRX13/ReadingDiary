@@ -4,6 +4,13 @@ let currentServerUrl = '';
 let currentPage = 'dashboard';
 let editModeCoverData = null; // Speichert Cover-Daten für Edit-Modus
 
+// WebSocket Variablen
+let ws = null;
+let wsReconnectTimer = null;
+let wsReconnectAttempts = 0;
+const WS_MAX_RECONNECT_ATTEMPTS = 10;
+const WS_RECONNECT_DELAY = 3000;
+
 // ===== THEME MANAGEMENT =====
 // Theme-System: Dark Mode Support
 function initTheme() {
@@ -406,8 +413,14 @@ function initializeApp() {
     // Nginx sollte die API-Aufrufe an das Backend weiterleiten
     currentServerUrl = '';  // Leer = relative URLs
     
+    // Setze WebSocket-URL basierend auf aktuellem Location
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = window.location.host;
+    currentServerUrl = `${window.location.protocol}//${wsHost}`;
+    
     console.log('Verwende relative URLs für API-Aufrufe');
     console.log('Window location:', window.location.href);
+    console.log('Server URL für WebSocket:', currentServerUrl);
     
     // Gespeicherte Anmeldedaten laden
     const savedToken = localStorage.getItem('token');
@@ -520,6 +533,9 @@ async function login() {
 }
 
 function logout() {
+    // WebSocket trennen
+    disconnectWebSocket();
+    
     localStorage.removeItem('token');
     currentToken = '';
     
@@ -531,6 +547,9 @@ function logout() {
 function showMainApp() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('mainApp').style.display = 'flex';
+    
+    // WebSocket verbinden
+    connectWebSocket();
     
     // Dashboard laden
     loadDashboard();
@@ -632,10 +651,14 @@ async function loadReadingGoalProgress() {
 }
 
 // Bücher
-async function loadBooks(search = '') {
+async function loadBooks(search = '', preserveScroll = false) {
     try {
         const books = await apiCall(`/books${search ? `?search=${encodeURIComponent(search)}` : ''}`);
         const booksListEl = document.getElementById('booksList');
+        
+        // Scroll-Position speichern
+        const scrollParent = booksListEl.parentElement;
+        const scrollPos = preserveScroll ? scrollParent.scrollTop : 0;
         
         booksListEl.innerHTML = '';
         
@@ -646,6 +669,11 @@ async function loadBooks(search = '') {
             });
         } else {
             booksListEl.innerHTML = '<div class="book-item"><p>Keine Bücher gefunden.</p></div>';
+        }
+        
+        // Scroll-Position wiederherstellen
+        if (preserveScroll) {
+            scrollParent.scrollTop = scrollPos;
         }
     } catch (error) {
         console.error('Fehler beim Laden der Bücher:', error);
@@ -3735,6 +3763,163 @@ async function deleteQuote(quoteId) {
     } catch (error) {
         console.error('Fehler beim Löschen des Zitats:', error);
         showMessage(null, 'Fehler beim Löschen: ' + error.message, 'error');
+    }
+}
+
+// ===== WEBSOCKET FUNCTIONS =====
+let wsUseSecure = null; // null = noch nicht versucht, true = wss, false = ws
+
+function connectWebSocket() {
+    if (!currentServerUrl) {
+        console.warn('[WebSocket] Kein Server-URL gesetzt, warte...');
+        return;
+    }
+
+    // Wenn bereits verbunden, nichts tun
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        return;
+    }
+
+    try {
+        // Wähle Protokoll: wenn wsUseSecure noch nicht gesetzt, versuche HTTPS-entsprechendes Protokoll
+        // Wenn bereits fehlgeschlagen, verwende das andere Protokoll
+        let wsProtocol;
+        if (wsUseSecure === null) {
+            // Erster Versuch: verwende Protokoll entsprechend der aktuellen Seite
+            wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        } else if (wsUseSecure === true) {
+            wsProtocol = 'wss';
+        } else {
+            wsProtocol = 'ws';
+        }
+        
+        const wsUrl = currentServerUrl.replace(/^http(s)?:\/\//, `${wsProtocol}://`) + '/ws';
+        
+        console.log('[WebSocket] Verbinde zu:', wsUrl);
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+            console.log('[WebSocket] Verbindung hergestellt mit Protokoll:', wsProtocol);
+            wsReconnectAttempts = 0;
+            // Merke erfolgreiches Protokoll
+            wsUseSecure = (wsProtocol === 'wss');
+            
+            // Clear reconnect timer
+            if (wsReconnectTimer) {
+                clearTimeout(wsReconnectTimer);
+                wsReconnectTimer = null;
+            }
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+                handleWebSocketMessage(message);
+            } catch (error) {
+                console.error('[WebSocket] Fehler beim Parsen der Nachricht:', error);
+            }
+        };
+
+        ws.onerror = (error) => {
+            console.error('[WebSocket] Fehler:', error);
+            
+            // Bei erstem Fehler mit wss, prüfe ob Mixed Content Problem
+            if (wsUseSecure === null && wsProtocol === 'wss') {
+                if (window.location.protocol === 'https:') {
+                    console.warn('[WebSocket] HTTPS-Seite kann keine unsicheren WebSocket-Verbindungen herstellen.');
+                    console.warn('[WebSocket] Konfiguriere Nginx für WebSocket-Proxy oder verwende WSS.');
+                    // Versuche nicht WS, da es blockiert wird
+                    wsReconnectAttempts = WS_MAX_RECONNECT_ATTEMPTS; // Stoppe Reconnect-Versuche
+                } else {
+                    console.log('[WebSocket] WSS fehlgeschlagen, versuche WS...');
+                    wsUseSecure = false; // Nächster Versuch mit ws
+                }
+            }
+        };
+
+        ws.onclose = () => {
+            console.log('[WebSocket] Verbindung geschlossen');
+            ws = null;
+            
+            // Reconnect versuchen
+            if (wsReconnectAttempts < WS_MAX_RECONNECT_ATTEMPTS) {
+                wsReconnectAttempts++;
+                const delay = wsReconnectAttempts === 1 && wsUseSecure === false ? 100 : WS_RECONNECT_DELAY;
+                console.log(`[WebSocket] Reconnect-Versuch ${wsReconnectAttempts}/${WS_MAX_RECONNECT_ATTEMPTS} in ${delay}ms`);
+                wsReconnectTimer = setTimeout(() => {
+                    connectWebSocket();
+                }, delay);
+            } else {
+                console.warn('[WebSocket] Maximale Reconnect-Versuche erreicht');
+            }
+        };
+    } catch (error) {
+        console.error('[WebSocket] Verbindungsfehler:', error);
+        
+        // Bei SecurityError (Mixed Content) keine weiteren Versuche
+        if (error.name === 'SecurityError') {
+            console.warn('[WebSocket] Live-Updates deaktiviert: HTTPS-Seite benötigt WSS oder Nginx-Proxy');
+            wsReconnectAttempts = WS_MAX_RECONNECT_ATTEMPTS;
+        }
+    }
+}
+
+function disconnectWebSocket() {
+    if (wsReconnectTimer) {
+        clearTimeout(wsReconnectTimer);
+        wsReconnectTimer = null;
+    }
+    
+    if (ws) {
+        ws.close();
+        ws = null;
+    }
+    
+    wsReconnectAttempts = 0;
+    wsUseSecure = null; // Reset für nächste Verbindung
+}
+
+function handleWebSocketMessage(message) {
+    console.log('[WebSocket] Empfangene Nachricht:', message);
+
+    switch (message.type) {
+        case 'book_created':
+        case 'book_updated':
+        case 'book_deleted':
+            if (currentPage === 'books' || currentPage === 'dashboard') {
+                console.log('[WebSocket] Lade Bücher neu...');
+                loadBooks('', true); // preserveScroll=true bei WebSocket-Updates
+                if (currentPage === 'dashboard') {
+                    loadDashboard();
+                }
+            }
+            break;
+
+        case 'wishlist_created':
+        case 'wishlist_updated':
+        case 'wishlist_deleted':
+            if (currentPage === 'wishlist') {
+                console.log('[WebSocket] Lade Wunschliste neu...');
+                loadWishlist();
+            }
+            if (currentPage === 'dashboard') {
+                loadDashboard();
+            }
+            break;
+
+        case 'quote_created':
+        case 'quote_deleted':
+            if (currentPage === 'quotes') {
+                console.log('[WebSocket] Lade Zitate neu...');
+                loadQuotes();
+            }
+            if (currentPage === 'dashboard') {
+                loadDashboard();
+            }
+            break;
+
+        default:
+            console.warn('[WebSocket] Unbekannter Nachrichtentyp:', message.type);
     }
 }
 

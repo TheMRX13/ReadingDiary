@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -24,6 +25,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -251,6 +253,171 @@ type ServerGUI struct {
 	startTime     time.Time
 }
 
+// WebSocket structures
+type Client struct {
+	hub  *Hub
+	conn *websocket.Conn
+	send chan []byte
+}
+
+type Hub struct {
+	clients    map[*Client]bool
+	broadcast  chan []byte
+	register   chan *Client
+	unregister chan *Client
+	mutex      sync.RWMutex
+}
+
+type WSMessage struct {
+	Type    string      `json:"type"`
+	Payload interface{} `json:"payload"`
+}
+
+var hub *Hub
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true // Allow all origins for local development
+	},
+}
+
+func newHub() *Hub {
+	return &Hub{
+		broadcast:  make(chan []byte, 256),
+		register:   make(chan *Client),
+		unregister: make(chan *Client),
+		clients:    make(map[*Client]bool),
+	}
+}
+
+func (h *Hub) run() {
+	for {
+		select {
+		case client := <-h.register:
+			h.mutex.Lock()
+			h.clients[client] = true
+			h.mutex.Unlock()
+			fmt.Printf("[WebSocket] Client connected. Total clients: %d\n", len(h.clients))
+
+		case client := <-h.unregister:
+			h.mutex.Lock()
+			if _, ok := h.clients[client]; ok {
+				delete(h.clients, client)
+				close(client.send)
+			}
+			h.mutex.Unlock()
+			fmt.Printf("[WebSocket] Client disconnected. Total clients: %d\n", len(h.clients))
+
+		case message := <-h.broadcast:
+			h.mutex.RLock()
+			for client := range h.clients {
+				select {
+				case client.send <- message:
+				default:
+					close(client.send)
+					delete(h.clients, client)
+				}
+			}
+			h.mutex.RUnlock()
+		}
+	}
+}
+
+func (c *Client) readPump() {
+	defer func() {
+		c.hub.unregister <- c
+		c.conn.Close()
+	}()
+
+	c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	c.conn.SetPongHandler(func(string) error {
+		c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+
+	for {
+		_, _, err := c.conn.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				fmt.Printf("[WebSocket] Error: %v\n", err)
+			}
+			break
+		}
+	}
+}
+
+func (c *Client) writePump() {
+	ticker := time.NewTicker(54 * time.Second)
+	defer func() {
+		ticker.Stop()
+		c.conn.Close()
+	}()
+
+	for {
+		select {
+		case message, ok := <-c.send:
+			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if !ok {
+				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+
+			w, err := c.conn.NextWriter(websocket.TextMessage)
+			if err != nil {
+				return
+			}
+			w.Write(message)
+
+			if err := w.Close(); err != nil {
+				return
+			}
+
+		case <-ticker.C:
+			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
+		}
+	}
+}
+
+func broadcastEvent(eventType string, payload interface{}) {
+	if hub == nil {
+		return
+	}
+
+	message := WSMessage{
+		Type:    eventType,
+		Payload: payload,
+	}
+
+	jsonData, err := json.Marshal(message)
+	if err != nil {
+		fmt.Printf("[WebSocket] Error marshaling message: %v\n", err)
+		return
+	}
+
+	hub.broadcast <- jsonData
+}
+
+func handleWebSocket(c *gin.Context) {
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		fmt.Printf("[WebSocket] Upgrade error: %v\n", err)
+		return
+	}
+
+	client := &Client{
+		hub:  hub,
+		conn: conn,
+		send: make(chan []byte, 256),
+	}
+
+	client.hub.register <- client
+
+	go client.writePump()
+	go client.readPump()
+}
+
 func main() {
 	// Wenn Command-Line Argumente vorhanden, nur Server starten
 	if len(os.Args) > 1 {
@@ -453,6 +620,12 @@ func (g *ServerGUI) startServer() {
 	} else {
 		logger.Info("Passwort in Datenbank gespeichert")
 	}
+
+	// Initialize WebSocket hub
+	logger.Info("Initialisiere WebSocket Hub...")
+	hub = newHub()
+	go hub.run()
+	logger.Info("WebSocket Hub gestartet")
 
 	// Server starten
 	logger.Info("Konfiguriere Gin-Router...")
@@ -769,6 +942,11 @@ func startServerOnly() {
 	}
 
 	logText.SetText(logText.Text + "Database initialized successfully\n")
+
+	// Initialize WebSocket hub
+	hub = newHub()
+	go hub.run()
+	logText.SetText(logText.Text + "WebSocket hub initialized\n")
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
@@ -1202,6 +1380,9 @@ func setupRoutes(router *gin.Engine) {
 	// Cover images serving
 	router.Static("/uploads", "./uploads")
 
+	// WebSocket endpoint
+	router.GET("/ws", handleWebSocket)
+
 	router.GET("/", func(c *gin.Context) {
 		data, err := webFiles.ReadFile("web/index.html")
 		if err != nil {
@@ -1452,6 +1633,9 @@ func createBook(c *gin.Context) {
 	}
 
 	logger.Info(fmt.Sprintf("createBook: Neues Buch erstellt - ID: %d, Titel: %s", book.ID, book.Title))
+	
+	// Broadcast WebSocket event
+	broadcastEvent("book_created", book)
 	c.JSON(201, book)
 }
 
@@ -1611,6 +1795,10 @@ func updateBook(c *gin.Context) {
 	}
 
 	logger.Info(fmt.Sprintf("updateBook: Buch erfolgreich aktualisiert - ID: %d, Titel: %s", updatedBook.ID, updatedBook.Title))
+	
+	// Broadcast WebSocket event
+	broadcastEvent("book_updated", updatedBook)
+	
 	c.JSON(200, updatedBook)
 }
 
@@ -1641,6 +1829,9 @@ func deleteBook(c *gin.Context) {
 		c.JSON(500, gin.H{"error": "Konnte Buch nicht löschen"})
 		return
 	}
+
+	// Broadcast WebSocket event
+	broadcastEvent("book_deleted", gin.H{"id": book.ID})
 
 	c.JSON(200, gin.H{"message": "Buch gelöscht"})
 }
@@ -1718,6 +1909,10 @@ func uploadBookCover(c *gin.Context) {
 	}
 
 	logger.Info(fmt.Sprintf("Cover für Buch ID %s erfolgreich hochgeladen: %s", id, filename))
+	
+	// Broadcast WebSocket event
+	broadcastEvent("book_updated", book)
+	
 	c.JSON(200, gin.H{
 		"message":     "Cover erfolgreich hochgeladen",
 		"cover_image": filename,
@@ -1798,6 +1993,10 @@ func uploadWishlistCover(c *gin.Context) {
 	}
 
 	logger.Info(fmt.Sprintf("Cover für Wunschliste-Item ID %s erfolgreich hochgeladen: %s", id, filename))
+	
+	// Broadcast WebSocket event
+	broadcastEvent("wishlist_updated", wishlistItem)
+	
 	c.JSON(200, gin.H{
 		"message":     "Cover erfolgreich hochgeladen",
 		"cover_image": filename,
@@ -1869,6 +2068,7 @@ func createWishlistItem(c *gin.Context) {
 		return
 	}
 
+	broadcastEvent("wishlist_created", item)
 	c.JSON(201, item)
 }
 
@@ -1879,6 +2079,7 @@ func deleteWishlistItem(c *gin.Context) {
 		return
 	}
 
+	broadcastEvent("wishlist_deleted", gin.H{"id": id})
 	c.JSON(200, gin.H{"message": "Eintrag gelöscht"})
 }
 
@@ -1928,8 +2129,14 @@ func buyWishlistItem(c *gin.Context) {
 		return
 	}
 
+	// Broadcast book created event
+	broadcastEvent("book_created", book)
+
 	// Lösche Wunschlisteneintrag
 	db.Delete(&wishlistItem)
+	
+	// Broadcast wishlist deleted event
+	broadcastEvent("wishlist_deleted", gin.H{"id": wishlistItem.ID})
 
 	c.JSON(200, gin.H{"message": "Buch erfolgreich hinzugefügt", "book": book})
 }
@@ -1964,6 +2171,7 @@ func createQuote(c *gin.Context) {
 		return
 	}
 
+	broadcastEvent("quote_created", quote)
 	c.JSON(201, quote)
 }
 
@@ -1974,6 +2182,7 @@ func deleteQuote(c *gin.Context) {
 		return
 	}
 
+	broadcastEvent("quote_deleted", gin.H{"id": id})
 	c.JSON(200, gin.H{"message": "Zitat gelöscht"})
 }
 
@@ -2371,6 +2580,7 @@ func updateWishlistItem(c *gin.Context) {
 	}
 
 	logger.Info(fmt.Sprintf("updateWishlistItem: Wunschliste-Eintrag erfolgreich aktualisiert - ID: %d, Titel: %s", updatedItem.ID, updatedItem.Title))
+	broadcastEvent("wishlist_updated", updatedItem)
 	c.JSON(200, updatedItem)
 }
 
@@ -2417,6 +2627,10 @@ func updateBookStatus(c *gin.Context) {
 	}
 
 	logger.Info(fmt.Sprintf("updateBookStatus: Status von Buch %d auf '%s' geändert", book.ID, request.Status))
+	
+	// Broadcast WebSocket event
+	broadcastEvent("book_updated", book)
+	
 	c.JSON(200, gin.H{"message": "Status erfolgreich geändert", "book": book})
 }
 
