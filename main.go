@@ -29,7 +29,7 @@ import (
 
 // App Konstanten
 const (
-	AppVersion = "1.0.1"
+	AppVersion = "1.0.2"
 	AppName    = "Reading Diary"
 	AppAuthor  = "TheMRX - Pascal Keller"
 )
