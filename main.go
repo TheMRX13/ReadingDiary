@@ -27,6 +27,13 @@ import (
 	"gorm.io/gorm"
 )
 
+// App Konstanten
+const (
+	AppVersion = "1.0.1"
+	AppName    = "Reading Diary"
+	AppAuthor  = "TheMRX - Pascal Keller"
+)
+
 //go:embed web/*
 var webFiles embed.FS
 
@@ -302,7 +309,7 @@ func (g *ServerGUI) setupGUI() {
 	logger = NewCombinedLogger(g)
 
 	logger.Info("GUI-System initialisiert")
-	logger.Info("Reading Diary Server v1.0 - Coded by TheMRX")
+	logger.Info(fmt.Sprintf("%s v%s - Coded by %s", AppName, AppVersion, AppAuthor))
 
 	// IP-Adressen Container als einfache Labels
 	g.ipContainer = container.NewVBox()
@@ -342,7 +349,7 @@ func (g *ServerGUI) setupGUI() {
 		container.NewScroll(g.logText),
 	)
 
-	creditsLabel := widget.NewRichTextFromMarkdown("**Reading Diary Server v1.0**\n\nCoded by TheMRX - Pascal Keller")
+	creditsLabel := widget.NewRichTextFromMarkdown(fmt.Sprintf("**%s v%s**\n\nCoded by %s", AppName, AppVersion, AppAuthor))
 	creditsLabel.Wrapping = fyne.TextWrapWord
 
 	mainContainer := container.NewBorder(
@@ -883,6 +890,15 @@ func setupRoutes(router *gin.Engine) {
 	// API routes
 	api := router.Group("/api")
 	{
+		// Public routes
+		api.GET("/version", func(c *gin.Context) {
+			c.JSON(200, gin.H{
+				"version": AppVersion,
+				"name":    AppName,
+				"author":  AppAuthor,
+			})
+		})
+		
 		api.POST("/login", login)
 
 		// Protected routes
