@@ -644,6 +644,10 @@ body {
     margin-bottom: 20px;
 }
 
+.form-grid .full-width {
+    grid-column: 1 / -1;
+}
+
 .form-row {
     display: flex;
     gap: 16px;
@@ -675,6 +679,140 @@ body {
 .form-group textarea:focus {
     outline: none;
     border-color: var(--input-focus);
+}
+
+/* ISBN Buttons and Input */
+.isbn-buttons-group {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.isbn-buttons-group .btn {
+    flex: 1;
+    white-space: nowrap;
+    padding: 10px 16px;
+}
+
+.isbn-buttons-group .btn i {
+    margin-right: 4px;
+}
+
+/* Legacy support - falls noch verwendet */
+.isbn-input-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.isbn-input-group input {
+    flex: 1;
+}
+
+.isbn-input-group .btn {
+    white-space: nowrap;
+    padding: 10px 16px;
+    min-width: auto;
+}
+
+.isbn-input-group .btn i {
+    margin-right: 4px;
+}
+
+/* Barcode Scanner Modal */
+.barcode-scanner-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.barcode-scanner-modal.active {
+    display: flex;
+}
+
+.scanner-container {
+    width: 90%;
+    max-width: 640px;
+    background: var(--modal-bg);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.scanner-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.scanner-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.scanner-controls {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+.scanner-info {
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.scanner-info p {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* Quagga Scanner Viewport */
+#interactive.viewport {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    border: 3px solid var(--accent-primary);
+    border-radius: 8px;
+    background: #000;
+}
+
+#interactive.viewport canvas,
+#interactive.viewport video {
+    max-width: 100%;
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+#interactive.viewport canvas.drawingBuffer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .scanner-container {
+        width: 95%;
+        max-width: 100%;
+        padding: 15px;
+    }
+    
+    #interactive.viewport {
+        max-height: 60vh;
+    }
 }
 
 .checkbox-group {
@@ -1089,6 +1227,36 @@ input[type="range"] {
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     object-fit: cover;
+}
+
+.cover-loading,
+.cover-error {
+    padding: 40px 20px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 150px;
+    background: var(--background);
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+}
+
+.cover-loading i {
+    font-size: 32px;
+    margin-bottom: 10px;
+    color: var(--primary-color);
+    display: block;
+}
+
+.cover-error i {
+    font-size: 32px;
+    margin-bottom: 10px;
+    color: var(--danger-color);
+    display: block;
 }
 
 .cover-upload-buttons {

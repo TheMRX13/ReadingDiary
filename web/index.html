@@ -227,6 +227,29 @@
         </div>
     </div>
 
+    <!-- Barcode Scanner Modal -->
+    <div id="barcodeScannerModal" class="barcode-scanner-modal">
+        <div class="scanner-container">
+            <div class="scanner-header">
+                <h3>ISBN Barcode scannen</h3>
+                <button id="closeScannerBtn" class="close-btn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="interactive" class="viewport"></div>
+            <div class="scanner-controls">
+                <button id="cancelScanBtn" class="btn btn-danger">
+                    <i class="fas fa-times"></i> Abbrechen
+                </button>
+            </div>
+            <div class="scanner-info">
+                <p>Richten Sie die Kamera auf den Barcode aus</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barcode Scanner Library (Quagga.js) -->
+    <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
     <script src="/static/app.js"></script>
 </body>
 </html>

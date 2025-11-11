@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -42,6 +43,7 @@ type Book struct {
 	ID              uint      `json:"id" gorm:"primaryKey"`
 	Title           string    `json:"title" gorm:"not null"`
 	Author          string    `json:"author" gorm:"not null"`
+	ISBN            string    `json:"isbn" gorm:"index"` // ISBN Feld hinzugefügt
 	Genre           string    `json:"genre"`
 	Pages           int       `json:"pages"`
 	Format          string    `json:"format"`
@@ -65,6 +67,7 @@ type Wishlist struct {
 	ID          uint      `json:"id" gorm:"primaryKey"`
 	Title       string    `json:"title" gorm:"not null"`
 	Author      string    `json:"author" gorm:"not null"`
+	ISBN        string    `json:"isbn" gorm:"index"` // ISBN Feld hinzugefügt
 	Genre       string    `json:"genre"`
 	Pages       int       `json:"pages"`
 	Publisher   string    `json:"publisher"`
@@ -123,7 +126,6 @@ var (
 	serverRunning  = false
 	httpServer     *http.Server
 	ipAddresses    []string
-	guiInstance    *ServerGUI // Globale Referenz für Logging
 )
 
 // Custom Logger Interface
@@ -305,7 +307,6 @@ func (g *ServerGUI) setupGUI() {
 	g.logText.TextStyle = fyne.TextStyle{Monospace: true}
 
 	// JETZT ERST Logger initialisieren, nachdem logText bereit ist
-	guiInstance = g
 	logger = NewCombinedLogger(g)
 
 	logger.Info("GUI-System initialisiert")
@@ -814,11 +815,279 @@ func initDatabase() error {
 		return err
 	}
 
+	// Explizit ISBN-Spalten hinzufügen falls sie fehlen (für Updates von alten Versionen)
+	if db.Migrator().HasTable(&Book{}) {
+		if !db.Migrator().HasColumn(&Book{}, "isbn") {
+			if logger != nil {
+				logger.Info("📚 Füge ISBN-Spalte zu Books-Tabelle hinzu...")
+			}
+			if err := db.Migrator().AddColumn(&Book{}, "isbn"); err != nil {
+				if logger != nil {
+					logger.Error(fmt.Sprintf("Fehler beim Hinzufügen der ISBN-Spalte zu Books: %v", err))
+				}
+			}
+		}
+	}
+
+	if db.Migrator().HasTable(&Wishlist{}) {
+		if !db.Migrator().HasColumn(&Wishlist{}, "isbn") {
+			if logger != nil {
+				logger.Info("📚 Füge ISBN-Spalte zu Wishlist-Tabelle hinzu...")
+			}
+			if err := db.Migrator().AddColumn(&Wishlist{}, "isbn"); err != nil {
+				if logger != nil {
+					logger.Error(fmt.Sprintf("Fehler beim Hinzufügen der ISBN-Spalte zu Wishlist: %v", err))
+				}
+			}
+		}
+	}
+
 	if logger != nil {
 		logger.Info("✅ Datenbank erfolgreich initialisiert und migriert")
 	}
 
 	return nil
+}
+
+// ISBN Book Data Structs
+type ISBNBookData struct {
+	Title         string `json:"title"`
+	Author        string `json:"author"`
+	Genre         string `json:"genre"`
+	Publisher     string `json:"publisher"`
+	PublishDate   string `json:"publish_date"`
+	Pages         int    `json:"pages"`
+	CoverImageURL string `json:"cover_image_url"`
+	CoverPath     string `json:"cover_path"` // Lokaler Pfad nach Download
+}
+
+// Google Books API Response Structs
+type GoogleBooksResponse struct {
+	Items []GoogleBooksItem `json:"items"`
+}
+
+type GoogleBooksItem struct {
+	VolumeInfo GoogleBooksVolumeInfo `json:"volumeInfo"`
+}
+
+type GoogleBooksVolumeInfo struct {
+	Title               string                  `json:"title"`
+	Authors             []string                `json:"authors"`
+	Publisher           string                  `json:"publisher"`
+	PublishedDate       string                  `json:"publishedDate"`
+	PageCount           int                     `json:"pageCount"`
+	Categories          []string                `json:"categories"`
+	ImageLinks          GoogleBooksImageLinks   `json:"imageLinks"`
+	IndustryIdentifiers []GoogleBooksIdentifier `json:"industryIdentifiers"`
+}
+
+type GoogleBooksImageLinks struct {
+	SmallThumbnail string `json:"smallThumbnail"`
+	Thumbnail      string `json:"thumbnail"`
+}
+
+type GoogleBooksIdentifier struct {
+	Type       string `json:"type"`
+	Identifier string `json:"identifier"`
+}
+
+// Search book by ISBN using Open Library API
+func searchISBN(c *gin.Context) {
+	isbn := strings.ReplaceAll(c.Param("isbn"), "-", "")
+	isbn = strings.TrimSpace(isbn)
+
+	if isbn == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ISBN ist erforderlich"})
+		return
+	}
+
+	// Try Google Books API
+	bookData, err := fetchFromGoogleBooks(isbn)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error":   "ISBN nicht gefunden",
+			"message": "Die eingegebene ISBN konnte in der Datenbank nicht gefunden werden. Bitte überprüfen Sie die ISBN oder geben Sie die Daten manuell ein.",
+			"isbn":    isbn,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, bookData)
+}
+
+func fetchFromGoogleBooks(isbn string) (*ISBNBookData, error) {
+	// Google Books API endpoint
+	url := fmt.Sprintf("https://www.googleapis.com/books/v1/volumes?q=isbn:%s", isbn)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("API-Anfrage fehlgeschlagen: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("buch nicht gefunden (Status: %d)", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("fehler beim Lesen der Antwort: %v", err)
+	}
+
+	var gbResp GoogleBooksResponse
+	if err := json.Unmarshal(body, &gbResp); err != nil {
+		return nil, fmt.Errorf("fehler beim Parsen der Antwort: %v", err)
+	}
+
+	// Check if we got results
+	if len(gbResp.Items) == 0 {
+		return nil, fmt.Errorf("keine Ergebnisse gefunden")
+	}
+
+	// Get first result
+	volumeInfo := gbResp.Items[0].VolumeInfo
+
+	// Build book data
+	bookData := &ISBNBookData{
+		Title: volumeInfo.Title,
+		Pages: volumeInfo.PageCount,
+	}
+
+	// Get author (first author)
+	if len(volumeInfo.Authors) > 0 {
+		bookData.Author = volumeInfo.Authors[0]
+	}
+
+	// Get publisher
+	if volumeInfo.Publisher != "" {
+		bookData.Publisher = volumeInfo.Publisher
+	}
+
+	// Parse and format publish date
+	if volumeInfo.PublishedDate != "" {
+		bookData.PublishDate = parsePublishDate(volumeInfo.PublishedDate)
+	}
+
+	// Get genre from categories (first category as genre)
+	if len(volumeInfo.Categories) > 0 {
+		bookData.Genre = volumeInfo.Categories[0]
+	}
+
+	// Get cover image URL from Google Books (use thumbnail or smallThumbnail)
+	// Note: Some Google Books covers redirect to "image not available" - we can't easily check this
+	// without downloading, so we'll just provide the URL if available
+	if volumeInfo.ImageLinks.Thumbnail != "" {
+		coverURL := volumeInfo.ImageLinks.Thumbnail
+		// Don't modify zoom parameter - use original URL
+		bookData.CoverImageURL = coverURL
+	} else if volumeInfo.ImageLinks.SmallThumbnail != "" {
+		bookData.CoverImageURL = volumeInfo.ImageLinks.SmallThumbnail
+	}
+
+	return bookData, nil
+}
+
+// Parse various date formats from Open Library
+func parsePublishDate(dateStr string) string {
+	dateStr = strings.TrimSpace(dateStr)
+
+	// Try to parse different formats
+	formats := []string{
+		"January 2, 2006", // "January 1, 2020"
+		"Jan 2, 2006",     // "Jan 1, 2020"
+		"2006-01-02",      // "2020-01-01"
+		"2006",            // "2020"
+		"January 2006",    // "January 2020"
+		"Jan 2006",        // "Jan 2020"
+		"02 January 2006", // "01 January 2020"
+		"2 January 2006",  // "1 January 2020"
+	}
+
+	for _, format := range formats {
+		if t, err := time.Parse(format, dateStr); err == nil {
+			return t.Format("2006-01-02") // Return as YYYY-MM-DD
+		}
+	}
+
+	// If only year is given
+	if len(dateStr) == 4 {
+		if _, err := strconv.Atoi(dateStr); err == nil {
+			return dateStr + "-01-01"
+		}
+	}
+
+	// Return original if can't parse
+	return dateStr
+}
+
+// Download cover image and save to uploads folder
+func downloadAndSaveCover(coverURL, isbn string) (string, error) {
+	// Create uploads directory if not exists
+	uploadsDir := "./uploads/covers"
+	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
+		return "", err
+	}
+
+	// Download image
+	resp, err := http.Get(coverURL)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to download cover: status %d", resp.StatusCode)
+	}
+
+	// Generate filename
+	filename := fmt.Sprintf("isbn_%s_%d.jpg", isbn, time.Now().Unix())
+	filepath := filepath.Join(uploadsDir, filename)
+
+	// Create file
+	out, err := os.Create(filepath)
+	if err != nil {
+		return "", err
+	}
+	defer out.Close()
+
+	// Copy data
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	// Return only filename for database (frontend will add /uploads/covers/)
+	return filename, nil
+}
+
+// Download cover from URL endpoint
+func downloadCoverFromURL(c *gin.Context) {
+	var request struct {
+		CoverURL string `json:"cover_url" binding:"required"`
+		ISBN     string `json:"isbn"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cover URL ist erforderlich"})
+		return
+	}
+
+	// Use ISBN or timestamp for filename
+	identifier := request.ISBN
+	if identifier == "" {
+		identifier = fmt.Sprintf("%d", time.Now().Unix())
+	}
+
+	coverPath, err := downloadAndSaveCover(request.CoverURL, identifier)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Herunterladen des Covers: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"cover_path": coverPath,
+		"success":    true,
+	})
 }
 
 func setupRoutes(router *gin.Engine) {
@@ -940,6 +1209,9 @@ func setupRoutes(router *gin.Engine) {
 
 			protected.GET("/reading-goal", getReadingGoal)
 			protected.PUT("/reading-goal", updateReadingGoal)
+
+			protected.GET("/isbn/:isbn", searchISBN)
+			protected.POST("/download-cover", downloadCoverFromURL)
 		}
 	}
 
@@ -1159,8 +1431,7 @@ func updateBook(c *gin.Context) {
 	// logger.Debug(fmt.Sprintf("updateBook: Empfangene Daten: %+v", requestData))
 
 	// Erstelle ein neues Book-Objekt basierend auf dem bestehenden Buch
-	var updatedBook Book
-	updatedBook = existingBook // Kopiere alle bestehenden Werte
+	updatedBook := existingBook // Kopiere alle bestehenden Werte
 
 	// Manuell die Felder aktualisieren, die im Request enthalten sind
 	if title, ok := requestData["title"].(string); ok {
@@ -1168,6 +1439,9 @@ func updateBook(c *gin.Context) {
 	}
 	if author, ok := requestData["author"].(string); ok {
 		updatedBook.Author = author
+	}
+	if isbn, ok := requestData["isbn"].(string); ok {
+		updatedBook.ISBN = isbn
 	}
 	if genre, ok := requestData["genre"].(string); ok {
 		updatedBook.Genre = genre

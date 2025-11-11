@@ -2,6 +2,7 @@
 let currentToken = '';
 let currentServerUrl = '';
 let currentPage = 'dashboard';
+let editModeCoverData = null; // Speichert Cover-Daten für Edit-Modus
 
 // ===== THEME MANAGEMENT =====
 // Theme-System: Dark Mode Support
@@ -329,20 +330,24 @@ function updateProgressDisplay(currentPage, totalPages, progressBar, progressTex
 function showMessage(element, message, type = 'info') {
     // Wenn kein Element angegeben, versuche eine globale Nachricht zu zeigen
     if (!element) {
+        console.log('[showMessage] Zeige Nachricht:', message, 'Typ:', type);
+        
         // Erstelle temporäre Nachricht im Header oder Modal
         const tempMessage = document.createElement('div');
         tempMessage.className = `message ${type}`;
         tempMessage.textContent = message;
         tempMessage.style.cssText = `
             position: fixed;
-            top: 20px;
+            top: 80px;
             right: 20px;
-            padding: 12px 16px;
-            border-radius: 4px;
+            padding: 15px 20px;
+            border-radius: 8px;
             color: white;
             font-weight: 500;
             z-index: 10000;
-            max-width: 300px;
+            max-width: 400px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.3s ease-out;
         `;
         
         // Farben basierend auf Typ
@@ -361,13 +366,20 @@ function showMessage(element, message, type = 'info') {
         }
         
         document.body.appendChild(tempMessage);
+        console.log('[showMessage] Nachricht zu Body hinzugefügt');
         
-        // Nach 3 Sekunden automatisch entfernen
+        // Nach 5 Sekunden automatisch entfernen (verlängert von 3)
         setTimeout(() => {
             if (document.body.contains(tempMessage)) {
-                document.body.removeChild(tempMessage);
+                tempMessage.style.opacity = '0';
+                tempMessage.style.transition = 'opacity 0.3s ease-out';
+                setTimeout(() => {
+                    if (document.body.contains(tempMessage)) {
+                        document.body.removeChild(tempMessage);
+                    }
+                }, 300);
             }
-        }, 3000);
+        }, 5000);
         
         return;
     }
@@ -725,6 +737,19 @@ function showBookModal(book) {
     const isEdit = !!book.id;
     const title = isEdit ? 'Buchdetails' : 'Neues Buch hinzufügen';
     
+    // Debug: Prüfe ob ISBN vorhanden ist
+    if (isEdit) {
+        console.log('=== ISBN DEBUG START ===');
+        console.log('[showBookModal] Komplettes Buch-Objekt:', book);
+        console.log('[showBookModal] book.isbn Wert:', book.isbn);
+        console.log('[showBookModal] book.isbn Typ:', typeof book.isbn);
+        console.log('[showBookModal] book.isbn === undefined?', book.isbn === undefined);
+        console.log('[showBookModal] book.isbn === null?', book.isbn === null);
+        console.log('[showBookModal] book.isbn === ""?', book.isbn === '');
+        console.log('[showBookModal] Template wird ISBN setzen auf:', book.isbn || '');
+        console.log('=== ISBN DEBUG END ===');
+    }
+    
     let modalBody = '';
     
     if (isEdit) {
@@ -733,34 +758,6 @@ function showBookModal(book) {
         
         modalBody = `
             <div id="bookDetailView" data-book-id="${book.id}">
-                <!-- Cover-Bereich -->
-                <div class="book-section">
-                    <div class="section-header">
-                        <h3>Cover</h3>
-                        <button type="button" class="btn btn-sm btn-secondary" onclick="showCoverUpload(${book.id})">Cover hochladen</button>
-                    </div>
-                    <div class="cover-display">
-                        ${(book.cover_image || book.coverImage) ? 
-                            `<img src="/uploads/covers/${book.cover_image || book.coverImage}" alt="Book Cover" class="book-cover-large">` : 
-                            '<div class="no-cover"><i class="fas fa-book"></i><p>Kein Cover vorhanden</p></div>'
-                        }
-                    </div>
-                    <div id="coverUploadForm" class="cover-upload-form" style="display: none;">
-                        <div class="form-group">
-                            <label for="coverFile">Cover-Datei wählen</label>
-                            <input type="file" id="coverFile" accept="image/*" onchange="previewCover(this)">
-                            <small>Unterstützte Formate: JPG, PNG, WebP</small>
-                        </div>
-                        <div id="coverPreview" class="cover-preview" style="display: none;">
-                            <img id="previewImage" alt="Vorschau">
-                        </div>
-                        <div class="cover-upload-buttons">
-                            <button type="button" class="btn btn-sm btn-secondary" onclick="cancelCoverUpload()">Abbrechen</button>
-                            <button type="button" class="btn btn-sm btn-primary" onclick="uploadCover(${book.id})" disabled id="uploadCoverBtn">Cover hochladen</button>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Grundinformationen (nur anzeigen) -->
                 <div id="basicInfoDisplay" class="book-section">
                     <div class="section-header">
@@ -770,6 +767,7 @@ function showBookModal(book) {
                     <div class="book-info-grid">
                         <div><strong>Titel:</strong> ${escapeHtml(book.title || '')}</div>
                         <div><strong>Autor:</strong> ${escapeHtml(book.author || '')}</div>
+                        ${book.isbn ? `<div><strong>ISBN:</strong> ${escapeHtml(book.isbn)}</div>` : ''}
                         <div><strong>Genre:</strong> ${escapeHtml(book.genre || '')}</div>
                         <div><strong>Seiten:</strong> ${book.pages || 0}</div>
                         <div><strong>Format:</strong> ${escapeHtml(book.format || '')}</div>
@@ -790,8 +788,34 @@ function showBookModal(book) {
                             <button type="button" class="btn btn-sm btn-primary" onclick="saveBasicInfo(${book.id})">Speichern</button>
                         </div>
                     </div>
+                    <!-- Cover im Bearbeitungsmodus -->
+                    <div class="form-group full-width">
+                        <label>Cover</label>
+                        <div class="cover-display" id="editCoverDisplay">
+                            ${(book.cover_image || book.coverImage) ? 
+                                `<img src="/uploads/covers/${book.cover_image || book.coverImage}" alt="Book Cover" class="book-cover-large">` : 
+                                '<div class="no-cover"><i class="fas fa-book"></i><p>Kein Cover vorhanden</p></div>'
+                            }
+                        </div>
+                        <small>Cover wird automatisch aktualisiert wenn ISBN-Daten abgerufen werden</small>
+                        <div id="editCoverErrorMessage" style="margin-top: 8px;"></div>
+                    </div>
+                    
                     <div class="form-grid">
-                        <div class="form-group">
+                        <div class="form-group full-width">
+                            <label for="bookISBN">ISBN (optional)</label>
+                            <div class="isbn-buttons-group">
+                                <button type="button" class="btn btn-primary btn-sm" onclick="searchByISBNEdit(event, ${book.id})">
+                                    <i class="fas fa-search"></i> Daten abrufen
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="startBarcodeScannerEdit(${book.id})">
+                                    <i class="fas fa-barcode"></i> Scannen
+                                </button>
+                            </div>
+                            <input type="text" id="bookISBN" value="${book.isbn || ''}" placeholder="ISBN eingeben...">
+                            <small>ISBN eingeben und "Daten abrufen" klicken um Felder und Cover zu aktualisieren</small>
+                        </div>
+                        <div class="form-group full-width">
                             <label for="bookTitle">Titel *</label>
                             <input type="text" id="bookTitle" value="${book.title || ''}" required>
                         </div>
@@ -974,11 +998,27 @@ function showBookModal(book) {
         // Neues Buch hinzufügen (ursprüngliches Formular)
         modalBody = `
             <form id="bookForm">
+                <!-- ISBN Suche -->
+                <div class="form-group">
+                    <label for="bookISBN">ISBN (optional)</label>
+                    <div class="isbn-buttons-group">
+                        <button type="button" class="btn btn-primary" onclick="searchByISBN(event)">
+                            <i class="fas fa-search"></i> Suchen
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="scanBarcodeBtn" onclick="startBarcodeScanner()">
+                            <i class="fas fa-barcode"></i> Scannen
+                        </button>
+                    </div>
+                    <input type="text" id="bookISBN" placeholder="ISBN eingeben...">
+                    <small>Buchdaten werden automatisch ausgefüllt</small>
+                </div>
+
                 <!-- Cover Upload für neues Buch -->
                 <div class="form-group">
                     <label for="newBookCover">Cover hochladen (optional)</label>
                     <input type="file" id="newBookCover" accept="image/*" onchange="previewNewBookCover(this)">
                     <small>Unterstützte Formate: JPG, PNG, WebP</small>
+                    <div id="coverErrorMessage" style="margin-top: 8px;"></div>
                     <div id="newBookCoverPreview" class="cover-preview" style="display: none;">
                         <img id="newBookPreviewImage" alt="Vorschau">
                     </div>
@@ -1058,6 +1098,26 @@ function showBookModal(book) {
     }
     if (document.getElementById('bookPublisher')) {
         setupPublisherAutocomplete('bookPublisher', book.publisher);
+    }
+    
+    // Debug: Prüfe ISBN-Feld NACH dem Rendering
+    if (isEdit) {
+        setTimeout(() => {
+            const isbnInput = document.getElementById('bookISBN');
+            console.log('=== ISBN FIELD CHECK ===');
+            console.log('[showBookModal] ISBN Input Element gefunden:', !!isbnInput);
+            if (isbnInput) {
+                console.log('[showBookModal] ISBN Input .value:', isbnInput.value);
+                console.log('[showBookModal] ISBN Input .value Länge:', isbnInput.value.length);
+                console.log('[showBookModal] ISBN Input getAttribute("value"):', isbnInput.getAttribute('value'));
+                console.log('[showBookModal] Sollte sein (book.isbn):', book.isbn);
+                console.log('[showBookModal] Input ist sichtbar?', isbnInput.offsetParent !== null);
+                console.log('[showBookModal] Input parent display:', isbnInput.parentElement ? getComputedStyle(isbnInput.parentElement).display : 'N/A');
+            } else {
+                console.error('[showBookModal] ❌ ISBN Input Element NICHT gefunden!');
+            }
+            console.log('=== ISBN FIELD CHECK END ===');
+        }, 100);
     }
     
     // Event-Listener für neues Buch
@@ -1933,6 +1993,25 @@ function toggleEditMode(section) {
     if (displayDiv && editDiv) {
         displayDiv.style.display = 'none';
         editDiv.style.display = 'block';
+        
+        // Wenn basicInfo bearbeitet wird, prüfe ob ISBN aus der Anzeige übernommen werden muss
+        if (section === 'basicInfo') {
+            // Hole ISBN aus dem Display-Text
+            const bookInfoGrid = displayDiv.querySelector('.book-info-grid');
+            if (bookInfoGrid) {
+                const isbnDiv = Array.from(bookInfoGrid.querySelectorAll('div')).find(div => 
+                    div.textContent.includes('ISBN:')
+                );
+                if (isbnDiv) {
+                    const isbnText = isbnDiv.textContent.replace('ISBN:', '').trim();
+                    const isbnInput = document.getElementById('bookISBN');
+                    if (isbnInput && isbnText) {
+                        isbnInput.value = isbnText;
+                        console.log('[toggleEditMode] ISBN gesetzt:', isbnText);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1995,13 +2074,616 @@ function setupRatingEvents() {
     });
 }
 
+// ISBN Suchfunktionen
+async function searchByISBN(evt) {
+    const isbnInput = document.getElementById('bookISBN');
+    const isbn = isbnInput.value.trim().replace(/[^0-9X]/gi, '');
+    
+    if (!isbn) {
+        showMessage(null, 'Bitte geben Sie eine ISBN ein.', 'error');
+        return;
+    }
+    
+    // Deaktiviere Button und zeige Lade-Indikator (wenn von Button aufgerufen)
+    let searchBtn = null;
+    let originalBtnText = '';
+    
+    if (evt && evt.target) {
+        searchBtn = evt.target;
+        originalBtnText = searchBtn.innerHTML;
+        searchBtn.disabled = true;
+        searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Lädt...';
+    }
+    
+    isbnInput.disabled = true;
+    
+    // Zeige immer eine Ladeanzeige, auch wenn vom Scanner aufgerufen
+    const loadingMessage = showMessage(null, '<i class="fas fa-spinner fa-spin"></i> Lade Buchdaten...', 'info');
+    
+    try {
+        const bookData = await apiCall(`/isbn/${isbn}`);
+        
+        if (!bookData || !bookData.title) {
+            throw new Error('Keine Buchdaten gefunden');
+        }
+        
+        // Fülle die Formularfelder aus
+        if (bookData.title) document.getElementById('bookTitle').value = bookData.title;
+        if (bookData.author) document.getElementById('bookAuthor').value = bookData.author;
+        if (bookData.genre) {
+            document.getElementById('bookGenre').value = bookData.genre;
+            // Trigger autocomplete update
+            if (typeof setupGenreAutocomplete === 'function') {
+                setupGenreAutocomplete('bookGenre', bookData.genre);
+            }
+        }
+        if (bookData.publisher) {
+            document.getElementById('bookPublisher').value = bookData.publisher;
+            // Trigger autocomplete update
+            if (typeof setupPublisherAutocomplete === 'function') {
+                setupPublisherAutocomplete('bookPublisher', bookData.publisher);
+            }
+        }
+        if (bookData.publish_date) {
+            // Format date for input field (YYYY-MM-DD)
+            const date = bookData.publish_date.split('T')[0];
+            document.getElementById('bookPublishDate').value = date;
+        }
+        if (bookData.pages) document.getElementById('bookPages').value = bookData.pages;
+        
+        // Show cover preview if available (but don't download yet)
+        let hasCover = false;
+        if (bookData.cover_image_url) {
+            const previewDiv = document.getElementById('newBookCoverPreview');
+            const previewImg = document.getElementById('newBookPreviewImage');
+            if (previewDiv && previewImg) {
+                // Show loading spinner
+                previewDiv.innerHTML = '<div class="cover-loading"><i class="fas fa-spinner fa-spin"></i><br>Lade Cover...</div>';
+                previewDiv.style.display = 'block';
+                
+                // Create new image to load
+                const img = new Image();
+                img.onload = function() {
+                    previewDiv.innerHTML = '';
+                    previewImg.src = bookData.cover_image_url;
+                    previewDiv.appendChild(previewImg);
+                    // Store cover URL for download when saving
+                    previewDiv.dataset.coverUrl = bookData.cover_image_url;
+                    previewDiv.dataset.isbnCover = 'true';
+                    hasCover = true;
+                    // Entferne Fehlermeldung falls vorhanden
+                    const errorDiv = document.getElementById('coverErrorMessage');
+                    if (errorDiv) errorDiv.innerHTML = '';
+                };
+                img.onerror = function() {
+                    console.warn('[ISBN] Cover konnte nicht geladen werden:', bookData.cover_image_url);
+                    // Verstecke Preview
+                    previewDiv.style.display = 'none';
+                    previewDiv.innerHTML = '';
+                    // Zeige Fehlermeldung unter "Unterstützte Formate"
+                    const errorDiv = document.getElementById('coverErrorMessage');
+                    if (errorDiv) {
+                        errorDiv.innerHTML = '<div style="color: #ef4444; font-size: 14px;"><i class="fas fa-exclamation-triangle"></i> Cover konnte nicht geladen werden</div>';
+                    }
+                };
+                img.src = bookData.cover_image_url;
+            }
+        } else {
+            // Kein Cover vorhanden - zeige Meldung
+            const errorDiv = document.getElementById('coverErrorMessage');
+            if (errorDiv) {
+                errorDiv.innerHTML = '<div style="color: #f59e0b; font-size: 14px;"><i class="fas fa-info-circle"></i> Kein Cover verfügbar</div>';
+            }
+        }
+        
+        // Entferne alte Fehlermeldung falls vorhanden
+        const oldError = isbnInput.parentElement.querySelector('.isbn-error');
+        if (oldError) oldError.remove();
+    } catch (error) {
+        console.error('ISBN Suche Fehler:', error);
+        
+        // Zeige Fehler unter dem ISBN-Feld
+        let errorDiv = isbnInput.parentElement.querySelector('.isbn-error');
+        if (!errorDiv) {
+            errorDiv = document.createElement('div');
+            errorDiv.className = 'isbn-error';
+            errorDiv.style.cssText = 'color: #ef4444; font-size: 14px; margin-top: 8px;';
+            isbnInput.parentElement.appendChild(errorDiv);
+        }
+        errorDiv.textContent = '❌ Die eingegebene ISBN konnte nicht gefunden werden. Bitte überprüfen Sie die ISBN oder geben Sie die Daten manuell ein.';
+        
+        showMessage(document.getElementById('addBookModal'), '❌ ISBN nicht gefunden', 'error');
+    } finally {
+        // Aktiviere Button wieder (wenn verwendet)
+        if (searchBtn) {
+            searchBtn.disabled = false;
+            searchBtn.innerHTML = originalBtnText;
+        }
+        isbnInput.disabled = false;
+    }
+}
+
+async function searchByISBNWishlist(evt) {
+    const isbnInput = document.getElementById('wishlistISBN');
+    const isbn = isbnInput.value.trim().replace(/[^0-9X]/gi, '');
+    
+    if (!isbn) {
+        showMessage(null, 'Bitte geben Sie eine ISBN ein.', 'error');
+        return;
+    }
+    
+    // Deaktiviere Button und zeige Lade-Indikator (wenn von Button aufgerufen)
+    let searchBtn = null;
+    let originalBtnText = '';
+    
+    if (evt && evt.target) {
+        searchBtn = evt.target;
+        originalBtnText = searchBtn.innerHTML;
+        searchBtn.disabled = true;
+        searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Lädt...';
+    }
+    
+    isbnInput.disabled = true;
+    
+    // Zeige immer eine Ladeanzeige, auch wenn vom Scanner aufgerufen
+    const loadingMessage = showMessage(null, '<i class="fas fa-spinner fa-spin"></i> Lade Buchdaten...', 'info');
+    
+    try {
+        const bookData = await apiCall(`/isbn/${isbn}`);
+        
+        if (!bookData || !bookData.title) {
+            throw new Error('Keine Buchdaten gefunden');
+        }
+        
+        // Fülle die Formularfelder aus
+        if (bookData.title) document.getElementById('wishlistTitle').value = bookData.title;
+        if (bookData.author) document.getElementById('wishlistAuthor').value = bookData.author;
+        if (bookData.genre) {
+            document.getElementById('wishlistGenre').value = bookData.genre;
+            if (typeof setupGenreAutocomplete === 'function') {
+                setupGenreAutocomplete('wishlistGenre', bookData.genre);
+            }
+        }
+        if (bookData.publisher) {
+            document.getElementById('wishlistPublisher').value = bookData.publisher;
+            if (typeof setupPublisherAutocomplete === 'function') {
+                setupPublisherAutocomplete('wishlistPublisher', bookData.publisher);
+            }
+        }
+        if (bookData.publish_date) {
+            // Format date for input field (YYYY-MM-DD)
+            const date = bookData.publish_date.split('T')[0];
+            document.getElementById('wishlistPublishDate').value = date;
+        }
+        if (bookData.pages) document.getElementById('wishlistPages').value = bookData.pages;
+        
+        // Show cover preview if available (but don't download yet)
+        let hasCover = false;
+        if (bookData.cover_image_url) {
+            const previewDiv = document.getElementById('newWishlistCoverPreview');
+            const previewImg = document.getElementById('newWishlistPreviewImage');
+            if (previewDiv && previewImg) {
+                // Show loading spinner
+                previewDiv.innerHTML = '<div class="cover-loading"><i class="fas fa-spinner fa-spin"></i><br>Lade Cover...</div>';
+                previewDiv.style.display = 'block';
+                
+                // Create new image to load
+                const img = new Image();
+                img.onload = function() {
+                    previewDiv.innerHTML = '';
+                    previewImg.src = bookData.cover_image_url;
+                    previewDiv.appendChild(previewImg);
+                    // Store cover URL for download when saving
+                    previewDiv.dataset.coverUrl = bookData.cover_image_url;
+                    previewDiv.dataset.isbnCover = 'true';
+                    hasCover = true;
+                    // Entferne Fehlermeldung falls vorhanden
+                    const errorDiv = document.getElementById('wishlistCoverErrorMessage');
+                    if (errorDiv) errorDiv.innerHTML = '';
+                };
+                img.onerror = function() {
+                    console.warn('[ISBN Wishlist] Cover konnte nicht geladen werden:', bookData.cover_image_url);
+                    // Verstecke Preview
+                    previewDiv.style.display = 'none';
+                    previewDiv.innerHTML = '';
+                    // Zeige Fehlermeldung unter "Unterstützte Formate"
+                    const errorDiv = document.getElementById('wishlistCoverErrorMessage');
+                    if (errorDiv) {
+                        errorDiv.innerHTML = '<div style="color: #ef4444; font-size: 14px;"><i class="fas fa-exclamation-triangle"></i> Cover konnte nicht geladen werden</div>';
+                    }
+                };
+                img.src = bookData.cover_image_url;
+            }
+        } else {
+            // Kein Cover vorhanden - zeige Meldung
+            const errorDiv = document.getElementById('wishlistCoverErrorMessage');
+            if (errorDiv) {
+                errorDiv.innerHTML = '<div style="color: #f59e0b; font-size: 14px;"><i class="fas fa-info-circle"></i> Kein Cover verfügbar</div>';
+            }
+        }
+        
+        // Entferne alte Fehlermeldung falls vorhanden
+        const oldError = isbnInput.parentElement.querySelector('.isbn-error');
+        if (oldError) oldError.remove();
+    } catch (error) {
+        console.error('ISBN Suche Fehler:', error);
+        
+        // Zeige Fehler unter dem ISBN-Feld
+        let errorDiv = isbnInput.parentElement.querySelector('.isbn-error');
+        if (!errorDiv) {
+            errorDiv = document.createElement('div');
+            errorDiv.className = 'isbn-error';
+            errorDiv.style.cssText = 'color: #ef4444; font-size: 14px; margin-top: 8px;';
+            isbnInput.parentElement.appendChild(errorDiv);
+        }
+        errorDiv.textContent = '❌ Die eingegebene ISBN konnte nicht gefunden werden. Bitte überprüfen Sie die ISBN oder geben Sie die Daten manuell ein.';
+        
+        showMessage(document.getElementById('addWishlistModal'), '❌ ISBN nicht gefunden', 'error');
+    } finally {
+        // Aktiviere Button wieder (wenn verwendet)
+        if (searchBtn) {
+            searchBtn.disabled = false;
+            searchBtn.innerHTML = originalBtnText;
+        }
+        isbnInput.disabled = false;
+    }
+}
+
+// ISBN Suche für Bearbeitungsformular
+async function searchByISBNEdit(evt, bookId) {
+    const isbnInput = document.getElementById('bookISBN');
+    const isbn = isbnInput.value.trim().replace(/[^0-9X]/gi, '');
+    
+    if (!isbn) {
+        showMessage(null, 'Bitte geben Sie eine ISBN ein.', 'error');
+        return;
+    }
+    
+    // Deaktiviere Button und zeige Lade-Indikator
+    let searchBtn = null;
+    let originalBtnText = '';
+    
+    if (evt && evt.target) {
+        searchBtn = evt.target;
+        originalBtnText = searchBtn.innerHTML;
+        searchBtn.disabled = true;
+        searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Lädt...';
+    }
+    
+    isbnInput.disabled = true;
+    
+    // Zeige immer eine Ladeanzeige, auch wenn vom Scanner aufgerufen
+    const loadingMessage = showMessage(null, '<i class="fas fa-spinner fa-spin"></i> Lade Buchdaten...', 'info');
+    
+    // Debug: Prüfe Auth-Status
+    console.log('[searchByISBNEdit] currentToken:', currentToken ? 'VORHANDEN (' + currentToken.length + ' chars)' : 'FEHLT!');
+    console.log('[searchByISBNEdit] currentServerUrl:', currentServerUrl);
+    console.log('[searchByISBNEdit] Vollständige URL:', `${currentServerUrl}/api/isbn/${isbn}`);
+    
+    if (!currentToken) {
+        console.error('[searchByISBNEdit] FEHLER: Kein Token vorhanden!');
+        showMessage(null, 'Authentifizierungsfehler. Bitte neu einloggen.', 'error');
+        isbnInput.disabled = false;
+        if (searchBtn) {
+            searchBtn.disabled = false;
+            searchBtn.innerHTML = originalBtnText;
+        }
+        return;
+    }
+    
+    try {
+        const bookData = await apiCall(`/isbn/${isbn}`);
+        
+        if (!bookData || !bookData.title) {
+            throw new Error('Keine Buchdaten gefunden');
+        }
+        
+        // Fülle die Formularfelder aus
+        if (bookData.title) document.getElementById('bookTitle').value = bookData.title;
+        if (bookData.author) document.getElementById('bookAuthor').value = bookData.author;
+        if (bookData.genre) {
+            document.getElementById('bookGenre').value = bookData.genre;
+            if (typeof setupGenreAutocomplete === 'function') {
+                setupGenreAutocomplete('bookGenre', bookData.genre);
+            }
+        }
+        if (bookData.publisher) {
+            document.getElementById('bookPublisher').value = bookData.publisher;
+            if (typeof setupPublisherAutocomplete === 'function') {
+                setupPublisherAutocomplete('bookPublisher', bookData.publisher);
+            }
+        }
+        if (bookData.publish_date) {
+            const date = bookData.publish_date.split('T')[0];
+            document.getElementById('bookPublishDate').value = date;
+        }
+        if (bookData.pages) document.getElementById('bookPages').value = bookData.pages;
+        
+        // Aktualisiere Cover-Preview wenn verfügbar
+        let hasCover = false;
+        if (bookData.cover_image_url) {
+            // Speichere Cover-Daten global (funktioniert immer, auch auf Mobile)
+            editModeCoverData = {
+                coverUrl: bookData.cover_image_url,
+                isbn: isbn
+            };
+            console.log('[ISBN Edit] Cover-Daten global gespeichert:', editModeCoverData);
+            
+            // Warte kurz damit das DOM bereit ist (wichtig für Mobile)
+            setTimeout(() => {
+                const coverDisplay = document.getElementById('editCoverDisplay');
+                console.log('[ISBN Edit] Cover Display Element gefunden:', !!coverDisplay);
+                
+                if (coverDisplay) {
+                    // Speichere auch im Dataset (für PC)
+                    coverDisplay.dataset.coverUrl = bookData.cover_image_url;
+                    coverDisplay.dataset.isbnCover = 'true';
+                    
+                    // Zeige Loading-Spinner
+                    coverDisplay.innerHTML = '<div class="cover-loading"><i class="fas fa-spinner fa-spin"></i><br>Lade Cover...</div>';
+                    coverDisplay.style.display = 'block';
+                    
+                    // Erstelle neues Image zum Laden
+                    const img = new Image();
+                    const previewImg = document.createElement('img');
+                    previewImg.className = 'book-cover-large';
+                    previewImg.alt = 'Book Cover';
+                    
+                    img.onload = function() {
+                        coverDisplay.innerHTML = '';
+                        previewImg.src = bookData.cover_image_url;
+                        coverDisplay.appendChild(previewImg);
+                        console.log('[ISBN Edit] Cover erfolgreich geladen');
+                        hasCover = true;
+                        // Entferne Fehlermeldung falls vorhanden
+                        const errorDiv = document.getElementById('editCoverErrorMessage');
+                        if (errorDiv) errorDiv.innerHTML = '';
+                    };
+                    img.onerror = function() {
+                        console.error('[ISBN Edit] Cover konnte nicht geladen werden:', bookData.cover_image_url);
+                        // Zeige Fehlermeldung unter dem Cover-Bereich
+                        const errorDiv = document.getElementById('editCoverErrorMessage');
+                        if (errorDiv) {
+                            errorDiv.innerHTML = '<div style="color: #ef4444; font-size: 14px;"><i class="fas fa-exclamation-triangle"></i> Cover konnte nicht geladen werden</div>';
+                        }
+                    };
+                    img.src = bookData.cover_image_url;
+                } else {
+                    console.error('[ISBN Edit] Cover Display Element nicht gefunden!');
+                }
+            }, 100);
+        } else {
+            // Kein Cover vorhanden - zeige Meldung
+            setTimeout(() => {
+                const errorDiv = document.getElementById('editCoverErrorMessage');
+                if (errorDiv) {
+                    errorDiv.innerHTML = '<div style="color: #f59e0b; font-size: 14px;"><i class="fas fa-info-circle"></i> Kein Cover verfügbar</div>';
+                }
+            }, 100);
+        }
+        
+        // Entferne alte Fehlermeldung falls vorhanden
+        const oldError = isbnInput.parentElement.querySelector('.isbn-error');
+        if (oldError) oldError.remove();
+    } catch (error) {
+        console.error('ISBN Suche Fehler:', error);
+        
+        // Zeige Fehler unter dem ISBN-Feld
+        let errorDiv = isbnInput.parentElement.querySelector('.isbn-error');
+        if (!errorDiv) {
+            errorDiv = document.createElement('div');
+            errorDiv.className = 'isbn-error';
+            errorDiv.style.cssText = 'color: #ef4444; font-size: 14px; margin-top: 8px;';
+            isbnInput.parentElement.appendChild(errorDiv);
+        }
+        errorDiv.textContent = '❌ Die eingegebene ISBN konnte nicht gefunden werden. Bitte überprüfen Sie die ISBN oder geben Sie die Daten manuell ein.';
+        
+        showMessage(document.getElementById('editBookSection'), '❌ ISBN nicht gefunden', 'error');
+    } finally {
+        if (searchBtn) {
+            searchBtn.disabled = false;
+            searchBtn.innerHTML = originalBtnText;
+        }
+        isbnInput.disabled = false;
+    }
+}
+
+// Barcode Scanner Funktionen
+let currentScannerContext = null; // 'book', 'wishlist', or 'edit'
+
+// Check if scanner is available and hide button if not
+function checkScannerAvailability() {
+    const isSecureContext = window.isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const hasMediaDevices = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+    
+    return isSecureContext && hasMediaDevices;
+}
+
+function startBarcodeScanner() {
+    if (!checkScannerAvailability()) {
+        showMessage(null, 'Barcode-Scanner benötigt HTTPS. Bitte ISBN manuell eingeben.', 'warning');
+        return;
+    }
+    currentScannerContext = 'book';
+    initScanner();
+}
+
+function startBarcodeScannerWishlist() {
+    if (!checkScannerAvailability()) {
+        showMessage(null, 'Barcode-Scanner benötigt HTTPS. Bitte ISBN manuell eingeben.', 'warning');
+        return;
+    }
+    currentScannerContext = 'wishlist';
+    initScanner();
+}
+
+function startBarcodeScannerEdit(bookId) {
+    if (!checkScannerAvailability()) {
+        showMessage(null, 'Barcode-Scanner benötigt HTTPS. Bitte ISBN manuell eingeben.', 'warning');
+        return;
+    }
+    currentScannerContext = 'edit';
+    currentScannerContext.bookId = bookId;
+    initScanner();
+}
+
+function initScanner() {
+    // Check if running on HTTPS or localhost
+    const isSecureContext = window.isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
+    if (!isSecureContext) {
+        showMessage(null, 'Barcode-Scanner benötigt HTTPS oder localhost. Bitte ISBN manuell eingeben oder HTTPS verwenden.', 'error');
+        console.warn('Barcode-Scanner erfordert HTTPS. Aktuelles Protokoll:', window.location.protocol);
+        return;
+    }
+    
+    const scannerModal = document.getElementById('barcodeScannerModal');
+    scannerModal.classList.add('active');
+    
+    // Check if Quagga is available
+    if (typeof Quagga === 'undefined') {
+        showMessage(null, 'Barcode-Scanner konnte nicht geladen werden.', 'error');
+        stopScanner();
+        return;
+    }
+    
+    // Check if getUserMedia is supported
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showMessage(null, 'Ihr Browser unterstützt keinen Kamera-Zugriff. Bitte ISBN manuell eingeben.', 'error');
+        stopScanner();
+        return;
+    }
+    
+    // Initialize Quagga with correct configuration
+    Quagga.init({
+        inputStream: {
+            name: "Live",
+            type: "LiveStream",
+            target: document.querySelector('#interactive'),
+            constraints: {
+                width: { min: 640, ideal: 1280, max: 1920 },
+                height: { min: 480, ideal: 720, max: 1080 },
+                facingMode: "environment", // Rückkamera auf Mobilgeräten
+                aspectRatio: { min: 1, max: 2 }
+            },
+            area: { // defines rectangle of the detection/localization area
+                top: "0%",    // top offset
+                right: "0%",  // right offset
+                left: "0%",   // left offset
+                bottom: "0%"  // bottom offset
+            }
+        },
+        decoder: {
+            readers: [
+                "ean_reader",      // EAN-13 (häufigster Buchbarcode)
+                "ean_8_reader",    // EAN-8
+                "upc_reader",      // UPC
+                "code_128_reader", // Code 128
+                "code_39_reader"   // Code 39
+            ],
+            debug: {
+                drawBoundingBox: true,
+                showFrequency: false,
+                drawScanline: true,
+                showPattern: false
+            }
+        },
+        locate: true,
+        locator: {
+            halfSample: true,
+            patchSize: "medium"
+        },
+        frequency: 10
+    }, function(err) {
+        if (err) {
+            console.error('Scanner Initialisierung fehlgeschlagen:', err);
+            let errorMessage = 'Kamera-Zugriff fehlgeschlagen. ';
+            
+            if (err.name === 'NotAllowedError') {
+                errorMessage += 'Bitte erlauben Sie den Kamera-Zugriff in Ihren Browser-Einstellungen.';
+            } else if (err.name === 'NotFoundError') {
+                errorMessage += 'Keine Kamera gefunden.';
+            } else if (err.name === 'NotReadableError') {
+                errorMessage += 'Kamera wird bereits von einer anderen Anwendung verwendet.';
+            } else if (err.message && err.message.includes('getUserMedia')) {
+                errorMessage += 'Barcode-Scanner funktioniert nur mit HTTPS oder auf localhost.';
+            } else {
+                errorMessage += err.message || 'Unbekannter Fehler.';
+            }
+            
+            showMessage(null, errorMessage, 'error');
+            stopScanner();
+            return;
+        }
+        console.log("Scanner initialisiert");
+        Quagga.start();
+    });
+    
+    // Barcode erkannt
+    Quagga.onDetected(function(result) {
+        if (result && result.codeResult && result.codeResult.code) {
+            const isbn = result.codeResult.code;
+            console.log("Barcode erkannt:", isbn);
+            
+            // Stop scanner
+            const savedContext = currentScannerContext;
+            const savedBookId = currentScannerContext && currentScannerContext.bookId;
+            stopScanner();
+            
+            // Fill ISBN field and trigger search
+            if (savedContext === 'book') {
+                document.getElementById('bookISBN').value = isbn;
+                searchByISBN();
+            } else if (savedContext === 'wishlist') {
+                document.getElementById('wishlistISBN').value = isbn;
+                searchByISBNWishlist();
+            } else if (savedContext === 'edit') {
+                document.getElementById('bookISBN').value = isbn;
+                searchByISBNEdit(null, savedBookId);
+            }
+        }
+    });
+    
+    // Close button
+    document.getElementById('closeScannerBtn').onclick = stopScanner;
+    document.getElementById('cancelScanBtn').onclick = stopScanner;
+}
+
+function stopScanner() {
+    if (typeof Quagga !== 'undefined') {
+        Quagga.stop();
+    }
+    const scannerModal = document.getElementById('barcodeScannerModal');
+    scannerModal.classList.remove('active');
+    currentScannerContext = null;
+}
+
 // Buch-Management-Funktionen
 async function createBook() {
+    // Finde den Submit-Button
+    const submitBtn = document.querySelector('#bookForm button[type="submit"]');
+    let originalBtnText = '';
+    
+    if (submitBtn) {
+        originalBtnText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Wird gespeichert...';
+    }
+    
     try {
         const volumeValue = document.getElementById('bookVolume').value.trim();
+        const isbnInput = document.getElementById('bookISBN');
+        const isbnValue = isbnInput ? isbnInput.value.trim() : '';
+        
+        console.log('=== CREATE BOOK DEBUG ===');
+        console.log('[createBook] ISBN Input Element:', isbnInput);
+        console.log('[createBook] ISBN Input .value:', isbnInput ? isbnInput.value : 'INPUT NOT FOUND');
+        console.log('[createBook] ISBN nach trim:', isbnValue);
+        
         const bookData = {
             title: document.getElementById('bookTitle').value,
             author: document.getElementById('bookAuthor').value,
+            isbn: isbnValue,
             genre: document.getElementById('bookGenre').value,
             pages: parseInt(document.getElementById('bookPages').value),
             format: document.getElementById('bookFormat').value,
@@ -2012,24 +2694,62 @@ async function createBook() {
             status: document.getElementById('bookStatus').value
         };
         
+        console.log('[createBook] Zu speichernde Daten:', bookData);
+        console.log('[createBook] bookData.isbn:', bookData.isbn);
+        console.log('=== CREATE BOOK DEBUG END ===');
+        
         const response = await apiCall('/books', {
             method: 'POST',
             body: bookData
         });
         
-        // Cover upload if file selected
-        const coverFile = document.getElementById('newBookCover');
-        if (coverFile && coverFile.files.length > 0) {
-            const formData = new FormData();
-            formData.append('cover', coverFile.files[0]);
-            
-            await fetch(`/api/books/${response.id}/cover`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${currentToken}`
-                },
-                body: formData
-            });
+        // Check if cover from ISBN should be downloaded
+        const previewDiv = document.getElementById('newBookCoverPreview');
+        const hasIsbnCover = previewDiv && previewDiv.dataset.isbnCover === 'true' && previewDiv.dataset.coverUrl;
+        
+        if (hasIsbnCover) {
+            // Download cover from URL now
+            try {
+                const isbnInput = document.getElementById('bookISBN');
+                const isbn = isbnInput ? isbnInput.value.trim() : '';
+                
+                const coverResult = await apiCall('/download-cover', {
+                    method: 'POST',
+                    body: {
+                        cover_url: previewDiv.dataset.coverUrl,
+                        isbn: isbn
+                    }
+                });
+                
+                if (coverResult.cover_path) {
+                    // Update book with downloaded cover
+                    await apiCall(`/books/${response.id}`, {
+                        method: 'PUT',
+                        body: {
+                            ...bookData,
+                            cover_image: coverResult.cover_path
+                        }
+                    });
+                }
+            } catch (coverError) {
+                console.error('Fehler beim Herunterladen des Covers:', coverError);
+                // Continue anyway, book is saved
+            }
+        } else {
+            // Cover upload if file selected
+            const coverFile = document.getElementById('newBookCover');
+            if (coverFile && coverFile.files.length > 0) {
+                const formData = new FormData();
+                formData.append('cover', coverFile.files[0]);
+                
+                await fetch(`/api/books/${response.id}/cover`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: formData
+                });
+            }
         }
         
         closeModal();
@@ -2037,6 +2757,12 @@ async function createBook() {
         showMessage(null, 'Buch erfolgreich hinzugefügt!', 'success');
     } catch (error) {
         showMessage(null, 'Fehler beim Hinzufügen: ' + error.message, 'error');
+    } finally {
+        // Button wieder aktivieren
+        if (submitBtn && originalBtnText) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+        }
     }
 }
 
@@ -2062,9 +2788,19 @@ async function deleteBook(bookId) {
 async function saveBasicInfo(bookId) {
     try {
         const volumeValue = document.getElementById('bookVolume').value.trim();
+        const isbnInput = document.getElementById('bookISBN');
+        const isbnValue = isbnInput ? isbnInput.value.trim() : '';
+        
+        console.log('=== SAVE BASIC INFO DEBUG ===');
+        console.log('[saveBasicInfo] ISBN Input Element:', isbnInput);
+        console.log('[saveBasicInfo] ISBN Input .value:', isbnInput ? isbnInput.value : 'INPUT NOT FOUND');
+        console.log('[saveBasicInfo] ISBN nach trim:', isbnValue);
+        console.log('[saveBasicInfo] ISBN Länge:', isbnValue.length);
+        
         const bookData = {
             title: document.getElementById('bookTitle').value,
             author: document.getElementById('bookAuthor').value,
+            isbn: isbnValue,
             genre: document.getElementById('bookGenre').value,
             pages: parseInt(document.getElementById('bookPages').value),
             format: document.getElementById('bookFormat').value,
@@ -2075,10 +2811,64 @@ async function saveBasicInfo(bookId) {
             status: document.getElementById('bookStatus').value
         };
         
+        console.log('[saveBasicInfo] Zu speichernde Daten:', bookData);
+        console.log('[saveBasicInfo] bookData.isbn:', bookData.isbn);
+        console.log('=== SAVE BASIC INFO DEBUG END ===');
+        
         await apiCall(`/books/${bookId}`, {
             method: 'PUT',
             body: bookData
         });
+        
+        // Check if cover from ISBN should be downloaded
+        // Verwende globale Variable als Fallback (wichtig für Mobile!)
+        console.log('[Save] Globale Cover-Daten:', editModeCoverData);
+        
+        const coverDisplay = document.getElementById('editCoverDisplay');
+        console.log('[Save] Cover Display gefunden:', !!coverDisplay);
+        
+        // Prüfe zuerst globale Variable (funktioniert immer), dann Dataset
+        const hasIsbnCover = editModeCoverData || 
+            (coverDisplay && coverDisplay.dataset.isbnCover === 'true' && coverDisplay.dataset.coverUrl);
+        
+        console.log('[Save] hasIsbnCover:', hasIsbnCover);
+        
+        if (hasIsbnCover) {
+            console.log('[Save] Cover wird heruntergeladen...');
+            // Download cover from URL now
+            try {
+                const coverUrl = editModeCoverData ? editModeCoverData.coverUrl : coverDisplay.dataset.coverUrl;
+                console.log('[Save] Cover URL:', coverUrl);
+                
+                const coverResult = await apiCall('/download-cover', {
+                    method: 'POST',
+                    body: {
+                        cover_url: coverUrl,
+                        isbn: isbnValue
+                    }
+                });
+                
+                if (coverResult.cover_path) {
+                    console.log('[Save] Cover erfolgreich heruntergeladen:', coverResult.cover_path);
+                    // Update book with downloaded cover
+                    await apiCall(`/books/${bookId}`, {
+                        method: 'PUT',
+                        body: {
+                            ...bookData,
+                            cover_image: coverResult.cover_path
+                        }
+                    });
+                    
+                    // Lösche globale Cover-Daten nach erfolgreichem Upload
+                    editModeCoverData = null;
+                }
+            } catch (coverError) {
+                console.error('[Save] Fehler beim Herunterladen des Covers:', coverError);
+                // Continue anyway, book data is saved
+            }
+        } else {
+            console.log('[Save] Kein ISBN-Cover zum Herunterladen vorhanden');
+        }
         
         // Reload book details
         showBookDetails(bookId);
@@ -2274,11 +3064,27 @@ function createWishlistItem(item) {
 function showAddWishlistModal() {
     const modalBody = `
         <form id="wishlistForm">
+            <!-- ISBN Suche -->
+            <div class="form-group">
+                <label for="wishlistISBN">ISBN (optional)</label>
+                <div class="isbn-buttons-group">
+                    <button type="button" class="btn btn-primary" onclick="searchByISBNWishlist(event)">
+                        <i class="fas fa-search"></i> Suchen
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="scanBarcodeBtn" onclick="startBarcodeScannerWishlist()">
+                        <i class="fas fa-barcode"></i> Scannen
+                    </button>
+                </div>
+                <input type="text" id="wishlistISBN" placeholder="ISBN eingeben...">
+                <small>Buchdaten werden automatisch ausgefüllt</small>
+            </div>
+
             <!-- Cover Upload für Wunschliste -->
             <div class="form-group">
                 <label for="newWishlistCover">Cover hochladen (optional)</label>
                 <input type="file" id="newWishlistCover" accept="image/*" onchange="previewNewWishlistCover(this)">
                 <small>Unterstützte Formate: JPG, PNG, WebP</small>
+                <div id="wishlistCoverErrorMessage" style="margin-top: 8px;"></div>
                 <div id="newWishlistCoverPreview" class="cover-preview" style="display: none;">
                     <img id="newWishlistPreviewImage" alt="Vorschau">
                 </div>
@@ -2364,19 +3170,53 @@ function showAddWishlistModal() {
                 body: wishlistData
             });
             
-            // Cover upload if file selected
-            const coverFile = document.getElementById('newWishlistCover');
-            if (coverFile && coverFile.files.length > 0) {
-                const formData = new FormData();
-                formData.append('cover', coverFile.files[0]);
-                
-                await fetch(`/api/wishlist/${response.id}/cover`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${currentToken}`
-                    },
-                    body: formData
-                });
+            // Check if cover from ISBN should be downloaded
+            const previewDiv = document.getElementById('newWishlistCoverPreview');
+            const hasIsbnCover = previewDiv && previewDiv.dataset.isbnCover === 'true' && previewDiv.dataset.coverUrl;
+            
+            if (hasIsbnCover) {
+                // Download cover from URL now
+                try {
+                    const isbnInput = document.getElementById('wishlistISBN');
+                    const isbn = isbnInput ? isbnInput.value.trim() : '';
+                    
+                    const coverResult = await apiCall('/download-cover', {
+                        method: 'POST',
+                        body: {
+                            cover_url: previewDiv.dataset.coverUrl,
+                            isbn: isbn
+                        }
+                    });
+                    
+                    if (coverResult.cover_path) {
+                        // Update wishlist item with downloaded cover
+                        await apiCall(`/wishlist/${response.id}`, {
+                            method: 'PUT',
+                            body: {
+                                ...wishlistData,
+                                cover_image: coverResult.cover_path
+                            }
+                        });
+                    }
+                } catch (coverError) {
+                    console.error('Fehler beim Herunterladen des Covers:', coverError);
+                    // Continue anyway, wishlist item is saved
+                }
+            } else {
+                // Cover upload if file selected
+                const coverFile = document.getElementById('newWishlistCover');
+                if (coverFile && coverFile.files.length > 0) {
+                    const formData = new FormData();
+                    formData.append('cover', coverFile.files[0]);
+                    
+                    await fetch(`/api/wishlist/${response.id}/cover`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${currentToken}`
+                        },
+                        body: formData
+                    });
+                }
             }
             
             closeModal();
