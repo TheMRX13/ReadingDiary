@@ -118,6 +118,13 @@ type ProgressHistory struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type ServerSettings struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	Key       string    `json:"key" gorm:"unique;not null"`
+	Value     string    `json:"value"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 // Global variables
 var (
 	db             *gorm.DB
@@ -312,6 +319,19 @@ func (g *ServerGUI) setupGUI() {
 	logger.Info("GUI-System initialisiert")
 	logger.Info(fmt.Sprintf("%s v%s - Coded by %s", AppName, AppVersion, AppAuthor))
 
+	// Datenbank initialisieren um Settings zu laden
+	if err := initDatabase(); err != nil {
+		logger.Error(fmt.Sprintf("Fehler beim Initialisieren der Datenbank: %v", err))
+	} else {
+		// Lade gespeichertes Passwort aus Datenbank
+		savedPassword := getServerSetting("server_password", "admin123")
+		if savedPassword != "admin123" {
+			serverPassword = savedPassword
+			g.passwordEntry.SetText(serverPassword)
+			logger.Info("Gespeichertes Passwort aus Datenbank geladen")
+		}
+	}
+
 	// IP-Adressen Container als einfache Labels
 	g.ipContainer = container.NewVBox()
 
@@ -426,6 +446,13 @@ func (g *ServerGUI) startServer() {
 		return
 	}
 	logger.Info("Datenbank erfolgreich initialisiert")
+
+	// Speichere Passwort in Datenbank
+	if err := setServerSetting("server_password", password); err != nil {
+		logger.Warning(fmt.Sprintf("Konnte Passwort nicht speichern: %v", err))
+	} else {
+		logger.Info("Passwort in Datenbank gespeichert")
+	}
 
 	// Server starten
 	logger.Info("Konfiguriere Gin-Router...")
@@ -808,7 +835,7 @@ func initDatabase() error {
 	}
 
 	// Auto-migrate
-	if err := db.AutoMigrate(&Book{}, &Wishlist{}, &Quote{}, &Genre{}, &Publisher{}, &ReadingGoal{}, &ProgressHistory{}); err != nil {
+	if err := db.AutoMigrate(&Book{}, &Wishlist{}, &Quote{}, &Genre{}, &Publisher{}, &ReadingGoal{}, &ProgressHistory{}, &ServerSettings{}); err != nil {
 		if logger != nil {
 			logger.Error(fmt.Sprintf("Datenbank-Migration fehlgeschlagen: %v", err))
 		}
@@ -847,6 +874,34 @@ func initDatabase() error {
 	}
 
 	return nil
+}
+
+// Server Settings Functions
+func getServerSetting(key string, defaultValue string) string {
+	var setting ServerSettings
+	if err := db.Where("key = ?", key).First(&setting).Error; err != nil {
+		// Setting doesn't exist, return default
+		return defaultValue
+	}
+	return setting.Value
+}
+
+func setServerSetting(key string, value string) error {
+	var setting ServerSettings
+	result := db.Where("key = ?", key).First(&setting)
+
+	if result.Error != nil {
+		// Setting doesn't exist, create it
+		setting = ServerSettings{
+			Key:   key,
+			Value: value,
+		}
+		return db.Create(&setting).Error
+	}
+
+	// Setting exists, update it
+	setting.Value = value
+	return db.Save(&setting).Error
 }
 
 // ISBN Book Data Structs
