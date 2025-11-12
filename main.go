@@ -1415,6 +1415,7 @@ func setupRoutes(router *gin.Engine) {
 			protected.PUT("/books/:id", updateBook)
 			protected.DELETE("/books/:id", deleteBook)
 			protected.POST("/books/:id/cover", uploadBookCover)
+			protected.POST("/books/:id/copy-cover", copyBookCover)
 			protected.GET("/books/:id/progress-history", getProgressHistory)
 			protected.PUT("/books/:id/status", updateBookStatus)
 
@@ -1920,6 +1921,96 @@ func uploadBookCover(c *gin.Context) {
 	})
 }
 
+func copyBookCover(c *gin.Context) {
+	id := c.Param("id")
+	
+	// Prüfen ob das Buch existiert
+	var book Book
+	if err := db.First(&book, id).Error; err != nil {
+		c.JSON(404, gin.H{"error": "Buch nicht gefunden"})
+		return
+	}
+	
+	// Cover-Quellpfad aus Request lesen
+	var request struct {
+		SourceCover string `json:"source_cover" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(400, gin.H{"error": "Quell-Cover fehlt"})
+		return
+	}
+	
+	uploadDir := filepath.Join("uploads", "covers")
+	sourcePath := filepath.Join(uploadDir, request.SourceCover)
+	
+	// Prüfen ob Quell-Cover existiert
+	if _, err := os.Stat(sourcePath); os.IsNotExist(err) {
+		c.JSON(404, gin.H{"error": "Quell-Cover nicht gefunden"})
+		return
+	}
+	
+	// Quell-Datei öffnen
+	sourceFile, err := os.Open(sourcePath)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Konnte Quell-Cover nicht öffnen: %v", err))
+		c.JSON(500, gin.H{"error": "Konnte Cover nicht kopieren"})
+		return
+	}
+	defer sourceFile.Close()
+	
+	// Neuen Dateinamen für Buch generieren
+	ext := filepath.Ext(request.SourceCover)
+	filename := fmt.Sprintf("book_%s_%d%s", id, time.Now().Unix(), ext)
+	destPath := filepath.Join(uploadDir, filename)
+	
+	// Ziel-Datei erstellen
+	destFile, err := os.Create(destPath)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Konnte Ziel-Cover nicht erstellen: %v", err))
+		c.JSON(500, gin.H{"error": "Konnte Cover nicht kopieren"})
+		return
+	}
+	defer destFile.Close()
+	
+	// Cover kopieren
+	if _, err := io.Copy(destFile, sourceFile); err != nil {
+		logger.Error(fmt.Sprintf("Konnte Cover nicht kopieren: %v", err))
+		os.Remove(destPath) // Aufräumen
+		c.JSON(500, gin.H{"error": "Konnte Cover nicht kopieren"})
+		return
+	}
+	
+	// Altes Cover vom Buch löschen, falls vorhanden
+	if book.CoverImage != "" {
+		oldCoverPath := filepath.Join(uploadDir, book.CoverImage)
+		if _, err := os.Stat(oldCoverPath); err == nil {
+			if err := os.Remove(oldCoverPath); err != nil {
+				logger.Error(fmt.Sprintf("Konnte altes Buch-Cover nicht löschen: %v", err))
+			}
+		}
+	}
+	
+	// Buch in der Datenbank aktualisieren
+	book.CoverImage = filename
+	if err := db.Save(&book).Error; err != nil {
+		logger.Error(fmt.Sprintf("Konnte Buch-Cover in Datenbank nicht aktualisieren: %v", err))
+		os.Remove(destPath) // Aufräumen
+		c.JSON(500, gin.H{"error": "Konnte Cover-Referenz nicht speichern"})
+		return
+	}
+	
+	logger.Info(fmt.Sprintf("Cover für Buch ID %s erfolgreich kopiert von %s", id, request.SourceCover))
+	
+	// Broadcast WebSocket event
+	broadcastEvent("book_updated", book)
+	
+	c.JSON(200, gin.H{
+		"message":     "Cover erfolgreich kopiert",
+		"cover_image": filename,
+		"book":        book,
+	})
+}
+
 func uploadWishlistCover(c *gin.Context) {
 	id := c.Param("id")
 
@@ -2074,6 +2165,27 @@ func createWishlistItem(c *gin.Context) {
 
 func deleteWishlistItem(c *gin.Context) {
 	id := c.Param("id")
+	
+	// Erst den Wunschlisten-Eintrag holen, um Cover-Pfad zu bekommen
+	var wishlistItem Wishlist
+	if err := db.First(&wishlistItem, id).Error; err != nil {
+		c.JSON(404, gin.H{"error": "Wunschliste-Eintrag nicht gefunden"})
+		return
+	}
+	
+	// Cover-Datei löschen, falls vorhanden
+	if wishlistItem.CoverImage != "" {
+		coverPath := filepath.Join("uploads", "covers", wishlistItem.CoverImage)
+		if _, err := os.Stat(coverPath); err == nil {
+			if err := os.Remove(coverPath); err != nil {
+				logger.Error(fmt.Sprintf("Konnte Wunschlisten-Cover-Datei nicht löschen: %v", err))
+			} else {
+				logger.Info(fmt.Sprintf("Wunschlisten-Cover-Datei gelöscht: %s", coverPath))
+			}
+		}
+	}
+	
+	// Eintrag aus der Datenbank löschen
 	if err := db.Delete(&Wishlist{}, id).Error; err != nil {
 		c.JSON(500, gin.H{"error": "Konnte Eintrag nicht löschen"})
 		return
@@ -2535,6 +2647,12 @@ func updateWishlistItem(c *gin.Context) {
 	}
 	if author, ok := requestData["author"].(string); ok {
 		updatedItem.Author = author
+	}
+	if isbn, ok := requestData["isbn"].(string); ok {
+		updatedItem.ISBN = isbn
+	}
+	if coverImage, ok := requestData["cover_image"].(string); ok {
+		updatedItem.CoverImage = coverImage
 	}
 	if genre, ok := requestData["genre"].(string); ok {
 		updatedItem.Genre = genre

@@ -2523,6 +2523,125 @@ async function searchByISBNEdit(evt, bookId) {
     }
 }
 
+// ISBN Suche für Wunschlisten-Bearbeitung
+async function searchByISBNEditWishlist(evt, wishlistId) {
+    const isbnInput = document.getElementById('editWishlistISBN');
+    const isbn = isbnInput.value.trim().replace(/[^0-9X]/gi, '');
+    
+    if (!isbn) {
+        showMessage(null, 'Bitte geben Sie eine ISBN ein.', 'error');
+        return;
+    }
+    
+    // Deaktiviere Button und zeige Lade-Indikator
+    let searchBtn = null;
+    let originalBtnText = '';
+    
+    if (evt && evt.target) {
+        searchBtn = evt.target;
+        originalBtnText = searchBtn.innerHTML;
+        searchBtn.disabled = true;
+        searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Lädt...';
+    }
+    
+    isbnInput.disabled = true;
+    
+    try {
+        const bookData = await apiCall(`/isbn/${isbn}`);
+        
+        if (!bookData || !bookData.title) {
+            throw new Error('Keine Buchdaten gefunden');
+        }
+        
+        // Fülle die Formularfelder aus
+        if (bookData.title) document.getElementById('editWishlistTitle').value = bookData.title;
+        if (bookData.author) document.getElementById('editWishlistAuthor').value = bookData.author;
+        if (bookData.genre) {
+            document.getElementById('editWishlistGenre').value = bookData.genre;
+            if (typeof setupGenreAutocomplete === 'function') {
+                setupGenreAutocomplete('editWishlistGenre', bookData.genre);
+            }
+        }
+        if (bookData.publisher) {
+            document.getElementById('editWishlistPublisher').value = bookData.publisher;
+            if (typeof setupPublisherAutocomplete === 'function') {
+                setupPublisherAutocomplete('editWishlistPublisher', bookData.publisher);
+            }
+        }
+        if (bookData.publish_date) {
+            const date = bookData.publish_date.split('T')[0];
+            document.getElementById('editWishlistPublishDate').value = date;
+        }
+        if (bookData.pages) document.getElementById('editWishlistPages').value = bookData.pages;
+        
+        // Aktualisiere Cover-Preview wenn verfügbar
+        if (bookData.cover_image_url) {
+            const previewDiv = document.getElementById('editWishlistCoverPreview');
+            const previewImg = document.getElementById('editWishlistPreviewImage');
+            if (previewDiv && previewImg) {
+                // Zeige Loading-Spinner
+                previewDiv.innerHTML = '<div class="cover-loading"><i class="fas fa-spinner fa-spin"></i><br>Lade Cover...</div>';
+                previewDiv.style.display = 'block';
+                
+                // Erstelle neues Image zum Laden
+                const img = new Image();
+                img.onload = function() {
+                    previewDiv.innerHTML = '';
+                    previewImg.src = bookData.cover_image_url;
+                    previewDiv.appendChild(previewImg);
+                    // Speichere Cover-URL für späteren Download
+                    previewDiv.dataset.coverUrl = bookData.cover_image_url;
+                    previewDiv.dataset.isbnCover = 'true';
+                    // Entferne Fehlermeldung falls vorhanden
+                    const errorDiv = document.getElementById('editWishlistCoverErrorMessage');
+                    if (errorDiv) errorDiv.innerHTML = '';
+                };
+                img.onerror = function() {
+                    console.error('[ISBN Edit Wishlist] Cover konnte nicht geladen werden:', bookData.cover_image_url);
+                    // Zeige Fehlermeldung
+                    const errorDiv = document.getElementById('editWishlistCoverErrorMessage');
+                    if (errorDiv) {
+                        errorDiv.innerHTML = '<div style="color: #ef4444; font-size: 14px;"><i class="fas fa-exclamation-triangle"></i> Cover konnte nicht geladen werden</div>';
+                    }
+                };
+                img.src = bookData.cover_image_url;
+            }
+        } else {
+            // Kein Cover vorhanden - zeige Meldung
+            const errorDiv = document.getElementById('editWishlistCoverErrorMessage');
+            if (errorDiv) {
+                errorDiv.innerHTML = '<div style="color: #f59e0b; font-size: 14px;"><i class="fas fa-info-circle"></i> Kein Cover verfügbar</div>';
+            }
+        }
+        
+        // Entferne alte Fehlermeldung falls vorhanden
+        const oldError = isbnInput.parentElement.querySelector('.isbn-error');
+        if (oldError) oldError.remove();
+        
+        showMessage(null, 'Buchdaten erfolgreich geladen!', 'success');
+    } catch (error) {
+        console.error('ISBN Suche Fehler:', error);
+        
+        // Zeige Fehler unter dem ISBN-Feld
+        let errorDiv = isbnInput.parentElement.querySelector('.isbn-error');
+        if (!errorDiv) {
+            errorDiv = document.createElement('div');
+            errorDiv.className = 'isbn-error';
+            errorDiv.style.cssText = 'color: #ef4444; font-size: 14px; margin-top: 8px;';
+            isbnInput.parentElement.appendChild(errorDiv);
+        }
+        errorDiv.textContent = '❌ Die eingegebene ISBN konnte nicht gefunden werden. Bitte überprüfen Sie die ISBN oder geben Sie die Daten manuell ein.';
+        
+        showMessage(null, '❌ ISBN nicht gefunden', 'error');
+    } finally {
+        if (searchBtn) {
+            searchBtn.disabled = false;
+            searchBtn.innerHTML = originalBtnText;
+        }
+        isbnInput.disabled = false;
+    }
+}
+
 // Barcode Scanner Funktionen
 let currentScannerContext = null; // 'book', 'wishlist', or 'edit'
 
@@ -2562,6 +2681,16 @@ function startBarcodeScannerEdit(bookId) {
     initScanner();
 }
 
+function startBarcodeScannerEditWishlist(wishlistId) {
+    if (!checkScannerAvailability()) {
+        showMessage(null, 'Barcode-Scanner benötigt HTTPS. Bitte ISBN manuell eingeben.', 'warning');
+        return;
+    }
+    currentScannerContext = 'editWishlist';
+    currentScannerContext.wishlistId = wishlistId;
+    initScanner();
+}
+
 function initScanner() {
     // Check if running on HTTPS or localhost
     const isSecureContext = window.isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -2574,6 +2703,13 @@ function initScanner() {
     
     const scannerModal = document.getElementById('barcodeScannerModal');
     scannerModal.classList.add('active');
+    
+    // Leere vorherige Fehlermeldungen
+    const errorMsg = document.getElementById('scannerErrorMessage');
+    if (errorMsg) {
+        errorMsg.textContent = '';
+        errorMsg.style.display = 'none';
+    }
     
     // Check if Quagga is available
     if (typeof Quagga === 'undefined') {
@@ -2667,7 +2803,21 @@ function initScanner() {
             
             if (cleanIsbn.length !== 10 && cleanIsbn.length !== 13) {
                 console.warn("Ungültige ISBN-Länge:", cleanIsbn.length, "- Erwartet: 10 oder 13 Zeichen. Ignoriere Scan.");
-                // Zeige kurz Feedback aber scanne weiter
+                
+                // Zeige Fehlermeldung unter dem Scanner
+                const errorMsg = document.getElementById('scannerErrorMessage');
+                if (errorMsg) {
+                    errorMsg.textContent = `❌ Ungültiger Code: "${cleanIsbn}" (${cleanIsbn.length} Zeichen) - Bitte scannen Sie einen ISBN-10 oder ISBN-13 Barcode`;
+                    errorMsg.style.display = 'block';
+                    
+                    // Verstecke Fehlermeldung nach 3 Sekunden
+                    setTimeout(() => {
+                        errorMsg.textContent = '';
+                        errorMsg.style.display = 'none';
+                    }, 3000);
+                }
+                
+                // Zeige kurz visuelles Feedback
                 const interactive = document.getElementById('interactive');
                 if (interactive) {
                     const originalBorder = interactive.style.border;
@@ -2679,11 +2829,19 @@ function initScanner() {
                 return; // Ignoriere diesen Scan und scanne weiter
             }
             
+            // Lösche Fehlermeldung bei erfolgreichem Scan
+            const errorMsg = document.getElementById('scannerErrorMessage');
+            if (errorMsg) {
+                errorMsg.textContent = '';
+                errorMsg.style.display = 'none';
+            }
+            
             console.log("Gültige ISBN erkannt:", cleanIsbn);
             
             // Stop scanner
             const savedContext = currentScannerContext;
             const savedBookId = currentScannerContext && currentScannerContext.bookId;
+            const savedWishlistId = currentScannerContext && currentScannerContext.wishlistId;
             stopScanner();
             
             // Fill ISBN field and trigger search
@@ -2696,6 +2854,9 @@ function initScanner() {
             } else if (savedContext === 'edit') {
                 document.getElementById('bookISBN').value = cleanIsbn;
                 searchByISBNEdit(null, savedBookId);
+            } else if (savedContext === 'editWishlist') {
+                document.getElementById('editWishlistISBN').value = cleanIsbn;
+                searchByISBNEditWishlist(null, savedWishlistId);
             }
         }
     });
@@ -3447,11 +3608,27 @@ async function showWishlistDetails(wishlistId) {
             <form id="editWishlistForm">
                 <input type="hidden" id="wishlistId" value="${item.id}">
                 
+                <!-- ISBN Suche -->
+                <div class="form-group">
+                    <label for="editWishlistISBN">ISBN (optional)</label>
+                    <div class="isbn-buttons-group">
+                        <button type="button" class="btn btn-primary" onclick="searchByISBNEditWishlist(event, ${item.id})">
+                            <i class="fas fa-search"></i> Daten abrufen
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="startBarcodeScannerEditWishlist(${item.id})">
+                            <i class="fas fa-barcode"></i> Scannen
+                        </button>
+                    </div>
+                    <input type="text" id="editWishlistISBN" value="${item.isbn || ''}" placeholder="ISBN eingeben...">
+                    <small>ISBN eingeben und "Daten abrufen" klicken um Felder und Cover zu aktualisieren</small>
+                </div>
+                
                 <!-- Cover Upload für Wunschliste -->
                 <div class="form-group">
                     <label for="editWishlistCover">Cover hochladen (optional)</label>
                     <input type="file" id="editWishlistCover" accept="image/*" onchange="previewEditWishlistCover(this)">
                     <small>Unterstützte Formate: JPG, PNG, WebP</small>
+                    <div id="editWishlistCoverErrorMessage" style="margin-top: 8px;"></div>
                     <div id="editWishlistCoverPreview" class="cover-preview" ${coverImageUrl ? '' : 'style="display: none;"'}>
                         <img id="editWishlistPreviewImage" src="${coverImageUrl || ''}" alt="Vorschau">
                     </div>
@@ -3525,9 +3702,12 @@ async function showWishlistDetails(wishlistId) {
 async function updateWishlistItem(wishlistId) {
     try {
         const volumeValue = document.getElementById('editWishlistVolume').value.trim();
+        const isbnValue = document.getElementById('editWishlistISBN') ? document.getElementById('editWishlistISBN').value.trim() : '';
+        
         const wishlistData = {
             title: document.getElementById('editWishlistTitle').value.trim(),
             author: document.getElementById('editWishlistAuthor').value.trim(),
+            isbn: isbnValue,
             genre: document.getElementById('editWishlistGenre').value,
             pages: parseInt(document.getElementById('editWishlistPages').value) || 0,
             publisher: document.getElementById('editWishlistPublisher').value.trim(),
@@ -3536,31 +3716,66 @@ async function updateWishlistItem(wishlistId) {
             volume: volumeValue ? parseInt(volumeValue) : 0,
         };
         
-        // Cover Upload verarbeiten
-        const coverFile = document.getElementById('editWishlistCover').files[0];
-        if (coverFile) {
-            const coverFormData = new FormData();
-            coverFormData.append('cover', coverFile);
-            
+        // Prüfe ob Cover von ISBN-Suche heruntergeladen werden soll
+        const previewDiv = document.getElementById('editWishlistCoverPreview');
+        const hasIsbnCover = previewDiv && previewDiv.dataset.isbnCover === 'true' && previewDiv.dataset.coverUrl;
+        
+        if (hasIsbnCover) {
+            // Cover von ISBN-URL herunterladen
+            console.log('[updateWishlistItem] Lade Cover von ISBN herunter:', previewDiv.dataset.coverUrl);
             try {
-                const response = await fetch(`/api/wishlist/${wishlistId}/cover`, {
+                showMessage(null, 'Speichere Cover...', 'info');
+                
+                const coverResult = await apiCall('/download-cover', {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${currentToken}`
-                    },
-                    body: coverFormData
+                    body: {
+                        cover_url: previewDiv.dataset.coverUrl,
+                        isbn: isbnValue
+                    }
                 });
                 
-                if (!response.ok) {
-                    throw new Error('Cover-Upload fehlgeschlagen');
+                if (coverResult.cover_path) {
+                    wishlistData.cover_image = coverResult.cover_path;
+                    console.log('[updateWishlistItem] Cover erfolgreich heruntergeladen:', coverResult.cover_path);
                 }
             } catch (coverError) {
-                console.error('Cover-Upload Fehler:', coverError);
-                showMessage(null, 'Warnung: Cover konnte nicht hochgeladen werden: ' + coverError.message, 'warning');
+                console.error('[updateWishlistItem] Fehler beim Herunterladen des ISBN-Covers:', coverError);
+                showMessage(null, 'Warnung: Cover konnte nicht heruntergeladen werden', 'warning');
+            }
+        } else {
+            // Cover-Upload von Datei verarbeiten
+            const coverFile = document.getElementById('editWishlistCover').files[0];
+            if (coverFile) {
+                console.log('[updateWishlistItem] Lade Cover-Datei hoch:', coverFile.name);
+                const coverFormData = new FormData();
+                coverFormData.append('cover', coverFile);
+                
+                try {
+                    showMessage(null, 'Speichere Cover...', 'info');
+                    
+                    const response = await fetch(`/api/wishlist/${wishlistId}/cover`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${currentToken}`
+                        },
+                        body: coverFormData
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Cover-Upload fehlgeschlagen');
+                    }
+                    
+                    const result = await response.json();
+                    console.log('[updateWishlistItem] Cover erfolgreich hochgeladen:', result);
+                } catch (coverError) {
+                    console.error('[updateWishlistItem] Cover-Upload Fehler:', coverError);
+                    showMessage(null, 'Warnung: Cover konnte nicht hochgeladen werden: ' + coverError.message, 'warning');
+                }
             }
         }
         
         // Wunschliste-Item aktualisieren
+        console.log('[updateWishlistItem] Aktualisiere Wunschlisten-Eintrag:', wishlistData);
         await apiCall(`/wishlist/${wishlistId}`, {
             method: 'PUT',
             body: wishlistData
@@ -3590,6 +3805,156 @@ function previewEditWishlistCover(input) {
         reader.readAsDataURL(file);
     } else {
         preview.style.display = 'none';
+    }
+}
+
+async function deleteWishlistItem(wishlistId) {
+    if (!confirm('Möchten Sie diesen Eintrag wirklich aus der Wunschliste löschen?')) {
+        return;
+    }
+    
+    try {
+        await apiCall(`/wishlist/${wishlistId}`, {
+            method: 'DELETE'
+        });
+        
+        showMessage(null, 'Wunschlisten-Eintrag erfolgreich gelöscht!', 'success');
+        loadWishlist();
+    } catch (error) {
+        console.error('Fehler beim Löschen:', error);
+        showMessage(null, 'Fehler beim Löschen: ' + error.message, 'error');
+    }
+}
+
+async function buyWishlistItem(wishlistId) {
+    try {
+        // Hole Wunschlisten-Eintrag
+        const wishlistItem = await apiCall(`/wishlist/${wishlistId}`);
+        
+        // Zeige Format-Auswahl Modal
+        const modalBody = `
+            <div class="format-selection">
+                <p>Welches Format haben Sie gekauft?</p>
+                <div class="format-options">
+                    <div class="format-option" data-format="Hardcover">
+                        <i class="fas fa-book"></i>
+                        <span>Hardcover</span>
+                    </div>
+                    <div class="format-option" data-format="Paperback">
+                        <i class="fas fa-book-open"></i>
+                        <span>Paperback</span>
+                    </div>
+                    <div class="format-option" data-format="eBook">
+                        <i class="fas fa-tablet-alt"></i>
+                        <span>eBook</span>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Abbrechen</button>
+                    <button type="button" class="btn btn-primary" id="confirmFormatBtn" disabled>
+                        <i class="fas fa-check"></i> Bestätigen
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        showModal('Format auswählen', modalBody);
+        
+        // Speichere ausgewähltes Format in einer Variable
+        let selectedFormat = null;
+        
+        // Event Listener für Format-Auswahl
+        document.querySelectorAll('.format-option').forEach(option => {
+            option.addEventListener('click', function() {
+                // Entferne Auswahl von allen
+                document.querySelectorAll('.format-option').forEach(opt => opt.classList.remove('selected'));
+                // Markiere ausgewähltes Format
+                this.classList.add('selected');
+                // Speichere Format
+                selectedFormat = this.dataset.format;
+                // Aktiviere Bestätigen-Button
+                const confirmBtn = document.getElementById('confirmFormatBtn');
+                confirmBtn.disabled = false;
+            });
+        });
+        
+        // Event Listener für Bestätigen-Button
+        document.getElementById('confirmFormatBtn').addEventListener('click', function() {
+            if (selectedFormat) {
+                confirmBuyWishlistItem(wishlistId, selectedFormat);
+            }
+        });
+        
+    } catch (error) {
+        console.error('Fehler beim Vorbereiten des Kaufs:', error);
+        showMessage(null, 'Fehler: ' + error.message, 'error');
+    }
+}
+
+async function confirmBuyWishlistItem(wishlistId, format) {
+    try {
+        // Hole Wunschlisten-Eintrag
+        const wishlistItem = await apiCall(`/wishlist/${wishlistId}`);
+        
+        // Erstelle Buch-Objekt aus Wunschlisten-Eintrag
+        const bookData = {
+            title: wishlistItem.title,
+            author: wishlistItem.author,
+            genre: wishlistItem.genre || '',
+            pages: wishlistItem.pages || 0,
+            publisher: wishlistItem.publisher || '',
+            publish_date: wishlistItem.publish_date || wishlistItem.publishDate || '',
+            series: wishlistItem.series || '',
+            volume: wishlistItem.volume || 0,
+            format: format, // Das ausgewählte Format
+            status: 'Ungelesen',
+            rating: 0,
+            spice: 0,
+            tension: 0,
+            fiction: true, // Boolean statt String
+            reading_progress: 0
+        };
+        
+        // Erstelle Buch
+        const newBook = await apiCall('/books', {
+            method: 'POST',
+            body: bookData
+        });
+        
+        // Wenn Wunschlisten-Eintrag ein Cover hat, kopiere es zum neuen Buch
+        if (wishlistItem.cover_image) {
+            try {
+                await apiCall(`/books/${newBook.id}/copy-cover`, {
+                    method: 'POST',
+                    body: {
+                        source_cover: wishlistItem.cover_image
+                    }
+                });
+            } catch (coverError) {
+                console.warn('Cover konnte nicht kopiert werden:', coverError);
+                // Fahre trotzdem fort
+            }
+        }
+        
+        // Lösche Wunschlisten-Eintrag
+        await apiCall(`/wishlist/${wishlistId}`, {
+            method: 'DELETE'
+        });
+        
+        closeModal();
+        showMessage(null, `"${wishlistItem.title}" wurde zur Bücherliste hinzugefügt!`, 'success');
+        
+        // Lade Wunschliste neu
+        loadWishlist();
+        
+        // Wenn auf Bücher-Seite, lade auch diese neu
+        if (currentPage === 'books') {
+            loadBooks();
+        }
+        
+    } catch (error) {
+        console.error('Fehler beim Verschieben zur Bücherliste:', error);
+        showMessage(null, 'Fehler beim Verschieben: ' + error.message, 'error');
     }
 }
 
