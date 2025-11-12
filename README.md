@@ -96,7 +96,8 @@ Ein lokales Buchverwaltungssystem mit Web-Interface für Windows.
 ### Daten & Backup
 - [ ] **Automatische Backups**: Regelmäßige SQLite-DB Sicherungen
 - [ ] **Export/Import**: JSON/CSV Export für Bücher, Statistiken und Zitate
-- [ ] **Goodreads-Import**: Bücherlisten von Goodreads importieren
+- [ ] **Goodreads-Import**: Bücherlisten von Goodreads importieren (CSV)
+- [ ] **Readdo-Import**: Import aus Readdo (falls Export verfügbar)
 
 ### E-Book Verwaltung
 - [ ] **E-Book Reader**: EPUB/PDF direkt in der App lesen
