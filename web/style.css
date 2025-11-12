@@ -1087,18 +1087,18 @@ input[type="range"] {
 }
 
 .progress-history-item.progress-positive {
-    background: #f0f9ff;
-    border-left: 4px solid #10b981;
+    background: var(--bg-tertiary);
+    border-left: 4px solid var(--success);
 }
 
 .progress-history-item.progress-negative {
-    background: #fef2f2;
-    border-left: 4px solid #ef4444;
+    background: var(--bg-tertiary);
+    border-left: 4px solid var(--error);
 }
 
 .progress-history-item.progress-zero {
-    background: #f9fafb;
-    border-left: 4px solid #6b7280;
+    background: var(--bg-tertiary);
+    border-left: 4px solid var(--text-tertiary);
 }
 
 .progress-date {
@@ -1136,15 +1136,15 @@ input[type="range"] {
     font-weight: 500;
     font-size: 12px;
     margin-top: 2px;
-    color: #10b981;
+    color: var(--success);
 }
 
 .progress-history-item.progress-negative .progress-change {
-    color: #ef4444;
+    color: var(--error);
 }
 
 .progress-history-item.progress-zero .progress-change {
-    color: #6b7280;
+    color: var(--text-tertiary);
 }
 
 /* Book Cards und Grid für Dashboard */
