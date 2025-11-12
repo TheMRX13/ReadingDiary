@@ -43,6 +43,17 @@ Ein lokales Buchverwaltungssystem mit Web-Interface für Windows.
 
 **\*Hinweis:** PWA-Features wie Service Worker und Offline-Funktionalität benötigen HTTPS. Über HTTP (Standard) funktioniert die App als normale Web-Anwendung.
 
+## 🌐 **Live-Demo**
+
+Probiere Reading Diary direkt aus:
+
+**[➜ https://readingdiary.webhop.me](https://readingdiary.webhop.me)**
+
+- 🔑 **Demo-Passwort:** `demo123`
+- ✨ **Voll funktionsfähig:** Alle Features können getestet werden
+- 🔄 **Auto-Reset:** Datenbank wird regelmäßig zurückgesetzt
+- ⚠️ **Hinweis:** Demo-Daten sind öffentlich - keine sensiblen Informationen eingeben!
+
 ## ⚡ **Performance**
 
 - RAM: ~100-200 MB | CPU: <1% | Größe: ~100 MB | Start: <10s
