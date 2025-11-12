@@ -129,13 +129,31 @@ Ein lokales Buchverwaltungssystem mit Web-Interface für Windows.
 - [ ] **Lazy Loading**: Bilder erst laden wenn sichtbar
 - [ ] **API-Pagination**: Große Datensätze in Seiten aufteilen
 - [ ] **Caching**: Schnellere Ladezeiten durch Response-Caching
+
 ---
 
-# Discord
+## 💬 **Community & Support**
 
-Betrete jetzt auch meinen Discord. Hier bekomsmt du hilfe und rat für alles und hast direkten kontakt zum Entwickler 
-[Jetzt Betreten](https://discord.gg/T5yPWAbRdz)
+### Discord Server
+
+[![Discord](https://img.shields.io/discord/1092734450250547252?color=7289da&label=Discord&logo=discord&logoColor=white&style=for-the-badge)](https://discord.gg/T5yPWAbRdz)
+
+Trete der Reading Diary Community bei:
+- 💬 Hilfe und Support
+- 🐛 Bug-Reports
+- 💡 Feature-Vorschläge  
+- 📢 Update-Ankündigungen
+- 👥 Austausch mit anderen Nutzern
+- 👨‍💻 Direkter Kontakt zum Entwickler
+
+**[➜ Jetzt Discord beitreten](https://discord.gg/T5yPWAbRdz)**
+
+### Support-Kanäle
+- **Discord**: [discord.gg/T5yPWAbRdz](https://discord.gg/T5yPWAbRdz) (Empfohlen)
+- **GitHub Issues**: [Bug-Reports & Feature-Requests](../../issues)
+
+---
 
 **📚 Reading Diary** - *Lokale Buchverwaltung für Windows*
 
-*Entwickelt mit ❤️ für Buchliebhaber*
+*Entwickelt mit ❤️ für Buchliebhaber von **TheMRX - Pascal Keller***
