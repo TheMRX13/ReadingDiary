@@ -101,7 +101,7 @@ Probiere Reading Diary direkt aus:
 
 ### Clients
 - [ ] **Native Android/iOS Apps**: React Native oder Flutter für mobile Geräte
-- [x] **Windows Desktop-Programm**
+- [x] **Windows / Linux / MacOS ARM64 Desktop-Programm**
 - [ ] **Linux/macOS Support**: Plattformübergreifende Desktop-Version
 
 ### Daten & Backup
