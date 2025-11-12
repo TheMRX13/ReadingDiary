@@ -23,6 +23,7 @@ ReadingDiary.sln
 # Build-Skripte für unfertige Komponenten
 build-windows-client.bat
 build-android.bat
+setup-nginx.sh
 
 # IDE files
 .vscode/
