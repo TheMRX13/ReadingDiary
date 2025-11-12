@@ -109,6 +109,9 @@ Probiere Reading Diary direkt aus:
 - [ ] **Export/Import**: JSON/CSV Export für Bücher, Statistiken und Zitate
 - [ ] **Goodreads-Import**: Bücherlisten von Goodreads importieren (CSV)
 - [ ] **Readdo-Import**: Import aus Readdo (falls Export verfügbar)
+- [ ] **Suche verbessern**: Volltextsuche, Filter nach Genre/Status/Rating
+- [ ] **Sortierung**: Verschiedene Sortieroptionen (Datum, Titel, Autor, Rating)
+- [ ] **Tags/Labels**: Zusätzliche flexible Kategorisierung neben Genres
 
 ### E-Book Verwaltung
 - [ ] **E-Book Reader**: EPUB/PDF direkt in der App lesen
@@ -116,11 +119,15 @@ Probiere Reading Diary direkt aus:
 - [ ] **Virtuelle Bibliothek**: Eigene E-Book-Sammlung organisieren
 
 ### Erweiterte Funktionen
+- [ ] **Buchclub-Modus**: Gemeinsame Leselisten mit Freunden
+- [ ] **Teilen**: Rezensionen/Statistiken exportieren und teilen
 - [ ] **Buchserien-Management**: Übersichtliche Darstellung von Buchreihen
 - [ ] **Thematische Leselisten**: Eigene Listen erstellen (z.B. "Sommer 2025", "Lieblinge")
 - [ ] **Verleihfunktion**: Tracking an wen welches Buch verliehen wurde
 - [ ] **Lesezeit-Tracking**: Wie lange brauche ich für ein Buch?
 - [ ] **Notizen während des Lesens**: Zusätzliche Anmerkungen zu Kapiteln
+- [ ] ** Kapitel Marker**: Kapitel Fortschritt Speichern
+- [ ] **DOI und ISSN Support**: Daten anhand von DOI und ISSN abrufen
 
 ### Statistiken & Visualisierung
 - [ ] **Jahresübersicht**: Gelesene Seiten pro Monat mit Diagrammen
@@ -140,7 +147,9 @@ Probiere Reading Diary direkt aus:
 - [ ] **Bulk-Operations**: Mehrere Bücher gleichzeitig bearbeiten/löschen
 - [ ] **Lazy Loading**: Bilder erst laden wenn sichtbar
 - [ ] **API-Pagination**: Große Datensätze in Seiten aufteilen
+- [ ] **Caching**: API-Responses cachen
 - [ ] **Caching**: Schnellere Ladezeiten durch Response-Caching
+- [ ] **Compression**: Gzip für Web-Assets
 
 ---
 
