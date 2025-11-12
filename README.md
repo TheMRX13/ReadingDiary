@@ -8,27 +8,40 @@ Ein lokales Buchverwaltungssystem mit Web-Interface für Windows.
 ## ✨ Features
 
 ### 📖 **Buchverwaltung**
-- Vollständige Buchdatenbank mit Metadaten
-- Cover-Upload und Serienorganisation
+- Vollständige Buchdatenbank mit Metadaten (Titel, Autor, ISBN, Genre, Verlag, etc.)
+- ISBN-Scanner (Kamera)* und manuelle ISBN-Eingabe
+- Cover-Upload und automatischer Cover-Download via ISBN (Google Books API)
+- Serienorganisation mit Bandnummern
 - Lesefortschritt-Tracking mit Historie
 - Bewertungssystem (Sterne, Spice-Level, Spannung)
 - Markdown-Rezensionen
+- Status-Tracking (Ungelesen, Am Lesen, Gelesen)
+
+**\*Hinweis:** ISBN-Scanner (Kamera-Zugriff) benötigt HTTPS
 
 ### 🎯 **Wunschliste & Zitate**
-- Bücher zur Wunschliste hinzufügen
-- "Gekauft"-Workflow mit Formatauswahl
-- Zitate-Sammlung mit Seitenangaben
+- Bücher zur Wunschliste hinzufügen mit vollständigen Metadaten
+- "Gekauft"-Workflow mit automatischer Übernahme in die Bibliothek
+- Cover-Übernahme von Wunschliste zu Buch
+- Formatauswahl (Taschenbuch, Hardcover, E-Book, Hörbuch)
+- Zitate-Sammlung mit Buch- und Seitenangaben
 
 ### 📊 **Statistiken**
 - Dashboard mit Buchanzahl und gelesenen Seiten
+- Aktueller Lesefortschritt
 - Genre- und Verlagsstatistiken
 - Leseziel-Tracking (jährlich)
 
-## 🚀 **Komponenten**
+### 🔄 **Echtzeit-Updates**
+- WebSocket-Integration für Live-Updates
+- Automatische Synchronisation über mehrere Browser/Geräte
 
-- **Go-Server** mit Fyne-GUI (Port 7443)
-- **Web-Interface** - responsive, passwort-geschützt
-- **SQLite-Datenbank** - lokal gespeichert
+### 📱 **Progressive Web App (PWA)***
+- Installierbar auf Desktop und Mobile
+- Responsive Design für alle Bildschirmgrößen
+- App-Icons für alle Plattformen
+
+**\*Hinweis:** PWA-Features wie Service Worker und Offline-Funktionalität benötigen HTTPS. Über HTTP (Standard) funktioniert die App als normale Web-Anwendung.
 
 ## ⚡ **Performance**
 
@@ -44,9 +57,26 @@ Ein lokales Buchverwaltungssystem mit Web-Interface für Windows.
 
 ## 🛠️ **Technisch**
 
-- **Backend**: Go, Gin, SQLite, GORM, Fyne
-- **Frontend**: Vanilla JavaScript, CSS, FontAwesome
-- **Systemanforderungen**: Windows 10/11, 2GB RAM, 100MB Speicher
+### Backend
+- **Sprache**: Go 1.21+
+- **Web-Framework**: Gin (HTTP-Router & Middleware)
+- **GUI**: Fyne v2 (Desktop-GUI mit Live-Logging)
+- **Datenbank**: SQLite mit GORM ORM
+- **Echtzeit**: Gorilla WebSocket für Live-Updates
+- **API-Integration**: Google Books API (ISBN-Suche)
+
+### Frontend
+- **Technologie**: Vanilla JavaScript (kein Framework)
+- **Styling**: CSS3 mit modernem Design
+- **Icons**: Font Awesome 6.0
+- **PWA**: Service Worker, Web App Manifest
+
+### Systemanforderungen
+- **OS**: Windows 10/11 (x64)
+- **RAM**: Minimum 2GB
+- **Speicher**: ~100MB + Datenbank
+- **Browser**: Chrome, Firefox, Edge, Safari (für Web-Interface)
+- **Netzwerk**: Kein Internet erforderlich (läuft lokal außer ISBN Suche)
 
 ## 🔐 **Sicherheit**
 
@@ -56,12 +86,49 @@ Ein lokales Buchverwaltungssystem mit Web-Interface für Windows.
 - Kompatibel mit nginx
 
 
-## 🔧 Geplante Features oder Clients
+## 🔧 Geplante Features
 
- - Android app
- - IOS App
- - Windows Program
- - Virtuelle Bibliothek (Für das Lesen eigener E-Books oder für denn Verleih von E-Books)
+### Clients
+- [ ] **Native Android/iOS Apps**: React Native oder Flutter für mobile Geräte
+- [x] **Windows Desktop-Programm**
+- [ ] **Linux/macOS Support**: Plattformübergreifende Desktop-Version
+
+### Daten & Backup
+- [ ] **Automatische Backups**: Regelmäßige SQLite-DB Sicherungen
+- [ ] **Export/Import**: JSON/CSV Export für Bücher, Statistiken und Zitate
+- [ ] **Goodreads-Import**: Bücherlisten von Goodreads importieren
+
+### E-Book Verwaltung
+- [ ] **E-Book Reader**: EPUB/PDF direkt in der App lesen
+- [ ] **Verleihsystem**: Digitale E-Books verleihen und verwalten
+- [ ] **Virtuelle Bibliothek**: Eigene E-Book-Sammlung organisieren
+
+### Erweiterte Funktionen
+- [ ] **Buchserien-Management**: Übersichtliche Darstellung von Buchreihen
+- [ ] **Thematische Leselisten**: Eigene Listen erstellen (z.B. "Sommer 2025", "Lieblinge")
+- [ ] **Verleihfunktion**: Tracking an wen welches Buch verliehen wurde
+- [ ] **Lesezeit-Tracking**: Wie lange brauche ich für ein Buch?
+- [ ] **Notizen während des Lesens**: Zusätzliche Anmerkungen zu Kapiteln
+
+### Statistiken & Visualisierung
+- [ ] **Jahresübersicht**: Gelesene Seiten pro Monat mit Diagrammen
+- [ ] **Genre-Verteilung**: Pie Charts der am meisten gelesenen Genres
+- [ ] **Lesegeschwindigkeit**: Durchschnittliche Seiten pro Tag/Woche
+- [ ] **Zeitachse**: Chronologische Übersicht aller gelesenen Bücher
+- [ ] **Verbessertes Ziel-Tracking**: Detaillierte Fortschrittsvisualisierung
+
+### Benutzer & Sicherheit
+- [ ] **Multi-User-Support**: Mehrere Benutzer mit eigenen Bibliotheken
+- [ ] **Passwort-Hashing**: Sichere Passwort-Speicherung (aktuell Klartext)
+- [ ] **JWT-Token-Auth**: Moderne Authentifizierung statt Bearer-Token
+
+### UX & Performance
+- [ ] **Drag & Drop**: Cover-Bilder per Drag & Drop hochladen
+- [ ] **Keyboard Shortcuts**: Schnellzugriff (z.B. N für neues Buch)
+- [ ] **Bulk-Operations**: Mehrere Bücher gleichzeitig bearbeiten/löschen
+- [ ] **Lazy Loading**: Bilder erst laden wenn sichtbar
+- [ ] **API-Pagination**: Große Datensätze in Seiten aufteilen
+- [ ] **Caching**: Schnellere Ladezeiten durch Response-Caching
 ---
 
 # Discord
