@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -26,6 +27,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/huin/goupnp/dcps/internetgateway2"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -127,6 +129,13 @@ type ServerSettings struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// ExternalConfig speichert Konfiguration für externe Freigabe
+type ExternalConfig struct {
+	Enabled       bool   `json:"enabled"`
+	DuckDNSDomain string `json:"duckdns_domain"`
+	DuckDNSToken  string `json:"duckdns_token"`
+}
+
 // Global variables
 var (
 	db             *gorm.DB
@@ -135,6 +144,13 @@ var (
 	serverRunning  = false
 	httpServer     *http.Server
 	ipAddresses    []string
+
+	// External Access
+	externalEnabled   = false
+	duckDNSDomain     = ""
+	duckDNSToken      = ""
+	duckDNSUpdateStop chan bool
+	upnpActive        = false
 )
 
 // Custom Logger Interface
@@ -239,18 +255,69 @@ func GinLoggerMiddleware() gin.HandlerFunc {
 	}
 }
 
+// HTTPSRedirectMiddleware leitet HTTP→HTTPS um (nur wenn externe Freigabe aktiv)
+func HTTPSRedirectMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Nur umleiten wenn externe Freigabe aktiviert ist
+		if !externalEnabled {
+			c.Next()
+			return
+		}
+
+		// Prüfe ob Anfrage über HTTP kam (nicht HTTPS)
+		if c.Request.TLS == nil && c.GetHeader("X-Forwarded-Proto") != "https" {
+			// Baue HTTPS URL
+			host := c.Request.Host
+			if host == "" {
+				host = c.Request.Header.Get("Host")
+			}
+
+			// Verwende DuckDNS Domain wenn verfügbar
+			if duckDNSDomain != "" {
+				domain := duckDNSDomain
+				if !strings.HasSuffix(domain, ".duckdns.org") {
+					domain = domain + ".duckdns.org"
+				}
+				host = domain + ":7443"
+			}
+
+			httpsURL := "https://" + host + c.Request.RequestURI
+
+			logger.Info(fmt.Sprintf("HTTP→HTTPS Redirect: %s → %s", c.Request.URL.String(), httpsURL))
+			c.Redirect(http.StatusMovedPermanently, httpsURL)
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
 // GUI Components
 type ServerGUI struct {
-	app           fyne.App
-	window        fyne.Window
-	statusLabel   *widget.Label
-	portEntry     *widget.Entry
-	passwordEntry *widget.Entry
-	startButton   *widget.Button
-	logText       *widget.Label
-	ipContainer   *fyne.Container
-	uptimeLabel   *widget.Label
-	startTime     time.Time
+	app             fyne.App
+	window          fyne.Window
+	statusLabel     *widget.Label
+	portEntry       *widget.Entry
+	passwordEntry   *widget.Entry
+	startButton     *widget.Button
+	logText         *widget.Label
+	logList         *widget.List
+	logScroll       *container.Scroll
+	logEntries      []string
+	autoScrollLog   bool
+	autoScrollCheck *widget.Check
+	ipContainer     *fyne.Container
+	urlSelect       *widget.Select
+	uptimeLabel     *widget.Label
+	startTime       time.Time
+
+	// External Access GUI Elements
+	externalCheckbox    *widget.Check
+	duckDNSDomainEntry  *widget.Entry
+	duckDNSTokenEntry   *widget.Entry
+	externalStatusLabel *widget.Label
+	externalSaveButton  *widget.Button
 }
 
 // WebSocket structures
@@ -418,6 +485,443 @@ func handleWebSocket(c *gin.Context) {
 	go client.readPump()
 }
 
+// ============================================================================
+// UPnP Port-Forwarding Functions
+// ============================================================================
+
+// getLocalIP ermittelt die lokale IP-Adresse
+func getLocalIP() string {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return ""
+	}
+
+	var candidates []string
+
+	for _, iface := range interfaces {
+		// Nur aktive, nicht-Loopback Interfaces
+		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+
+		for _, addr := range addrs {
+			var ip net.IP
+			switch v := addr.(type) {
+			case *net.IPNet:
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
+			}
+
+			if ip == nil || ip.IsLoopback() {
+				continue
+			}
+
+			if ipv4 := ip.To4(); ipv4 != nil {
+				ipStr := ipv4.String()
+
+				// Ignoriere APIPA-Adressen (169.254.x.x)
+				if strings.HasPrefix(ipStr, "169.254.") {
+					continue
+				}
+
+				candidates = append(candidates, ipStr)
+			}
+		}
+	}
+
+	// Wenn nur eine IP gefunden wurde, diese zurückgeben
+	if len(candidates) == 1 {
+		return candidates[0]
+	}
+
+	// Bei mehreren IPs: Bevorzuge höhere dritte Oktette in 192.168.x.x
+	// (z.B. 192.168.31.x vor 192.168.1.x, da oft Router-Netze niedriger sind)
+	var best192168 string
+	var best192168Third int
+
+	for _, ip := range candidates {
+		if strings.HasPrefix(ip, "192.168.") {
+			parts := strings.Split(ip, ".")
+			if len(parts) == 4 {
+				third, _ := strconv.Atoi(parts[2])
+				// Nehme die IP mit dem höchsten dritten Oktett (wahrscheinlich Haupt-Netzwerk)
+				if third > best192168Third {
+					best192168Third = third
+					best192168 = ip
+				}
+			}
+		}
+	}
+
+	if best192168 != "" {
+		return best192168
+	}
+
+	// Fallback: Erste gefundene IP
+	if len(candidates) > 0 {
+		return candidates[0]
+	}
+
+	return ""
+}
+
+// setupUPnP aktiviert Port-Forwarding für Port 7443
+func setupUPnP(logger Logger) (externalIP string, err error) {
+	logger.Info("Suche nach UPnP-fähigem Router...")
+
+	// Router-Gateway finden
+	clients, _, err := internetgateway2.NewWANIPConnection1Clients()
+	if err != nil || len(clients) == 0 {
+		logger.Warning("Kein UPnP-Router gefunden - versuche WANIPConnection2...")
+
+		// Fallback zu WANIPConnection2
+		clients2, _, err2 := internetgateway2.NewWANIPConnection2Clients()
+		if err2 != nil || len(clients2) == 0 {
+			return "", fmt.Errorf("kein UPnP-fähiger Router gefunden")
+		}
+
+		// Verwende WANIPConnection2
+		return setupUPnPWithClient2(clients2[0], logger)
+	}
+
+	client := clients[0]
+	localIP := getLocalIP()
+
+	if localIP == "" {
+		return "", fmt.Errorf("lokale IP-Adresse konnte nicht ermittelt werden")
+	}
+
+	logger.Info(fmt.Sprintf("Lokale IP: %s", localIP))
+
+	// Port 7443 für HTTPS - mit aggressiver Bereinigung
+	logger.Info("Öffne Port 7443 für HTTPS...")
+
+	// Liste alle bestehenden Mappings und lösche Port 7443
+	logger.Info("Suche nach bestehenden Port 7443 Mappings...")
+	for i := uint16(0); i < 50; i++ {
+		// Versuche, Mapping-Info abzurufen (GenericPortMappingEntry)
+		_, intPort, protocol, _, _, _, _, _, err := client.GetGenericPortMappingEntry(i)
+		if err != nil {
+			// Keine weiteren Mappings
+			break
+		}
+
+		if intPort == 7443 && protocol == "TCP" {
+			logger.Info(fmt.Sprintf("Gefunden: Mapping #%d für Port 7443/TCP - lösche...", i))
+			client.DeletePortMapping("", uint16(7443), "TCP")
+			time.Sleep(500 * time.Millisecond)
+		}
+	}
+
+	// Zusätzlich: Direkte Löschversuche
+	logger.Info("Bereinige Port 7443 Mappings...")
+	for i := 0; i < 3; i++ {
+		client.DeletePortMapping("", uint16(7443), "TCP")
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	// Erstelle neues Mapping
+	logger.Info("Erstelle neues Port 7443 Mapping...")
+	err = client.AddPortMapping(
+		"",                    // Remote Host
+		uint16(7443),          // External Port
+		"TCP",                 // Protocol
+		uint16(7443),          // Internal Port
+		localIP,               // Internal Client
+		true,                  // Enabled
+		"Reading Diary HTTPS", // Description
+		0,                     // Lease Duration
+	)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Port 7443 Mapping fehlgeschlagen: %v", err))
+		return "", fmt.Errorf("port 7443 mapping failed: %v", err)
+	}
+
+	logger.Info("Port 7443 erfolgreich geöffnet")
+
+	// Externe IP abrufen
+	externalIP, err = client.GetExternalIPAddress()
+	if err != nil {
+		// Fallback: Externe IP wird von DuckDNS ermittelt
+		logger.Warning(fmt.Sprintf("Externe IP vom Router nicht verfügbar (Error 501): %v", err))
+		logger.Info("Externe IP wird automatisch von DuckDNS ermittelt")
+		externalIP = "auto" // Marker, dass DuckDNS die IP ermittelt
+	} else {
+		logger.Info(fmt.Sprintf("Externe IP: %s", externalIP))
+	}
+
+	upnpActive = true
+	return externalIP, nil
+}
+
+// setupUPnPWithClient2 ist ein Fallback für WANIPConnection2
+func setupUPnPWithClient2(client *internetgateway2.WANIPConnection2, logger Logger) (string, error) {
+	localIP := getLocalIP()
+
+	if localIP == "" {
+		return "", fmt.Errorf("lokale IP-Adresse konnte nicht ermittelt werden")
+	}
+
+	logger.Info(fmt.Sprintf("Lokale IP: %s", localIP))
+
+	// Port 7443 für HTTPS - erst alte Mappings löschen
+	logger.Info("Öffne Port 7443 für HTTPS...")
+
+	// Liste alle bestehenden Mappings und lösche Port 7443
+	logger.Info("Suche nach bestehenden Port 7443 Mappings...")
+	for i := uint16(0); i < 50; i++ {
+		// Versuche, Mapping-Info abzurufen
+		_, intPort, protocol, _, _, _, _, _, err := client.GetGenericPortMappingEntry(i)
+		if err != nil {
+			// Keine weiteren Mappings
+			break
+		}
+
+		if intPort == 7443 && protocol == "TCP" {
+			logger.Info(fmt.Sprintf("Gefunden: Mapping #%d für Port 7443/TCP - lösche...", i))
+			client.DeletePortMapping("", uint16(7443), "TCP")
+			time.Sleep(500 * time.Millisecond)
+		}
+	}
+
+	// Zusätzlich: Direkte Löschversuche
+	logger.Info("Bereinige Port 7443 Mappings...")
+	for i := 0; i < 3; i++ {
+		client.DeletePortMapping("", uint16(7443), "TCP")
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	// Erstelle neues Mapping
+	logger.Info("Erstelle neues Port 7443 Mapping...")
+	err := client.AddPortMapping(
+		"", uint16(7443), "TCP", uint16(7443), localIP, true, "Reading Diary HTTPS", 0,
+	)
+	if err != nil {
+		// Detaillierter Fehler
+		logger.Error(fmt.Sprintf("Port 7443 Mapping fehlgeschlagen: %v", err))
+		return "", fmt.Errorf("port 7443 mapping failed: %v", err)
+	}
+
+	// Externe IP abrufen
+	externalIP, err := client.GetExternalIPAddress()
+	if err != nil {
+		// Fallback: Externe IP wird von DuckDNS ermittelt
+		logger.Warning(fmt.Sprintf("Externe IP vom Router nicht verfügbar (Error 501): %v", err))
+		logger.Info("Externe IP wird automatisch von DuckDNS ermittelt")
+		externalIP = "auto" // Marker, dass DuckDNS die IP ermittelt
+	} else {
+		logger.Info(fmt.Sprintf("Externe IP: %s", externalIP))
+	}
+
+	upnpActive = true
+	return externalIP, nil
+}
+
+// removeUPnP entfernt Port-Forwarding
+func removeUPnP(logger Logger) error {
+	if !upnpActive {
+		return nil
+	}
+
+	logger.Info("Schließe UPnP Port-Forwarding...")
+
+	clients, _, err := internetgateway2.NewWANIPConnection1Clients()
+	if err != nil || len(clients) == 0 {
+		// Fallback zu WANIPConnection2
+		clients2, _, err2 := internetgateway2.NewWANIPConnection2Clients()
+		if err2 != nil || len(clients2) == 0 {
+			return nil // Kein Router gefunden, nichts zu tun
+		}
+
+		// Port 7443 schließen
+		clients2[0].DeletePortMapping("", uint16(7443), "TCP")
+
+		logger.Info("UPnP Port 7443 geschlossen")
+		upnpActive = false
+		return nil
+	}
+
+	client := clients[0]
+
+	// Port 7443 schließen
+	err = client.DeletePortMapping("", uint16(7443), "TCP")
+	if err != nil {
+		logger.Warning(fmt.Sprintf("Port 7443 konnte nicht geschlossen werden: %v", err))
+	}
+
+	logger.Info("UPnP Port 7443 geschlossen")
+	upnpActive = false
+
+	return nil
+}
+
+// ============================================================================
+// DuckDNS Functions
+// ============================================================================
+
+// updateDuckDNS aktualisiert die IP-Adresse bei DuckDNS
+func updateDuckDNS(domain, token, ip string, logger Logger) error {
+	// Domain ohne .duckdns.org
+	domain = strings.TrimSuffix(domain, ".duckdns.org")
+
+	// Wenn IP leer oder "auto", DuckDNS ermittelt automatisch die externe IP
+	if ip == "" || ip == "auto" {
+		ip = ""
+	}
+
+	url := fmt.Sprintf("https://www.duckdns.org/update?domains=%s&token=%s&ip=%s", domain, token, ip)
+
+	// HTTP Client mit Timeout
+	client := &http.Client{
+		Timeout: 15 * time.Second,
+	}
+
+	resp, err := client.Get(url)
+	if err != nil {
+		return fmt.Errorf("DuckDNS Update fehlgeschlagen: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("DuckDNS Antwort konnte nicht gelesen werden: %v", err)
+	}
+
+	response := strings.TrimSpace(string(body))
+
+	if response != "OK" {
+		// "KO" bedeutet ungültiger Token oder Domain
+		if response == "KO" {
+			return fmt.Errorf("DuckDNS Update fehlgeschlagen: Ungültiger Token oder Domain existiert nicht")
+		}
+		return fmt.Errorf("DuckDNS Update fehlgeschlagen: %s", response)
+	}
+
+	if ip == "" {
+		logger.Debug(fmt.Sprintf("DuckDNS Update erfolgreich: %s (IP automatisch ermittelt)", domain))
+	} else {
+		logger.Debug(fmt.Sprintf("DuckDNS Update erfolgreich: %s -> %s", domain, ip))
+	}
+	return nil
+}
+
+// startDuckDNSUpdater startet den automatischen DuckDNS Update Timer
+func startDuckDNSUpdater(domain, token, ip string, logger Logger) {
+	// Initial update
+	if err := updateDuckDNS(domain, token, ip, logger); err != nil {
+		logger.Warning(fmt.Sprintf("Initiales DuckDNS Update fehlgeschlagen: %v", err))
+	} else {
+		logger.Info("DuckDNS erfolgreich aktualisiert")
+	}
+
+	// Stop channel erstellen
+	duckDNSUpdateStop = make(chan bool)
+
+	// Update alle 5 Minuten
+	ticker := time.NewTicker(5 * time.Minute)
+
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				// IP könnte sich geändert haben, neu ermitteln
+				currentIP := ip
+
+				// Versuche externe IP zu ermitteln (falls UPnP aktiv)
+				if upnpActive {
+					clients, _, err := internetgateway2.NewWANIPConnection1Clients()
+					if err == nil && len(clients) > 0 {
+						if extIP, err := clients[0].GetExternalIPAddress(); err == nil {
+							currentIP = extIP
+						}
+					}
+				}
+
+				if err := updateDuckDNS(domain, token, currentIP, logger); err != nil {
+					logger.Warning(fmt.Sprintf("DuckDNS Update fehlgeschlagen: %v", err))
+				} else {
+					logger.Debug("DuckDNS Update erfolgreich")
+				}
+
+			case <-duckDNSUpdateStop:
+				ticker.Stop()
+				logger.Info("DuckDNS Updater gestoppt")
+				return
+			}
+		}
+	}()
+}
+
+// stopDuckDNSUpdater stoppt den DuckDNS Update Timer
+func stopDuckDNSUpdater() {
+	if duckDNSUpdateStop != nil {
+		close(duckDNSUpdateStop)
+		duckDNSUpdateStop = nil
+	}
+}
+
+// ============================================================================
+// Let's Encrypt / HTTPS Functions
+// ============================================================================
+
+// ============================================================================
+// Config Functions
+// ============================================================================
+
+// loadExternalConfig lädt die externe Freigabe Konfiguration aus der Datenbank
+func loadExternalConfig() ExternalConfig {
+	if db == nil {
+		// Datenbank noch nicht initialisiert
+		return ExternalConfig{
+			Enabled:       false,
+			DuckDNSDomain: "",
+			DuckDNSToken:  "",
+		}
+	}
+
+	enabled := getServerSetting("external_enabled", "false")
+	domain := getServerSetting("external_duckdns_domain", "")
+	token := getServerSetting("external_duckdns_token", "")
+
+	return ExternalConfig{
+		Enabled:       enabled == "true",
+		DuckDNSDomain: domain,
+		DuckDNSToken:  token,
+	}
+}
+
+// saveExternalConfig speichert die externe Freigabe Konfiguration in der Datenbank
+func saveExternalConfig(config ExternalConfig) error {
+	if db == nil {
+		return fmt.Errorf("datenbank nicht initialisiert")
+	}
+
+	enabledStr := "false"
+	if config.Enabled {
+		enabledStr = "true"
+	}
+
+	if err := setServerSetting("external_enabled", enabledStr); err != nil {
+		return err
+	}
+
+	if err := setServerSetting("external_duckdns_domain", config.DuckDNSDomain); err != nil {
+		return err
+	}
+
+	if err := setServerSetting("external_duckdns_token", config.DuckDNSToken); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func main() {
 	// Wenn Command-Line Argumente vorhanden, nur Server starten
 	if len(os.Args) > 1 {
@@ -471,14 +975,49 @@ func (g *ServerGUI) setupGUI() {
 
 	// Buttons
 	g.startButton = widget.NewButton("Server Starten", g.toggleServer)
-	openWebButton := widget.NewButton("Web-Interface öffnen", g.openWebInterface)
-	refreshIPButton := widget.NewButton("IP-Adressen aktualisieren", g.refreshIPAddresses)
 
 	// Log - ZUERST initialisieren
-	g.logText = widget.NewLabel("🔵 [INFO] Server GUI gestartet - Reading Diary v1.0 by TheMRX\n")
+	g.logText = widget.NewLabel("")
 	g.logText.Wrapping = fyne.TextWrapWord
 	g.logText.Alignment = fyne.TextAlignLeading
 	g.logText.TextStyle = fyne.TextStyle{Monospace: true}
+
+	// Log-Liste für klickbare Einträge
+	g.logEntries = []string{}
+	g.autoScrollLog = true // Standard: Auto-Scroll aktiv
+
+	g.logList = widget.NewList(
+		func() int {
+			return len(g.logEntries)
+		},
+		func() fyne.CanvasObject {
+			label := widget.NewLabel("")
+			label.Wrapping = fyne.TextWrapBreak
+			label.Truncation = fyne.TextTruncateOff
+			return label
+		},
+		func(id widget.ListItemID, obj fyne.CanvasObject) {
+			label := obj.(*widget.Label)
+			if id < len(g.logEntries) {
+				label.SetText(g.logEntries[id])
+			}
+		},
+	)
+
+	// Scroll-Container für Log
+	g.logScroll = container.NewScroll(g.logList)
+
+	// Klick auf Log-Eintrag kopiert ihn
+	g.logList.OnSelected = func(id widget.ListItemID) {
+		if id < len(g.logEntries) {
+			entry := g.logEntries[id]
+			g.window.Clipboard().SetContent(entry)
+			go func() {
+				time.Sleep(10 * time.Second)
+				g.logList.UnselectAll()
+			}()
+		}
+	}
 
 	// JETZT ERST Logger initialisieren, nachdem logText bereit ist
 	logger = NewCombinedLogger(g)
@@ -499,58 +1038,190 @@ func (g *ServerGUI) setupGUI() {
 		}
 	}
 
-	// IP-Adressen Container als einfache Labels
+	// URL Select Dropdown
+	g.urlSelect = widget.NewSelect([]string{"Server nicht gestartet"}, func(selected string) {
+		// Callback wird bei Auswahl ausgeführt (optional für später)
+	})
+	g.urlSelect.PlaceHolder = "Wähle URL zum Öffnen..."
+
+	// IP-Adressen Container (für Backup, falls gebraucht)
 	g.ipContainer = container.NewVBox()
 
-	// Layout
-	settingsForm := container.NewVBox(
-		widget.NewLabel("Server Einstellungen"),
-		widget.NewFormItem("Port:", g.portEntry).Widget,
+	// Layout - Kompakt oben, großer Log unten
+	settingsCard := widget.NewCard("Server Einstellungen", "", container.NewVBox(
+		widget.NewLabel("Port: 7443"),
 		widget.NewFormItem("Passwort:", g.passwordEntry).Widget,
 		g.startButton,
-	)
+	))
 
-	statusContainer := container.NewVBox(
-		widget.NewLabel("Server Status"),
+	statusCard := widget.NewCard("Server Status", "", container.NewVBox(
 		g.statusLabel,
 		g.uptimeLabel,
-		openWebButton,
+	))
+
+	// URLs kompakt: Dropdown links, Buttons rechts
+	urlCard := widget.NewCard("Verfügbare URLs", "", container.NewBorder(
+		nil, nil, nil,
+		container.NewVBox(
+			widget.NewButton("Öffnen", g.openSelectedURL),
+			widget.NewButton("Aktualisieren", g.refreshIPAddresses),
+		),
+		container.NewVBox(
+			widget.NewLabel("URL auswählen:"),
+			g.urlSelect,
+		),
+	))
+
+	// Oberer Bereich: 3 Cards nebeneinander (kompakt)
+	topContainer := container.NewGridWithColumns(3,
+		settingsCard,
+		statusCard,
+		urlCard,
 	)
 
-	ipContainer := container.NewVBox(
-		widget.NewLabel("Verfügbare URLs"),
-		refreshIPButton,
-		g.ipContainer,
-	)
+	// Auto-Scroll Checkbox
+	g.autoScrollCheck = widget.NewCheck("Auto-Scroll", func(checked bool) {
+		g.autoScrollLog = checked
+	})
+	g.autoScrollCheck.SetChecked(true)
 
-	topContainer := container.NewHBox(settingsForm, statusContainer, ipContainer)
-
-	logContainer := container.NewBorder(
+	logScrollContainer := container.NewBorder(
 		container.NewHBox(
-			widget.NewLabel("Server Log & Aktivitäten"),
+			widget.NewLabel("Server Log & Aktivitäten (Klick auf Zeile zum Kopieren)"),
 			widget.NewSeparator(),
-			widget.NewButton("Log löschen", func() {
-				g.logText.SetText("🔵 [INFO] Log geleert\n")
+			widget.NewButton("Gesamten Log kopieren", func() {
+				fullLog := strings.Join(g.logEntries, "\n")
+				g.window.Clipboard().SetContent(fullLog)
+				g.addLog("Gesamter Log in Zwischenablage kopiert")
 			}),
+			widget.NewButton("Log löschen", func() {
+				g.logEntries = []string{}
+				g.logList.Refresh()
+			}),
+			g.autoScrollCheck,
 		),
 		nil, nil, nil,
-		container.NewScroll(g.logText),
+		g.logScroll,
+	)
+
+	// ========================================================================
+	// Externe Freigabe Tab
+	// ========================================================================
+
+	// Lade aktuelle Konfiguration
+	extConfig := loadExternalConfig()
+
+	g.duckDNSDomainEntry = widget.NewEntry()
+	g.duckDNSDomainEntry.SetPlaceHolder("z.B. meinbuch")
+	g.duckDNSDomainEntry.SetText(extConfig.DuckDNSDomain)
+
+	g.duckDNSTokenEntry = widget.NewPasswordEntry()
+	g.duckDNSTokenEntry.SetPlaceHolder("DuckDNS Token")
+	g.duckDNSTokenEntry.SetText(extConfig.DuckDNSToken)
+
+	g.externalCheckbox = widget.NewCheck("Externe Freigabe aktivieren (HTTPS)", func(checked bool) {
+		if checked {
+			g.duckDNSDomainEntry.Enable()
+			g.duckDNSTokenEntry.Enable()
+		} else {
+			g.duckDNSDomainEntry.Disable()
+			g.duckDNSTokenEntry.Disable()
+		}
+	})
+	g.externalCheckbox.SetChecked(extConfig.Enabled)
+
+	// Initial state
+	if !extConfig.Enabled {
+		g.duckDNSDomainEntry.Disable()
+		g.duckDNSTokenEntry.Disable()
+	}
+
+	g.externalStatusLabel = widget.NewLabel("Status: Nicht aktiv")
+	if extConfig.Enabled {
+		g.externalStatusLabel.SetText("Status: Konfiguriert (Server neu starten)")
+	}
+
+	g.externalSaveButton = widget.NewButton("Konfiguration speichern", g.saveExternalConfig)
+
+	duckDNSHelpButton := widget.NewButton("DuckDNS Anleitung", func() {
+		dialog.ShowInformation("DuckDNS Setup",
+			"1. Gehe zu https://www.duckdns.org/\n"+
+				"2. Login mit Google/GitHub\n"+
+				"3. Erstelle eine Domain (z.B. 'meinbuch')\n"+
+				"4. Kopiere deinen Token\n"+
+				"5. Trage Domain + Token hier ein\n"+
+				"6. Speichern & Server neu starten\n\n",
+			g.window)
+	})
+
+	externalForm := container.NewVBox(
+		widget.NewCard("🌐 Externe Freigabe", "Server von außen per HTTPS erreichbar machen",
+			container.NewVBox(
+				g.externalCheckbox,
+				widget.NewSeparator(),
+				widget.NewLabel("DuckDNS Konfiguration:"),
+				widget.NewFormItem("Domain (ohne .duckdns.org):", g.duckDNSDomainEntry).Widget,
+				widget.NewFormItem("DuckDNS Token:", g.duckDNSTokenEntry).Widget,
+				container.NewHBox(g.externalSaveButton, duckDNSHelpButton),
+				widget.NewSeparator(),
+				g.externalStatusLabel,
+			),
+		),
+		widget.NewCard("Funktionsweise", "",
+			widget.NewLabel(
+				"Wenn aktiviert:\n"+
+					"• UPnP öffnet automatisch Port 7443 am Router\n"+
+					"• DuckDNS aktualisiert alle 5 Min. deine IP\n"+
+					"• Let's Encrypt holt automatisch HTTPS-Zertifikat (DNS-01)\n"+
+					"• Verwendet DuckDNS TXT-Records für Verifizierung\n"+
+					"• Server ist extern erreichbar unter:\n"+
+					"  https://deinedomain.duckdns.org:7443\n\n"+
+					"• WICHTIG - NAT Loopback Problem:\n"+
+					"• DuckDNS URL funktioniert NUR von extern!\n"+
+					"• Im lokalen Netzwerk: Nutze lokale IP (https://192.168.x.x:7443)\n"+
+					"• Router unterstützt meist kein NAT Hairpinning\n\n"+
+					"Wenn deaktiviert:\n"+
+					"• Server läuft nur lokal auf Port 7443\n"+
+					"• Keine Router-Konfiguration nötig",
+			),
+		),
+		widget.NewCard("⚠️ Voraussetzungen", "",
+			widget.NewLabel(
+				"• Router muss UPnP unterstützen (nur für Port 7443)\n"+
+					"• Kostenlose DuckDNS Domain + Token benötigt\n"+
+					"• Server muss nach Änderungen neu gestartet werden\n"+
+					"• Zertifikats-Erstellung dauert 1-2 Minuten (DNS-01)",
+			),
+		),
+	)
+
+	// ========================================================================
+	// Tabs erstellen
+	// ========================================================================
+
+	// Server Tab mit optimiertem Layout: Einstellungen oben kompakt, Log nimmt mehr Platz
+	serverTab := container.NewBorder(
+		widget.NewCard("", "", topContainer),
+		nil, nil, nil,
+		widget.NewCard("", "", logScrollContainer),
+	)
+
+	tabs := container.NewAppTabs(
+		container.NewTabItem("Server", serverTab),
+		container.NewTabItem("Externe Freigabe", container.NewScroll(externalForm)),
 	)
 
 	creditsLabel := widget.NewRichTextFromMarkdown(fmt.Sprintf("**%s v%s**\n\nCoded by %s", AppName, AppVersion, AppAuthor))
 	creditsLabel.Wrapping = fyne.TextWrapWord
 
 	mainContainer := container.NewBorder(
-		container.NewVBox(
-			widget.NewCard("", "", topContainer),
-			widget.NewSeparator(),
-		),
+		nil,
 		container.NewVBox(
 			widget.NewSeparator(),
 			creditsLabel,
 		),
 		nil, nil,
-		widget.NewCard("", "", logContainer),
+		tabs,
 	)
 
 	g.window.SetContent(mainContainer)
@@ -586,6 +1257,65 @@ func (g *ServerGUI) toggleServer() {
 	}
 }
 
+func (g *ServerGUI) saveExternalConfig() {
+	logger.Info("Speichere externe Freigabe Konfiguration...")
+
+	config := ExternalConfig{
+		Enabled:       g.externalCheckbox.Checked,
+		DuckDNSDomain: strings.TrimSpace(g.duckDNSDomainEntry.Text),
+		DuckDNSToken:  strings.TrimSpace(g.duckDNSTokenEntry.Text),
+	}
+
+	// Validierung
+	if config.Enabled {
+		if config.DuckDNSDomain == "" {
+			logger.Error("DuckDNS Domain ist leer!")
+			dialog.ShowError(fmt.Errorf("bitte DuckDNS Domain eingeben"), g.window)
+			return
+		}
+		if config.DuckDNSToken == "" {
+			logger.Error("DuckDNS Token ist leer!")
+			dialog.ShowError(fmt.Errorf("bitte DuckDNS Token eingeben"), g.window)
+			return
+		}
+
+		// Entferne .duckdns.org falls eingegeben
+		config.DuckDNSDomain = strings.TrimSuffix(config.DuckDNSDomain, ".duckdns.org")
+		g.duckDNSDomainEntry.SetText(config.DuckDNSDomain)
+	}
+
+	// Speichern
+	if err := saveExternalConfig(config); err != nil {
+		logger.Error(fmt.Sprintf("Fehler beim Speichern: %v", err))
+		dialog.ShowError(err, g.window)
+		return
+	}
+
+	logger.Info("✅ Externe Freigabe Konfiguration gespeichert")
+
+	// Status aktualisieren
+	if config.Enabled {
+		fullDomain := config.DuckDNSDomain + ".duckdns.org"
+		g.externalStatusLabel.SetText(fmt.Sprintf("Status: Konfiguriert für https://%s\n⚠️ Server neu starten um zu aktivieren!", fullDomain))
+	} else {
+		g.externalStatusLabel.SetText("Status: Deaktiviert")
+	}
+
+	// Info Dialog
+	if serverRunning {
+		dialog.ShowInformation("Neustart erforderlich",
+			"Die Konfiguration wurde gespeichert.\n\n"+
+				"Bitte stoppen Sie den Server und starten Sie ihn neu,\n"+
+				"damit die Änderungen wirksam werden.",
+			g.window)
+	} else {
+		dialog.ShowInformation("Gespeichert",
+			"Die Konfiguration wurde erfolgreich gespeichert.\n\n"+
+				"Beim nächsten Server-Start wird die neue Konfiguration verwendet.",
+			g.window)
+	}
+}
+
 func (g *ServerGUI) startServer() {
 	logger.Info("Server-Start angefordert...")
 
@@ -596,13 +1326,18 @@ func (g *ServerGUI) startServer() {
 		return
 	}
 
-	port, _ := strconv.Atoi(g.portEntry.Text)
 	password := g.passwordEntry.Text
 
-	serverPort = port
+	serverPort = 7443
 	serverPassword = password
 
-	logger.Info(fmt.Sprintf("Server-Konfiguration: Port=%d, Passwort-Länge=%d Zeichen", port, len(password)))
+	logger.Info(fmt.Sprintf("Server-Konfiguration: Port=7443, Passwort-Länge=%d Zeichen", len(password)))
+
+	// Lade externe Freigabe Konfiguration
+	extConfig := loadExternalConfig()
+	externalEnabled = extConfig.Enabled
+	duckDNSDomain = extConfig.DuckDNSDomain
+	duckDNSToken = extConfig.DuckDNSToken
 
 	// Datenbank initialisieren
 	logger.Info("Initialisiere Datenbank...")
@@ -637,6 +1372,12 @@ func (g *ServerGUI) startServer() {
 	router.Use(GinLoggerMiddleware())
 	logger.Info("Custom Logger Middleware aktiviert")
 
+	// HTTP→HTTPS Redirect Middleware (nur wenn externe Freigabe aktiv)
+	router.Use(HTTPSRedirectMiddleware())
+	if externalEnabled {
+		logger.Info("HTTP→HTTPS Redirect Middleware aktiviert")
+	}
+
 	// CORS
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
@@ -650,72 +1391,221 @@ func (g *ServerGUI) startServer() {
 	setupRoutes(router)
 	logger.Info("API-Routen registriert")
 
-	// HTTP-Server konfigurieren
-	httpServer = &http.Server{
-		Addr:    fmt.Sprintf(":%d", serverPort),
-		Handler: router,
-	}
+	// Prüfe ob externe Freigabe aktiviert ist
+	if externalEnabled && duckDNSDomain != "" && duckDNSToken != "" {
+		logger.Info("🌐 Externe Freigabe aktiviert - starte HTTPS-Modus...")
 
-	go func() {
-		// Nur HTTP-Server starten
-		logger.Info(fmt.Sprintf("Starte HTTP-Server auf Port %d...", serverPort))
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Error(fmt.Sprintf("HTTP-Server Fehler: %v", err))
+		// Erst DuckDNS IP aktualisieren (damit Router dann richtigen DNS hat)
+		logger.Info("Aktualisiere DuckDNS IP...")
+		if err := updateDuckDNS(duckDNSDomain, duckDNSToken, "", logger); err != nil {
+			logger.Warning(fmt.Sprintf("DuckDNS Update fehlgeschlagen: %v", err))
 		}
-	}()
 
-	serverRunning = true
-	g.startTime = time.Now()
+		// UPnP Port-Forwarding aktivieren
+		externalIP, err := setupUPnP(logger)
+		if err != nil {
+			logger.Error(fmt.Sprintf("UPnP-Fehler: %v", err))
+			g.addLog(fmt.Sprintf("UPnP-Fehler: %v", err))
+			dialog.ShowError(fmt.Errorf("upnp fehler: %v", err), g.window)
+			return
+		}
 
-	// Status-Text für HTTP-Server
-	statusText := fmt.Sprintf("Server läuft auf Port %d (HTTP)", serverPort)
-	webInterface := fmt.Sprintf("http://localhost:%d", serverPort)
+		if externalIP == "auto" {
+			logger.Info("✅ UPnP Port 7443 erfolgreich geöffnet - DuckDNS ermittelt externe IP")
+		} else {
+			logger.Info(fmt.Sprintf("✅ UPnP erfolgreich - Externe IP: %s", externalIP))
+		}
 
-	g.statusLabel.SetText(statusText)
-	g.startButton.SetText("Server Stoppen")
-	g.portEntry.Disable()
-	g.passwordEntry.Disable()
+		// DuckDNS Updater starten (regelmäßige Updates alle 5 Min)
+		startDuckDNSUpdater(duckDNSDomain, duckDNSToken, externalIP, logger)
 
-	g.addLog("Server erfolgreich gestartet!")
-	g.addLog(fmt.Sprintf("Passwort: %s", serverPassword))
-	g.addLog(fmt.Sprintf("Web-Interface: %s", webInterface))
+		// Server-Start komplett asynchron (damit GUI nicht blockiert)
+		serverRunning = true
+		g.statusLabel.SetText("Server startet... (Zertifikat wird geladen)")
+		g.startButton.SetText("Server Stoppen")
+		g.passwordEntry.Disable()
 
-	// Lokale IP-Adressen für mobile Verbindungen anzeigen
-	g.addLog("Lokale IP-Adressen für mobile Geräte:")
-	g.addLog(fmt.Sprintf("  - Desktop: %s", webInterface))
+		logger.Info("Lade oder erstelle Let's Encrypt Zertifikat...")
+		g.addLog("🔐 Prüfe Let's Encrypt Zertifikat...")
+		g.addLog("⏳ Dies kann 1-2 Minuten dauern...")
 
-	// Sammle lokale IP-Adressen
-	interfaces, err := net.Interfaces()
-	if err == nil {
-		for _, iface := range interfaces {
-			if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
-				continue
-			}
-
-			addrs, err := iface.Addrs()
+		go func() {
+			// Versuche bestehendes Zertifikat zu laden
+			cert, err := loadExistingCertificate(duckDNSDomain, logger)
 			if err != nil {
-				continue
+				// Kein Zertifikat vorhanden, erstelle neues via DNS-01
+				logger.Info("Kein bestehendes Zertifikat gefunden, erstelle neues...")
+				g.addLog("⏳ Erstelle neues Zertifikat (DNS-01 Challenge)...")
+				g.addLog("⏳ Verwendet DuckDNS - funktioniert auch bei blockierten Ports 80/443!")
+				cert, err = obtainCertificateViaDNS01(duckDNSDomain, duckDNSToken, logger)
+				if err != nil {
+					logger.Error(fmt.Sprintf("Zertifikat-Fehler: %v", err))
+					g.addLog("❌ FEHLER: Zertifikat konnte nicht erstellt werden")
+					g.addLog("")
+
+					// Analysiere den Fehler
+					errMsg := err.Error()
+					if strings.Contains(errMsg, "i/o timeout") || strings.Contains(errMsg, "time limit exceeded") {
+						g.addLog("🔥 PROBLEM: DNS-Timeout!")
+						g.addLog("")
+						g.addLog("📝 MÖGLICHE URSACHEN:")
+						g.addLog("  • Router/Firewall blockiert ausgehende DNS-Anfragen (Port 53 UDP)")
+						g.addLog("  • DuckDNS Nameserver nicht erreichbar")
+						g.addLog("  • Internet-Verbindung instabil")
+						g.addLog("")
+						g.addLog("🔧 LÖSUNGEN:")
+						g.addLog("  1. Router-Firewall: Port 53 UDP ausgehend freigeben")
+						g.addLog("  2. Windows Firewall: Port 53 UDP ausgehend erlauben")
+						g.addLog("  3. DNS in Windows auf 8.8.8.8 / 1.1.1.1 ändern")
+						g.addLog("  4. VPN/Proxy temporär deaktivieren")
+						g.addLog("  5. Warten und neu versuchen (DNS-Server könnte überlastet sein)")
+					} else if strings.Contains(errMsg, "KO") || strings.Contains(errMsg, "Ungültiger Token") {
+						g.addLog("🔥 PROBLEM: DuckDNS Authentifizierung fehlgeschlagen!")
+						g.addLog("")
+						g.addLog("📝 LÖSUNGEN:")
+						g.addLog("  1. DuckDNS Token auf duckdns.org kopieren")
+						g.addLog("  2. Domain existiert und ist aktiv prüfen")
+						g.addLog("  3. Token im Tab 'Externe Freigabe' neu eingeben")
+					} else {
+						g.addLog("🔥 MÖGLICHE URSACHEN:")
+						g.addLog("  • DuckDNS Token ist ungültig")
+						g.addLog("  • Domain existiert nicht bei DuckDNS")
+						g.addLog("  • DNS-Propagierung dauert zu lange")
+						g.addLog("  • Netzwerk-Problem")
+						g.addLog("")
+						g.addLog("📝 LÖSUNG:")
+						g.addLog("  1. DuckDNS Token überprüfen")
+						g.addLog("  2. Domain bei duckdns.org verifizieren")
+						g.addLog("  3. Router/Firewall DNS-Traffic prüfen")
+						g.addLog("  4. 5 Minuten warten und neu versuchen")
+					}
+
+					serverRunning = false
+					g.statusLabel.SetText("Server gestoppt (Zertifikat-Fehler)")
+					g.startButton.SetText("Server Starten")
+					g.passwordEntry.Enable()
+					return
+				}
 			}
 
-			for _, addr := range addrs {
-				var ip net.IP
-				switch v := addr.(type) {
-				case *net.IPNet:
-					ip = v.IP
-				case *net.IPAddr:
-					ip = v.IP
+			logger.Info("✓ Zertifikat bereit")
+			g.addLog("✅ Zertifikat erfolgreich geladen")
+
+			// HTTPS-Server mit TLS auf Port 7443
+			httpServer = &http.Server{
+				Addr:    ":7443",
+				Handler: router,
+				TLSConfig: &tls.Config{
+					Certificates: []tls.Certificate{*cert},
+				},
+			}
+
+			logger.Info("Starte HTTPS-Server auf Port 7443...")
+
+			// Server-Status aktualisieren
+			domain := duckDNSDomain
+			if !strings.HasSuffix(domain, ".duckdns.org") {
+				domain = domain + ".duckdns.org"
+			}
+			statusText := "Server läuft (HTTPS - Extern)"
+			webInterface := "https://" + domain + ":7443"
+
+			// Lokale IP für NAT Loopback Umgehung
+			localIP := getLocalIP()
+			localHTTPSInterface := fmt.Sprintf("https://%s:7443", localIP)
+
+			g.statusLabel.SetText(statusText)
+			g.addLog("✅ Server erfolgreich gestartet (HTTPS-Modus)!")
+			g.addLog(fmt.Sprintf("🔑 Passwort: %s", serverPassword))
+			g.addLog("")
+			g.addLog("📡 URLs:")
+			g.addLog(fmt.Sprintf("  🌐 Extern (Internet): %s", webInterface))
+			g.addLog(fmt.Sprintf("  🏠 Lokal (Netzwerk): %s", localHTTPSInterface))
+			g.addLog("  💻 Localhost: https://localhost:7443")
+			g.addLog("")
+			g.addLog("⚠️ WICHTIG für lokale Geräte:")
+			g.addLog(fmt.Sprintf("   Nutze %s (nicht DuckDNS URL!)", localHTTPSInterface))
+			g.addLog("   Router unterstützt kein NAT Loopback")
+			g.addLog("   DuckDNS URL funktioniert nur von extern")
+
+			logger.Info("🚀 Server erfolgreich gestartet (HTTPS)!")
+			logger.Info(fmt.Sprintf("🌐 Extern verfügbar: %s", webInterface))
+			logger.Info(fmt.Sprintf("🏠 Lokal verfügbar: %s", localHTTPSInterface))
+
+			// HTTPS Server starten
+			if err := httpServer.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+				logger.Error(fmt.Sprintf("HTTPS-Server Fehler: %v", err))
+			}
+		}()
+		g.startTime = time.Now()
+
+	} else {
+		// Normaler HTTP-Modus (lokal) - auch auf Port 7443
+		logger.Info("🏠 Lokaler Modus - starte HTTP-Server...")
+
+		httpServer = &http.Server{
+			Addr:    ":7443",
+			Handler: router,
+		}
+
+		go func() {
+			logger.Info("Starte HTTP-Server auf Port 7443...")
+			if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				logger.Error(fmt.Sprintf("HTTP-Server Fehler: %v", err))
+			}
+		}()
+
+		serverRunning = true
+		g.startTime = time.Now()
+
+		statusText := "Server läuft auf Port 7443 (HTTP - Lokal)"
+		webInterface := "http://localhost:7443"
+
+		g.statusLabel.SetText(statusText)
+		g.startButton.SetText("Server Stoppen")
+		g.passwordEntry.Disable()
+
+		g.addLog("Server erfolgreich gestartet!")
+		g.addLog(fmt.Sprintf("Passwort: %s", serverPassword))
+		g.addLog(fmt.Sprintf("Web-Interface: %s", webInterface))
+
+		// Lokale IP-Adressen für mobile Verbindungen anzeigen
+		g.addLog("Lokale IP-Adressen für mobile Geräte:")
+		g.addLog(fmt.Sprintf("  - Desktop: %s", webInterface))
+
+		// Sammle lokale IP-Adressen
+		interfaces, err := net.Interfaces()
+		if err == nil {
+			for _, iface := range interfaces {
+				if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+					continue
 				}
 
-				if ip != nil && ip.To4() != nil {
-					g.addLog(fmt.Sprintf("  - Mobile: http://%s:%d", ip.String(), serverPort))
+				addrs, err := iface.Addrs()
+				if err != nil {
+					continue
+				}
+
+				for _, addr := range addrs {
+					var ip net.IP
+					switch v := addr.(type) {
+					case *net.IPNet:
+						ip = v.IP
+					case *net.IPAddr:
+						ip = v.IP
+					}
+
+					if ip != nil && ip.To4() != nil {
+						g.addLog(fmt.Sprintf("  - Mobile: http://%s:7443", ip.String()))
+					}
 				}
 			}
 		}
-	}
 
-	logger.Info("🚀 Server erfolgreich gestartet!")
-	logger.Info(fmt.Sprintf("🔑 Login-Passwort: %s", serverPassword))
-	logger.Info(fmt.Sprintf("🌐 Web-Interface verfügbar: http://localhost:%d", serverPort))
+		logger.Info("🚀 Server erfolgreich gestartet!")
+		logger.Info(fmt.Sprintf("🔑 Login-Passwort: %s", serverPassword))
+		logger.Info("🌐 Web-Interface verfügbar: http://localhost:7443")
+	}
 
 	g.refreshIPAddresses()
 	logger.Info("IP-Adressen aktualisiert - Server bereit für Verbindungen")
@@ -724,23 +1614,40 @@ func (g *ServerGUI) startServer() {
 func (g *ServerGUI) stopServer() {
 	logger.Info("Server-Stopp angefordert...")
 
+	// DuckDNS Updater stoppen
+	if externalEnabled {
+		logger.Info("Stoppe DuckDNS Updater...")
+		stopDuckDNSUpdater()
+	}
+
+	// Haupt-HTTP/HTTPS-Server stoppen
 	if httpServer != nil {
-		logger.Info("Beende HTTP-Server...")
+		logger.Info("Beende HTTP/HTTPS-Server...")
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
 		if err := httpServer.Shutdown(ctx); err != nil {
-			logger.Error(fmt.Sprintf("Fehler beim Stoppen des HTTP-Servers: %v", err))
+			logger.Error(fmt.Sprintf("Fehler beim Stoppen des Servers: %v", err))
 			g.addLog(fmt.Sprintf("Fehler beim Stoppen: %v", err))
 		} else {
-			logger.Info("HTTP-Server erfolgreich gestoppt")
+			logger.Info("Server erfolgreich gestoppt")
+		}
+		httpServer = nil
+	}
+
+	// UPnP Port-Forwarding entfernen
+	if externalEnabled && upnpActive {
+		logger.Info("Entferne UPnP Port-Forwarding...")
+		if err := removeUPnP(logger); err != nil {
+			logger.Warning(fmt.Sprintf("UPnP Cleanup Fehler: %v", err))
 		}
 	}
 
 	serverRunning = false
+	externalEnabled = false
+
 	g.statusLabel.SetText("Server gestoppt")
 	g.startButton.SetText("Server Starten")
-	g.portEntry.Enable()
 	g.passwordEntry.Enable()
 	g.uptimeLabel.SetText("Laufzeit: 00:00:00")
 
@@ -755,7 +1662,7 @@ func (g *ServerGUI) openWebInterface() {
 		return
 	}
 
-	url := fmt.Sprintf("http://localhost:%d", serverPort)
+	url := "http://localhost:7443"
 	logger.Info(fmt.Sprintf("Öffne Web-Interface: %s", url))
 
 	var cmd *exec.Cmd
@@ -778,10 +1685,74 @@ func (g *ServerGUI) openWebInterface() {
 	}
 }
 
+func (g *ServerGUI) openSelectedURL() {
+	if !serverRunning {
+		logger.Warning("Versuch Web-Interface zu öffnen, aber Server läuft nicht")
+		dialog.ShowInformation("Fehler", "Server muss zuerst gestartet werden!", g.window)
+		return
+	}
+
+	selectedURL := g.urlSelect.Selected
+	if selectedURL == "" || selectedURL == "Server nicht gestartet" {
+		dialog.ShowInformation("Keine URL", "Bitte wähle eine URL aus der Liste!", g.window)
+		return
+	}
+
+	// Extrahiere URL aus dem formatierten String
+	// Format: "🌐 EXTERN (außerhalb): https://..." oder "🏠 LOKAL (IP): https://..."
+	url := selectedURL
+
+	// Entferne Prefixes
+	url = strings.TrimPrefix(url, "🌐 EXTERN (außerhalb): ")
+	url = strings.TrimPrefix(url, "💻 LOCALHOST: ")
+
+	// Extrahiere URL nach letztem ": " (für lokale IPs)
+	if strings.Contains(url, "): ") {
+		parts := strings.Split(url, "): ")
+		if len(parts) >= 2 {
+			url = parts[len(parts)-1]
+		}
+	}
+
+	logger.Info(fmt.Sprintf("Öffne ausgewählte URL: %s", url))
+
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	case "darwin":
+		cmd = exec.Command("open", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
+	}
+
+	if err := cmd.Start(); err != nil {
+		logger.Error(fmt.Sprintf("Fehler beim Öffnen des Browsers: %v", err))
+		g.addLog(fmt.Sprintf("Fehler beim Öffnen des Browsers: %v", err))
+	} else {
+		logger.Info("🌐 URL erfolgreich im Browser geöffnet")
+		g.addLog(fmt.Sprintf("URL geöffnet: %s", url))
+	}
+}
+
 func (g *ServerGUI) refreshIPAddresses() {
 	// Entferne übermäßiges Debug-Logging
 	ipAddresses = []string{}
-	ipAddresses = append(ipAddresses, fmt.Sprintf("http://localhost:%d", serverPort))
+
+	// Prüfe ob externe Freigabe aktiv ist
+	if externalEnabled && duckDNSDomain != "" {
+		// Externe HTTPS URL als erstes anzeigen (nur von außerhalb erreichbar!)
+		externalURL := fmt.Sprintf("https://%s.duckdns.org:7443", strings.TrimSuffix(duckDNSDomain, ".duckdns.org"))
+		ipAddresses = append(ipAddresses, fmt.Sprintf("🌐 EXTERN (außerhalb): %s", externalURL))
+	}
+
+	// Lokale URLs - HTTPS wenn extern aktiv, sonst HTTP
+	if externalEnabled {
+		// HTTPS localhost (selbstsigniertes Zertifikat-Warnung!)
+		ipAddresses = append(ipAddresses, "💻 LOCALHOST: https://localhost:7443")
+	} else {
+		ipAddresses = append(ipAddresses, "http://localhost:7443")
+	}
 
 	interfaces, err := net.Interfaces()
 	if err != nil {
@@ -815,51 +1786,80 @@ func (g *ServerGUI) refreshIPAddresses() {
 			}
 
 			if ip.To4() != nil {
-				url := fmt.Sprintf("http://%s:%d", ip.String(), serverPort)
+				// HTTPS wenn extern aktiv (NAT Loopback Umgehung), sonst HTTP
+				protocol := "http"
+				emoji := "🏠"
+				if externalEnabled {
+					protocol = "https"
+					emoji = "🏠"
+				}
+				url := fmt.Sprintf("%s LOKAL (%s): %s://%s:7443", emoji, ip.String(), protocol, ip.String())
 				ipAddresses = append(ipAddresses, url)
-				// Entferne übermäßiges Debug-Logging
-				// logger.Debug(fmt.Sprintf("Gefundene IP-Adresse: %s", url))
 				interfaceCount++
 			}
 		}
 	}
 
-	// IP-Container leeren und neu füllen
-	g.ipContainer.Objects = nil
+	// URL-Select Dropdown aktualisieren
+	if len(ipAddresses) > 0 {
+		// Merke aktuelle Auswahl
+		currentSelection := g.urlSelect.Selected
 
-	// Alle IP-Adressen als kompakte Labels hinzufügen
-	for _, ip := range ipAddresses {
-		// Mache die IPs kopierbar durch Klick
-		ipLabel := widget.NewLabel(ip)
-		ipLabel.Wrapping = fyne.TextWrapWord
+		g.urlSelect.Options = ipAddresses
 
-		// Erstelle einen Button für jede IP-Adresse
-		ipButton := widget.NewButton(ip, func(url string) func() {
-			return func() {
-				// Kopiere URL in die Zwischenablage
-				g.window.Clipboard().SetContent(url)
-				g.addLog(fmt.Sprintf("URL kopiert: %s", url))
+		// Versuche die aktuelle Auswahl beizubehalten
+		selectionFound := false
+		for _, url := range ipAddresses {
+			if url == currentSelection {
+				g.urlSelect.SetSelected(currentSelection)
+				selectionFound = true
+				break
 			}
-		}(ip))
+		}
 
-		ipButton.Importance = widget.LowImportance
-		g.ipContainer.Add(ipButton)
+		// Falls alte Auswahl nicht mehr verfügbar: Wähle erste URL (extern oder localhost)
+		if !selectionFound || currentSelection == "" || currentSelection == "Server nicht gestartet" {
+			g.urlSelect.SetSelected(ipAddresses[0])
+		}
+
+		g.addLog("IP-Adressen aktualisiert")
+		logger.Info(fmt.Sprintf("IP-Adressen aktualisiert - %d URLs verfügbar", len(ipAddresses)))
+	} else {
+		g.urlSelect.Options = []string{"Keine URLs verfügbar"}
+		g.urlSelect.SetSelected("Keine URLs verfügbar")
+		g.addLog("Keine IP-Adressen gefunden")
+		logger.Warning("Keine verfügbaren URLs gefunden")
 	}
 
-	g.ipContainer.Refresh()
-	g.addLog("IP-Adressen aktualisiert")
-	logger.Info(fmt.Sprintf("IP-Adressen aktualisiert - %d Netzwerk-Interfaces gefunden", interfaceCount))
+	g.urlSelect.Refresh()
 }
 
 func (g *ServerGUI) addLog(message string) {
 	timestamp := time.Now().Format("15:04:05")
-	logEntry := fmt.Sprintf("[%s] %s\n", timestamp, message)
-	g.logText.SetText(g.logText.Text + logEntry)
+	logEntry := fmt.Sprintf("[%s] %s", timestamp, message)
+
+	g.logEntries = append(g.logEntries, logEntry)
+
+	// Begrenze die Log-Größe (letzte 1000 Zeilen behalten)
+	if len(g.logEntries) > 1000 {
+		g.logEntries = g.logEntries[len(g.logEntries)-1000:]
+	}
+
+	g.logList.Refresh()
+
+	// Auto-Scroll nach unten - scrolle zum letzten Element
+	if g.autoScrollLog && len(g.logEntries) > 0 {
+		lastIndex := len(g.logEntries) - 1
+		go func() {
+			time.Sleep(10 * time.Millisecond)
+			g.logList.ScrollTo(lastIndex)
+		}()
+	}
 }
 
 func (g *ServerGUI) addLogWithLevel(level string, message string) {
 	// Sicherheitscheck
-	if g == nil || g.logText == nil {
+	if g == nil || g.logList == nil {
 		// Fallback zu Konsole wenn GUI nicht bereit ist
 		timestamp := time.Now().Format("15:04:05")
 		fmt.Printf("[%s] [%s] %s\n", timestamp, level, message)
@@ -881,18 +1881,25 @@ func (g *ServerGUI) addLogWithLevel(level string, message string) {
 		levelColor = "⚪"
 	}
 
-	logEntry := fmt.Sprintf("[%s] %s [%s] %s\n", timestamp, levelColor, level, message)
-	currentText := g.logText.Text
-	newText := currentText + logEntry
+	logEntry := fmt.Sprintf("[%s] %s [%s] %s", timestamp, levelColor, level, message)
+
+	g.logEntries = append(g.logEntries, logEntry)
 
 	// Begrenze die Log-Größe (letzte 1000 Zeilen behalten)
-	lines := strings.Split(newText, "\n")
-	if len(lines) > 1000 {
-		lines = lines[len(lines)-1000:]
-		newText = strings.Join(lines, "\n")
+	if len(g.logEntries) > 1000 {
+		g.logEntries = g.logEntries[len(g.logEntries)-1000:]
 	}
 
-	g.logText.SetText(newText)
+	g.logList.Refresh()
+
+	// Auto-Scroll nach unten - scrolle zum letzten Element
+	if g.autoScrollLog && len(g.logEntries) > 0 {
+		lastIndex := len(g.logEntries) - 1
+		go func() {
+			time.Sleep(10 * time.Millisecond)
+			g.logList.ScrollTo(lastIndex)
+		}()
+	}
 }
 
 func (g *ServerGUI) updateUptime() {
@@ -1323,6 +2330,63 @@ func downloadCoverFromURL(c *gin.Context) {
 	})
 }
 
+// ============================================================================
+// External Access Configuration API
+// ============================================================================
+
+// getExternalConfig gibt die aktuelle externe Konfiguration zurück
+func getExternalConfig(c *gin.Context) {
+	config := loadExternalConfig()
+
+	// Gebe aktuellen Status mit zurück
+	c.JSON(http.StatusOK, gin.H{
+		"enabled":        config.Enabled,
+		"duckdns_domain": config.DuckDNSDomain,
+		"duckdns_token":  config.DuckDNSToken,
+		"active":         externalEnabled && serverRunning,
+		"upnp_active":    upnpActive,
+	})
+}
+
+// updateExternalConfig aktualisiert die externe Konfiguration
+func updateExternalConfig(c *gin.Context) {
+	var config ExternalConfig
+
+	if err := c.ShouldBindJSON(&config); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Ungültige Konfiguration"})
+		return
+	}
+
+	// Validierung
+	if config.Enabled {
+		if config.DuckDNSDomain == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "DuckDNS Domain ist erforderlich"})
+			return
+		}
+		if config.DuckDNSToken == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "DuckDNS Token ist erforderlich"})
+			return
+		}
+	}
+
+	// Speichern
+	if err := saveExternalConfig(config); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Speichern: " + err.Error()})
+		return
+	}
+
+	// Info: Server muss neu gestartet werden um Änderungen zu übernehmen
+	needsRestart := serverRunning && (config.Enabled != externalEnabled ||
+		config.DuckDNSDomain != duckDNSDomain ||
+		config.DuckDNSToken != duckDNSToken)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":       true,
+		"needs_restart": needsRestart,
+		"message":       "Konfiguration gespeichert",
+	})
+}
+
 func setupRoutes(router *gin.Engine) {
 	// Static files from embedded filesystem
 	router.GET("/static/*filepath", func(c *gin.Context) {
@@ -1449,6 +2513,10 @@ func setupRoutes(router *gin.Engine) {
 
 			protected.GET("/isbn/:isbn", searchISBN)
 			protected.POST("/download-cover", downloadCoverFromURL)
+
+			// External Access Configuration
+			protected.GET("/external-config", getExternalConfig)
+			protected.POST("/external-config", updateExternalConfig)
 		}
 	}
 

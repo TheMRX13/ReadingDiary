@@ -26,7 +26,7 @@ if errorlevel 1 (
 
 echo [3/3] Kompiliere Server mit GUI (ohne CMD-Fenster)...
 if not exist "bin" mkdir bin
-go build -ldflags="-H windowsgui" -o bin\reading-diary-server.exe main.go
+go build -ldflags="-H windowsgui" -o bin\reading-diary-server.exe
 if errorlevel 1 (
     echo FEHLER: Kompilierung fehlgeschlagen!
     pause
