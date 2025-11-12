@@ -32,7 +32,7 @@ import (
 
 // App Konstanten
 const (
-	AppVersion = "1.0.3"
+	AppVersion = "1.0.4"
 	AppName    = "Reading Diary"
 	AppAuthor  = "TheMRX - Pascal Keller"
 )
@@ -1633,7 +1633,7 @@ func createBook(c *gin.Context) {
 	}
 
 	logger.Info(fmt.Sprintf("createBook: Neues Buch erstellt - ID: %d, Titel: %s", book.ID, book.Title))
-	
+
 	// Broadcast WebSocket event
 	broadcastEvent("book_created", book)
 	c.JSON(201, book)
@@ -1795,10 +1795,10 @@ func updateBook(c *gin.Context) {
 	}
 
 	logger.Info(fmt.Sprintf("updateBook: Buch erfolgreich aktualisiert - ID: %d, Titel: %s", updatedBook.ID, updatedBook.Title))
-	
+
 	// Broadcast WebSocket event
 	broadcastEvent("book_updated", updatedBook)
-	
+
 	c.JSON(200, updatedBook)
 }
 
@@ -1909,10 +1909,10 @@ func uploadBookCover(c *gin.Context) {
 	}
 
 	logger.Info(fmt.Sprintf("Cover für Buch ID %s erfolgreich hochgeladen: %s", id, filename))
-	
+
 	// Broadcast WebSocket event
 	broadcastEvent("book_updated", book)
-	
+
 	c.JSON(200, gin.H{
 		"message":     "Cover erfolgreich hochgeladen",
 		"cover_image": filename,
@@ -1993,10 +1993,10 @@ func uploadWishlistCover(c *gin.Context) {
 	}
 
 	logger.Info(fmt.Sprintf("Cover für Wunschliste-Item ID %s erfolgreich hochgeladen: %s", id, filename))
-	
+
 	// Broadcast WebSocket event
 	broadcastEvent("wishlist_updated", wishlistItem)
-	
+
 	c.JSON(200, gin.H{
 		"message":     "Cover erfolgreich hochgeladen",
 		"cover_image": filename,
@@ -2134,7 +2134,7 @@ func buyWishlistItem(c *gin.Context) {
 
 	// Lösche Wunschlisteneintrag
 	db.Delete(&wishlistItem)
-	
+
 	// Broadcast wishlist deleted event
 	broadcastEvent("wishlist_deleted", gin.H{"id": wishlistItem.ID})
 
@@ -2627,10 +2627,10 @@ func updateBookStatus(c *gin.Context) {
 	}
 
 	logger.Info(fmt.Sprintf("updateBookStatus: Status von Buch %d auf '%s' geändert", book.ID, request.Status))
-	
+
 	// Broadcast WebSocket event
 	broadcastEvent("book_updated", book)
-	
+
 	c.JSON(200, gin.H{"message": "Status erfolgreich geändert", "book": book})
 }
 
