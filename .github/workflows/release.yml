@@ -98,12 +98,17 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
       
+      - name: Move all artifacts to root
+        run: |
+          mv windows-build/reading-diary-server-windows-amd64.exe .
+          mv linux-build/reading-diary-server-linux-amd64 .
+          mv macos-arm64-build/reading-diary-server-macos-arm64 .
+
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            windows-build/reading-diary-server-windows-amd64.exe
-            linux-build/reading-diary-server-linux-amd64
-            macos-arm64-build/reading-diary-server-macos-arm64
-            macos-arm64-build/reading-diary-server-macos-arm64
+            reading-diary-server-windows-amd64.exe
+            reading-diary-server-linux-amd64
+            reading-diary-server-macos-arm64
           token: ${{ secrets.GITHUB_TOKEN }}
