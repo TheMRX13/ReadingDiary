@@ -9,8 +9,33 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build Reading Diary Server
+  build-windows:
+    name: Build for Windows
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      
+      - name: Install dependencies
+        run: go mod tidy
+      
+      - name: Build Windows executable
+        run: go build -ldflags="-H windowsgui" -o reading-diary-server-windows-amd64.exe
+      
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: reading-diary-server-windows-amd64.exe
+
+  build-linux:
+    name: Build for Linux
     runs-on: ubuntu-latest
     
     steps:
@@ -22,55 +47,69 @@ jobs:
         with:
           go-version: '1.24'
       
-      - name: Get version from main.go
-        id: version
+      - name: Install dependencies
         run: |
-          VERSION=$(grep -oP 'AppVersion\s*=\s*"\K[^"]+' main.go)
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "Found version: $VERSION"
+          go mod tidy
+          sudo apt-get update
+          sudo apt-get install -y gcc libgl1-mesa-dev xorg-dev
+      
+      - name: Build Linux executable
+        run: go build -o reading-diary-server-linux-amd64
+      
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: reading-diary-server-linux-amd64
+
+  build-macos:
+    name: Build for macOS
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
       
       - name: Install dependencies
         run: go mod tidy
       
-      - name: Install build dependencies (for Fyne)
+      - name: Build macOS Intel executable
         run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc libgl1-mesa-dev xorg-dev
+          GOARCH=amd64 go build -o reading-diary-server-macos-amd64
       
-      - name: Create bin directory
-        run: mkdir -p bin
+      - name: Build macOS ARM64 executable
+        run: |
+          GOARCH=arm64 go build -o reading-diary-server-macos-arm64
       
-      - name: Build for Windows (GUI)
-        env:
-          GOOS: windows
-          GOARCH: amd64
-        run: go build -ldflags="-H windowsgui" -o bin/reading-diary-server-windows-amd64.exe
-      
-      - name: Build for Linux (Server)
-        env:
-          GOOS: linux
-          GOARCH: amd64
-        run: go build -o bin/reading-diary-server-linux-amd64
-      
-      - name: Build for macOS (Server)
-        env:
-          GOOS: darwin
-          GOARCH: amd64
-        run: go build -o bin/reading-diary-server-macos-amd64
-      
-      - name: Build for macOS ARM64 (Apple Silicon)
-        env:
-          GOOS: darwin
-          GOARCH: arm64
-        run: go build -o bin/reading-diary-server-macos-arm64
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-builds
+          path: |
+            reading-diary-server-macos-amd64
+            reading-diary-server-macos-arm64
+
+  release:
+    name: Create Release
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
       
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
-        if: github.event_name == 'release'
         with:
           files: |
-            bin/reading-diary-server-windows-amd64.exe
-            bin/reading-diary-server-linux-amd64
-            bin/reading-diary-server-macos-amd64
-            bin/reading-diary-server-macos-arm64
+            windows-build/reading-diary-server-windows-amd64.exe
+            linux-build/reading-diary-server-linux-amd64
+            macos-builds/reading-diary-server-macos-amd64
+            macos-builds/reading-diary-server-macos-arm64
           token: ${{ secrets.GITHUB_TOKEN }}
