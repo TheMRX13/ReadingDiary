@@ -47,7 +47,7 @@ Ein lokales Buchverwaltungssystem mit Web-Interface für Windows.
 
 Probiere Reading Diary direkt aus:
 
-**[➜ https://readingdiary.webhop.me](https://readingdiary.webhop.me)**
+<a href="https://readingdiary.webhop.me" target="_blank"><strong>➜ https://readingdiary.webhop.me</strong></a>
 
 - 🔑 **Demo-Passwort:** `demo123`
 - ✨ **Voll funktionsfähig:** Alle Features können getestet werden
