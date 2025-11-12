@@ -11,7 +11,7 @@ permissions:
 jobs:
   build:
     name: Build Reading Diary Server
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     
     steps:
       - name: Checkout code
@@ -20,25 +20,57 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.24'
       
       - name: Get version from main.go
         id: version
-        shell: pwsh
         run: |
-          $version = Select-String -Path "main.go" -Pattern 'AppVersion\s*=\s*"([^"]+)"' | ForEach-Object { $_.Matches.Groups[1].Value }
-          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
-          echo "Found version: $version"
+          VERSION=$(grep -oP 'AppVersion\s*=\s*"\K[^"]+' main.go)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Found version: $VERSION"
       
       - name: Install dependencies
         run: go mod tidy
       
-      - name: Build Server with GUI
-        run: go build -ldflags="-H windowsgui" -o bin/reading-diary-server.exe main.go
+      - name: Install build dependencies (for Fyne)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc libgl1-mesa-dev xorg-dev
+      
+      - name: Create bin directory
+        run: mkdir -p bin
+      
+      - name: Build for Windows (GUI)
+        env:
+          GOOS: windows
+          GOARCH: amd64
+        run: go build -ldflags="-H windowsgui" -o bin/reading-diary-server-windows-amd64.exe
+      
+      - name: Build for Linux (Server)
+        env:
+          GOOS: linux
+          GOARCH: amd64
+        run: go build -o bin/reading-diary-server-linux-amd64
+      
+      - name: Build for macOS (Server)
+        env:
+          GOOS: darwin
+          GOARCH: amd64
+        run: go build -o bin/reading-diary-server-macos-amd64
+      
+      - name: Build for macOS ARM64 (Apple Silicon)
+        env:
+          GOOS: darwin
+          GOARCH: arm64
+        run: go build -o bin/reading-diary-server-macos-arm64
       
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
         if: github.event_name == 'release'
         with:
-          files: bin/reading-diary-server.exe
+          files: |
+            bin/reading-diary-server-windows-amd64.exe
+            bin/reading-diary-server-linux-amd64
+            bin/reading-diary-server-macos-amd64
+            bin/reading-diary-server-macos-arm64
           token: ${{ secrets.GITHUB_TOKEN }}
