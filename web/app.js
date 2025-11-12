@@ -685,6 +685,37 @@ function searchBooks() {
     loadBooks(search);
 }
 
+async function changeBookStatus(bookId, newStatus) {
+    try {
+        console.log(`[changeBookStatus] Ändere Status für Buch ${bookId} zu: ${newStatus}`);
+        
+        // Aktualisiere Status über API
+        const response = await apiCall(`/books/${bookId}/status`, {
+            method: 'PUT',
+            body: { status: newStatus }
+        });
+        
+        console.log('[changeBookStatus] Status erfolgreich geändert:', response);
+        
+        // Zeige Erfolgsmeldung
+        showMessage(null, `Status zu "${newStatus}" geändert`, 'success');
+        
+        // Lade Bücherliste neu um Änderung anzuzeigen (mit Scroll-Position beibehalten)
+        loadBooks('', true);
+        
+        // Wenn auf Dashboard, auch Dashboard aktualisieren
+        if (currentPage === 'dashboard') {
+            loadDashboard();
+        }
+    } catch (error) {
+        console.error('[changeBookStatus] Fehler beim Ändern des Status:', error);
+        showMessage(null, 'Fehler beim Ändern des Status: ' + error.message, 'error');
+        
+        // Lade Bücherliste neu um ursprünglichen Status wiederherzustellen
+        loadBooks('', true);
+    }
+}
+
 function createBookCard(book) {
     const card = document.createElement('div');
     card.className = 'book-card';
