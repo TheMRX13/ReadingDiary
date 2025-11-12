@@ -32,7 +32,7 @@ import (
 
 // App Konstanten
 const (
-	AppVersion = "1.0.4"
+	AppVersion = "1.0.5"
 	AppName    = "Reading Diary"
 	AppAuthor  = "TheMRX - Pascal Keller"
 )
@@ -1923,14 +1923,14 @@ func uploadBookCover(c *gin.Context) {
 
 func copyBookCover(c *gin.Context) {
 	id := c.Param("id")
-	
+
 	// Prüfen ob das Buch existiert
 	var book Book
 	if err := db.First(&book, id).Error; err != nil {
 		c.JSON(404, gin.H{"error": "Buch nicht gefunden"})
 		return
 	}
-	
+
 	// Cover-Quellpfad aus Request lesen
 	var request struct {
 		SourceCover string `json:"source_cover" binding:"required"`
@@ -1939,16 +1939,16 @@ func copyBookCover(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "Quell-Cover fehlt"})
 		return
 	}
-	
+
 	uploadDir := filepath.Join("uploads", "covers")
 	sourcePath := filepath.Join(uploadDir, request.SourceCover)
-	
+
 	// Prüfen ob Quell-Cover existiert
 	if _, err := os.Stat(sourcePath); os.IsNotExist(err) {
 		c.JSON(404, gin.H{"error": "Quell-Cover nicht gefunden"})
 		return
 	}
-	
+
 	// Quell-Datei öffnen
 	sourceFile, err := os.Open(sourcePath)
 	if err != nil {
@@ -1957,12 +1957,12 @@ func copyBookCover(c *gin.Context) {
 		return
 	}
 	defer sourceFile.Close()
-	
+
 	// Neuen Dateinamen für Buch generieren
 	ext := filepath.Ext(request.SourceCover)
 	filename := fmt.Sprintf("book_%s_%d%s", id, time.Now().Unix(), ext)
 	destPath := filepath.Join(uploadDir, filename)
-	
+
 	// Ziel-Datei erstellen
 	destFile, err := os.Create(destPath)
 	if err != nil {
@@ -1971,7 +1971,7 @@ func copyBookCover(c *gin.Context) {
 		return
 	}
 	defer destFile.Close()
-	
+
 	// Cover kopieren
 	if _, err := io.Copy(destFile, sourceFile); err != nil {
 		logger.Error(fmt.Sprintf("Konnte Cover nicht kopieren: %v", err))
@@ -1979,7 +1979,7 @@ func copyBookCover(c *gin.Context) {
 		c.JSON(500, gin.H{"error": "Konnte Cover nicht kopieren"})
 		return
 	}
-	
+
 	// Altes Cover vom Buch löschen, falls vorhanden
 	if book.CoverImage != "" {
 		oldCoverPath := filepath.Join(uploadDir, book.CoverImage)
@@ -1989,7 +1989,7 @@ func copyBookCover(c *gin.Context) {
 			}
 		}
 	}
-	
+
 	// Buch in der Datenbank aktualisieren
 	book.CoverImage = filename
 	if err := db.Save(&book).Error; err != nil {
@@ -1998,12 +1998,12 @@ func copyBookCover(c *gin.Context) {
 		c.JSON(500, gin.H{"error": "Konnte Cover-Referenz nicht speichern"})
 		return
 	}
-	
+
 	logger.Info(fmt.Sprintf("Cover für Buch ID %s erfolgreich kopiert von %s", id, request.SourceCover))
-	
+
 	// Broadcast WebSocket event
 	broadcastEvent("book_updated", book)
-	
+
 	c.JSON(200, gin.H{
 		"message":     "Cover erfolgreich kopiert",
 		"cover_image": filename,
@@ -2165,14 +2165,14 @@ func createWishlistItem(c *gin.Context) {
 
 func deleteWishlistItem(c *gin.Context) {
 	id := c.Param("id")
-	
+
 	// Erst den Wunschlisten-Eintrag holen, um Cover-Pfad zu bekommen
 	var wishlistItem Wishlist
 	if err := db.First(&wishlistItem, id).Error; err != nil {
 		c.JSON(404, gin.H{"error": "Wunschliste-Eintrag nicht gefunden"})
 		return
 	}
-	
+
 	// Cover-Datei löschen, falls vorhanden
 	if wishlistItem.CoverImage != "" {
 		coverPath := filepath.Join("uploads", "covers", wishlistItem.CoverImage)
@@ -2184,7 +2184,7 @@ func deleteWishlistItem(c *gin.Context) {
 			}
 		}
 	}
-	
+
 	// Eintrag aus der Datenbank löschen
 	if err := db.Delete(&Wishlist{}, id).Error; err != nil {
 		c.JSON(500, gin.H{"error": "Konnte Eintrag nicht löschen"})

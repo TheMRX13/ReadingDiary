@@ -1047,7 +1047,7 @@ function showBookModal(book) {
                         </div>
                         <div id="reviewPreview" class="form-group" style="display: none;">
                             <label>Vorschau</label>
-                            <div class="review-preview-content" style="border: 1px solid #ddd; padding: 15px; min-height: 200px; background: #f9f9f9; border-radius: 4px;">
+                            <div class="review-preview-content">
                                 <em>Vorschau wird hier angezeigt...</em>
                             </div>
                         </div>
