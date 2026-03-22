@@ -41,14 +41,9 @@ Eine persönliche Bücherverwaltung als Web-App – lokal gehostet, mobilfreundl
 
 ### Setup
 
-```bash
-# Repository klonen
-git clone https://github.com/TheMRX13/ReadingDiary.git
-cd ReadingDiary
-
-# App starten – Abhängigkeiten werden automatisch installiert
-python app.py
-```
+1. Oben rechts auf dieser Seite auf **Code → Download ZIP** klicken
+2. ZIP entpacken
+3. `app.py` **doppelklicken** – Abhängigkeiten werden automatisch installiert
 
 Die App ist dann unter **http://localhost:7443** erreichbar.
 
