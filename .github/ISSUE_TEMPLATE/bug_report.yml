@@ -1,0 +1,49 @@
+name: "🐞 Bug melden"
+description: "Fehler in der Anwendung melden."
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: beschreibung
+    attributes:
+      label: "Beschreibe den Fehler"
+      description: "Was ist passiert?"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: "Version"
+      description: "Gib die betroffene Software-Version/Commit an."
+      placeholder: "z.B. 1.2.3 oder Commit-Hash"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduktion
+    attributes:
+      label: "Schritte zur Reproduktion"
+      description: "Wie kann man den Fehler reproduzieren? (gern als Liste)"
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: erwartet
+    attributes:
+      label: "Erwartetes Verhalten"
+      description: "Was sollte eigentlich passieren?"
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: "Log-Ausgabe (optional)"
+      description: "Falls vorhanden, Log-Auszug hier einfügen."
+      render: text
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: "Screenshots (optional)"
+      description: "Screenshot(s) hier anhängen oder als Link einfügen."
+
