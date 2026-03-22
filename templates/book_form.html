@@ -1,0 +1,99 @@
+<!-- Shared book form fields. Usage: set `prefix` and `wishlist_mode` before including -->
+<div class="row g-3 mt-1">
+  <div class="col-12 col-sm-8">
+    <label class="form-label">Titel <span class="required-star">*</span></label>
+    <input type="text" id="{{ prefix }}title" class="form-control" placeholder="Buchtitel">
+  </div>
+  <div class="col-12 col-sm-4">
+    <label class="form-label">ISBN</label>
+    <input type="text" id="{{ prefix }}isbn" class="form-control" placeholder="ISBN-10 / 13">
+  </div>
+
+  <div class="col-12 col-sm-6">
+    <label class="form-label">Autor <span class="required-star">*</span></label>
+    <div class="autocomplete-wrap">
+      <input type="text" id="{{ prefix }}author" class="form-control" placeholder="Autor">
+    </div>
+  </div>
+  <div class="col-12 col-sm-6">
+    <label class="form-label">Verlag <span class="required-star">*</span></label>
+    <div class="autocomplete-wrap">
+      <input type="text" id="{{ prefix }}publisher" class="form-control" placeholder="Verlag">
+    </div>
+  </div>
+
+  <div class="col-12 col-sm-6">
+    <label class="form-label">Genre <span class="required-star">*</span></label>
+    <div class="autocomplete-wrap">
+      <input type="text" id="{{ prefix }}genre" class="form-control" placeholder="z.B. Fantasy, Krimi">
+    </div>
+  </div>
+  <div class="col-6 col-sm-3">
+    <label class="form-label">Seiten <span class="required-star">*</span></label>
+    <input type="number" id="{{ prefix }}pages" class="form-control" placeholder="z.B. 320" min="1">
+  </div>
+  <div class="col-6 col-sm-3">
+    <label class="form-label">Erscheinungsdatum <span class="required-star">*</span></label>
+    <input type="text" id="{{ prefix }}release_date" class="form-control" placeholder="2024-01-01">
+  </div>
+
+  {% if not wishlist_mode %}
+  <div class="col-6 col-sm-4">
+    <label class="form-label">Format <span class="required-star">*</span></label>
+    <select id="{{ prefix }}format" class="form-select">
+      <option value="Paperback">Paperback</option>
+      <option value="Hardcover">Hardcover</option>
+      <option value="eBook">eBook</option>
+    </select>
+  </div>
+  {% endif %}
+
+  {% if show_audiobook %}
+  <div class="col-6 col-sm-4 d-flex align-items-end pb-1">
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" id="{{ prefix }}is_audiobook">
+      <label class="form-check-label" for="{{ prefix }}is_audiobook">
+        <i class="fas fa-headphones me-1" style="color:var(--accent)"></i>Hörbuch
+      </label>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="col-6 col-sm-4">
+    <label class="form-label">Status</label>
+    <select id="{{ prefix }}status" class="form-select">
+      <option value="Ungelesen">Ungelesen</option>
+      <option value="Am Lesen">Am Lesen</option>
+      <option value="Gelesen">Gelesen</option>
+    </select>
+  </div>
+
+  <div class="col-6 col-sm-4">
+    <label class="form-label">Reihe</label>
+    <input type="text" id="{{ prefix }}series" class="form-control" placeholder="Reihenname">
+  </div>
+  <div class="col-6 col-sm-4">
+    <label class="form-label">Band</label>
+    <input type="text" id="{{ prefix }}volume" class="form-control" placeholder="z.B. 1">
+  </div>
+
+  <div class="col-12">
+    <label class="form-label">Buchcover</label>
+    <div class="cover-upload-zone" id="{{ prefix }}cover_zone"
+         ondrop="handleCoverDrop(event,'{{ prefix }}')"
+         ondragover="event.preventDefault();this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         onclick="document.getElementById('{{ prefix }}cover_file').click()">
+      <div class="cover-upload-content" id="{{ prefix }}cover_upload_content">
+        <i class="fas fa-image"></i>
+        <span>Cover hochladen</span>
+        <small>Klicken oder Drag &amp; Drop (JPG, PNG, WebP)</small>
+      </div>
+      <img id="{{ prefix }}cover_preview" src="" alt="Cover"
+           class="cover-upload-preview" style="display:none">
+    </div>
+    <input type="file" id="{{ prefix }}cover_file" accept="image/*" style="display:none"
+           onchange="handleCoverFile(event,'{{ prefix }}')">
+    <input type="hidden" id="{{ prefix }}cover_url" value="">
+  </div>
+</div>

@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+{% block title %}Einstellungen – Reading Diary{% endblock %}
+{% block page_title %}Einstellungen{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <!-- ── Darstellung ── -->
+  <div class="col-12 col-lg-6">
+    <div class="section-card">
+      <div class="section-title"><i class="fas fa-palette"></i>Darstellung</div>
+
+      <div class="d-flex align-items-center justify-content-between py-2">
+        <div>
+          <div style="font-weight:600;font-size:.9rem">Dark Mode</div>
+          <small style="color:var(--text-muted)">Dunkles Farbschema aktivieren</small>
+        </div>
+        <div class="form-check form-switch mb-0">
+          <input class="form-check-input" type="checkbox" role="switch" id="toggleDark"
+                 {{ 'checked' if s.dark_mode == 'true' else '' }}
+                 onchange="saveSetting('dark_mode', this.checked ? 'true' : 'false', true)">
+        </div>
+      </div>
+
+      <div class="rd-divider"></div>
+
+      <div class="d-flex align-items-center justify-content-between py-2">
+        <div>
+          <div style="font-weight:600;font-size:.9rem">Rezensionen</div>
+          <small style="color:var(--text-muted)">Rezensionfunktion bei Büchern anzeigen</small>
+        </div>
+        <div class="form-check form-switch mb-0">
+          <input class="form-check-input" type="checkbox" role="switch" id="toggleReviews"
+                 {{ 'checked' if s.show_reviews == 'true' else '' }}
+                 onchange="saveSetting('show_reviews', this.checked ? 'true' : 'false', false)">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Statistik-Sektionen ── -->
+  <div class="col-12 col-lg-6">
+    <div class="section-card">
+      <div class="section-title"><i class="fas fa-chart-pie"></i>Statistik-Sektionen</div>
+
+      {% set stat_toggles = [
+        ('show_stats_total', 'Gesamtzahlen', 'Bücher, Seiten, Zitate'),
+        ('show_stats_publishers', 'Nach Verlag', 'Bücher pro Verlag'),
+        ('show_stats_authors', 'Nach Autor', 'Bücher pro Autor'),
+        ('show_stats_graphs', 'Diagramme', 'Seiten/Bücher über Zeit'),
+      ] %}
+      {% for key, label, desc in stat_toggles %}
+      <div class="d-flex align-items-center justify-content-between py-2"
+           style="{{ 'border-top:1px solid var(--border)' if not loop.first else '' }}">
+        <div>
+          <div style="font-weight:600;font-size:.9rem">{{ label }}</div>
+          <small style="color:var(--text-muted)">{{ desc }}</small>
+        </div>
+        <div class="form-check form-switch mb-0">
+          <input class="form-check-input" type="checkbox" role="switch"
+                 {{ 'checked' if s[key] == 'true' else '' }}
+                 onchange="saveSetting('{{ key }}', this.checked ? 'true' : 'false', false)">
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ── Bewertungen ── -->
+  <div class="col-12 col-lg-6">
+    <div class="section-card">
+      <div class="section-title"><i class="fas fa-star"></i>Bewertungen</div>
+
+      {% set rating_toggles = [
+        ('show_stars',      'Sterne',      'Sterne-Bewertung (1–5) anzeigen'),
+        ('show_spice',      'Spice',       'Spice-Bewertung (1–5) anzeigen'),
+        ('show_tension',    'Spannung',    'Spannungs-Slider (1–10) anzeigen'),
+        ('show_fiction',    'Typ',         'Fiction / Non-Fiction anzeigen'),
+        ('show_lent',       'Verliehen',   'Verleih-Status (Buch verliehen an…) anzeigen'),
+        ('show_streak',     'Leses​trähne', 'Leses​trähne im Seitenmenu anzeigen'),
+        ('show_audiobook',  'Hörbuch',     'Hörbuch-Funktion und Hörfortschritt anzeigen'),
+      ] %}
+      {% for key, label, desc in rating_toggles %}
+      <div class="d-flex align-items-center justify-content-between py-2"
+           style="{{ 'border-top:1px solid var(--border)' if not loop.first else '' }}">
+        <div>
+          <div style="font-weight:600;font-size:.9rem">{{ label }}</div>
+          <small style="color:var(--text-muted)">{{ desc }}</small>
+        </div>
+        <div class="form-check form-switch mb-0">
+          <input class="form-check-input" type="checkbox" role="switch"
+                 {{ 'checked' if s.get(key, 'true') == 'true' else '' }}
+                 onchange="saveSetting('{{ key }}', this.checked ? 'true' : 'false', false)">
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ── Leseziel ── -->
+  <div class="col-12 col-lg-6">
+    <div class="section-card">
+      <div class="section-title"><i class="fas fa-bullseye"></i>Leseziel setzen</div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-4">
+          <label class="form-label">Typ</label>
+          <select id="goalType" class="form-select">
+            <option value="pages">Seiten</option>
+            <option value="books">Bücher</option>
+          </select>
+        </div>
+        <div class="col-4">
+          <label class="form-label">Zeitraum</label>
+          <select id="goalPeriod" class="form-select">
+            <option value="weekly">Wöchentlich</option>
+            <option value="monthly">Monatlich</option>
+            <option value="yearly">Jährlich</option>
+          </select>
+        </div>
+        <div class="col-4">
+          <label class="form-label">Ziel</label>
+          <input type="number" id="goalTarget" class="form-control" min="1" placeholder="z.B. 30">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="saveGoal()">
+        <i class="fas fa-plus me-1"></i>Leseziel setzen
+      </button>
+
+      {% if goals %}
+      <div class="mt-4">
+        <p style="font-size:.8rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">
+          Alle Leseziele
+        </p>
+        {% for g in goals %}
+        <div class="d-flex align-items-center gap-2 mb-2 p-2 rounded-3"
+             style="background:var(--bg);border:1px solid var(--border);font-size:.85rem">
+          <div class="flex-grow-1">
+            <strong>{{ g.target }} {{ 'Seiten' if g.goal_type == 'pages' else 'Bücher' }}</strong>
+            pro
+            {% if g.period == 'weekly' %}Woche{% elif g.period == 'monthly' %}Monat{% else %}Jahr{% endif %}
+          </div>
+          <span class="status-badge {{ 'badge-status-am-lesen' if g.enabled else 'badge-status-ungelesen' }}">
+            {{ 'Aktiv' if g.enabled else 'Inaktiv' }}
+          </span>
+          <button class="btn btn-sm" style="background:rgba(59,130,246,.1);color:#60a5fa;border:1px solid rgba(59,130,246,.3);padding:2px 8px;font-size:.75rem"
+                  onclick="toggleGoal({{ g.id }})">
+            {{ 'Deaktivieren' if g.enabled else 'Aktivieren' }}
+          </button>
+          <button class="btn btn-sm" style="background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.3);padding:2px 6px"
+                  onclick="confirmDelete('Leseziel löschen?','/api/reading-goals/{{ g.id }}')">
+            <i class="fas fa-trash" style="font-size:.7rem"></i>
+          </button>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── Autoren & Verlage ── -->
+  <div class="col-12 col-lg-6">
+    <div class="section-card">
+      <div class="section-title"><i class="fas fa-users"></i>Autoren verwalten</div>
+      {% if authors %}
+      <div style="max-height:220px;overflow-y:auto">
+        {% for a in authors %}
+        <div class="d-flex align-items-center justify-content-between py-1"
+             style="{{ 'border-top:1px solid var(--border)' if not loop.first else '' }}">
+          <span style="font-size:.875rem">{{ a.name }}</span>
+          <button class="btn btn-sm" style="background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.3);padding:2px 6px;font-size:.75rem"
+                  onclick="deleteAuthor({{ a.id }}, '{{ a.name | e }}')">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p style="color:var(--text-muted);font-size:.85rem">Keine Autoren vorhanden</p>
+      {% endif %}
+    </div>
+
+    <div class="section-card mt-4">
+      <div class="section-title"><i class="fas fa-building"></i>Verlage verwalten</div>
+      {% if publishers %}
+      <div style="max-height:220px;overflow-y:auto">
+        {% for p in publishers %}
+        <div class="d-flex align-items-center justify-content-between py-1"
+             style="{{ 'border-top:1px solid var(--border)' if not loop.first else '' }}">
+          <span style="font-size:.875rem">{{ p.name }}</span>
+          <button class="btn btn-sm" style="background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.3);padding:2px 6px;font-size:.75rem"
+                  onclick="deletePublisher({{ p.id }}, '{{ p.name | e }}')">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p style="color:var(--text-muted);font-size:.85rem">Keine Verlage vorhanden</p>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Daten-Export ── -->
+<div class="settings-section mt-4">
+  <div class="settings-section-title">Daten-Export</div>
+  <div class="row g-3">
+    <div class="col-12 col-sm-6">
+      <div class="card" style="background:var(--bg-card);border:1px solid var(--border)">
+        <div class="card-body">
+          <h6><i class="fas fa-file-csv me-2" style="color:var(--accent)"></i>CSV-Export</h6>
+          <p style="font-size:.83rem;color:var(--text-muted)">Alle Bücher als CSV-Datei herunterladen – kompatibel mit Excel und Google Sheets.</p>
+          <a href="/export/csv" class="btn btn-outline-primary btn-sm">
+            <i class="fas fa-download me-1"></i>CSV herunterladen
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-sm-6">
+      <div class="card" style="background:var(--bg-card);border:1px solid var(--border)">
+        <div class="card-body">
+          <h6><i class="fas fa-file-code me-2" style="color:var(--accent)"></i>JSON-Export</h6>
+          <p style="font-size:.83rem;color:var(--text-muted)">Vollständiges Backup aller Buchdaten als JSON-Datei.</p>
+          <a href="/export/json" class="btn btn-outline-primary btn-sm">
+            <i class="fas fa-download me-1"></i>JSON herunterladen
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function saveSetting(key, value, reload) {
+  try {
+    await apiFetch('/api/settings', { method:'POST', body: JSON.stringify({[key]: value}) });
+    if (reload) { showToast('Gespeichert!','success'); setTimeout(()=>location.reload(),600); }
+    else showToast('Gespeichert!','success');
+  } catch(_) {}
+}
+
+async function saveGoal() {
+  const goalType = document.getElementById('goalType').value;
+  const period   = document.getElementById('goalPeriod').value;
+  const target   = parseInt(document.getElementById('goalTarget').value);
+  if (!target || target < 1) { showToast('Bitte Ziel eingeben','warning'); return; }
+  try {
+    await apiFetch('/api/reading-goals', { method:'POST', body: JSON.stringify({goal_type:goalType,period,target}) });
+    showToast('Leseziel gesetzt!','success');
+    setTimeout(()=>location.reload(),800);
+  } catch(_) {}
+}
+
+async function toggleGoal(id) {
+  try {
+    await apiFetch(`/api/reading-goals/${id}/toggle`, { method:'POST', body: '{}' });
+    location.reload();
+  } catch(_) {}
+}
+
+async function deleteAuthor(id, name) {
+  if (!await showConfirm(`Autor „${name}" wirklich löschen?`)) return;
+  try {
+    await apiFetch(`/api/authors/${id}`, { method:'DELETE' });
+    showToast('Autor gelöscht!','success');
+    setTimeout(()=>location.reload(),800);
+  } catch(_) {}
+}
+
+async function deletePublisher(id, name) {
+  if (!await showConfirm(`Verlag „${name}" wirklich löschen?`)) return;
+  try {
+    await apiFetch(`/api/publishers/${id}`, { method:'DELETE' });
+    showToast('Verlag gelöscht!','success');
+    setTimeout(()=>location.reload(),800);
+  } catch(_) {}
+}
+</script>
+{% endblock %}

@@ -1,0 +1,513 @@
+{% extends "base.html" %}
+{% block title %}Meine Bücher – Reading Diary{% endblock %}
+{% block page_title %}Meine Bücher{% endblock %}
+{% block head %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<!-- Page header -->
+<div class="page-header">
+  <div class="page-header-left">
+    <div class="search-bar flex-grow-1" style="max-width:360px">
+      <i class="fas fa-search search-icon"></i>
+      <form method="get" id="searchForm">
+        <input type="text" name="q" value="{{ q }}" class="form-control"
+               placeholder="Titel, Autor oder ISBN suchen…" id="searchInput"
+               oninput="delaySearch()">
+      </form>
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    <div class="btn-group" role="group">
+      <button id="btnGrid" class="btn btn-sm btn-outline-secondary" onclick="setView('grid')" title="Galerieansicht">
+        <i class="fas fa-th"></i>
+      </button>
+      <button id="btnList" class="btn btn-sm btn-outline-secondary" onclick="setView('list')" title="Listenansicht">
+        <i class="fas fa-list"></i>
+      </button>
+    </div>
+    <button class="btn btn-primary" onclick="openAddModal()">
+      <i class="fas fa-plus me-1"></i>Buch hinzufügen
+    </button>
+  </div>
+</div>
+
+<!-- Book grid -->
+{% if books %}
+<!-- Grid view -->
+<div class="row g-3" id="viewGrid">
+  {% for b in books %}
+  <div class="col-6 col-sm-4 col-md-3 col-lg-2 book-item-wrap" style="position:relative">
+    <a href="/books/{{ b.id }}" class="text-decoration-none" onclick="sessionStorage.setItem('books_scroll', window.scrollY)">
+      <div class="book-card">
+        {% if b.cover_url %}
+          <img src="{{ b.cover_url }}" alt="{{ b.title }}" class="book-cover" loading="lazy">
+        {% else %}
+          <div class="book-cover-placeholder">
+            <i class="fas fa-book"></i>
+            <span>{{ b.title }}</span>
+          </div>
+        {% endif %}
+        <div class="book-info">
+          <div class="book-title">{{ b.title }}</div>
+          <div class="book-author">{{ b.author_name or '–' }}</div>
+          {% if b.publisher_name %}<div class="book-author" style="font-size:.7rem">{{ b.publisher_name }}</div>{% endif %}
+          {% if b.release_date %}<div class="book-author" style="font-size:.7rem">{{ b.release_date[:4] if b.release_date|length >= 4 else b.release_date }}</div>{% endif %}
+          <div class="mt-1">
+            {% if b.status == 'Gelesen' %}<span class="status-badge badge-status-gelesen">Gelesen</span>
+            {% elif b.status == 'Am Lesen' %}<span class="status-badge {{ 'badge-status-am-hoeren' if b.is_audiobook else 'badge-status-am-lesen' }}">{{ 'Am Hören' if b.is_audiobook else 'Am Lesen' }}</span>
+            {% else %}<span class="status-badge badge-status-ungelesen">Ungelesen</span>{% endif %}
+          </div>
+        </div>
+      </div>
+    </a>
+    <button class="book-quick-btn" title="Serie / Regal zuweisen"
+            onclick="event.stopPropagation();openQuickAssign({{ b.id }}, {{ b.title | tojson }})">
+      <i class="fas fa-plus"></i>
+    </button>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- List view -->
+<div id="viewList" style="display:none">
+  {% for b in books %}
+  <div class="d-flex align-items-center gap-3 p-2 mb-2 rounded"
+       style="border:1px solid var(--border);background:var(--bg-card);transition:background .15s"
+       onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='var(--bg-card)'">
+    <a href="/books/{{ b.id }}" class="text-decoration-none d-flex align-items-center gap-3 flex-grow-1 overflow-hidden"
+       onclick="sessionStorage.setItem('books_scroll', window.scrollY)" style="min-width:0">
+      {% if b.cover_url %}
+        <img src="{{ b.cover_url }}" alt="{{ b.title }}" style="width:40px;height:56px;object-fit:cover;border-radius:3px;flex-shrink:0" loading="lazy">
+      {% else %}
+        <div style="width:40px;height:56px;background:var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="fas fa-book" style="color:var(--text-muted)"></i>
+        </div>
+      {% endif %}
+      <div class="flex-grow-1 overflow-hidden">
+        <div style="font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ b.title }}</div>
+        <div style="font-size:.82rem;color:var(--text-muted)">{{ b.author_name or '–' }}</div>
+        <div style="font-size:.75rem;color:var(--text-muted)">
+          {% if b.publisher_name %}{{ b.publisher_name }}{% endif %}
+          {% if b.release_date %} &middot; {{ b.release_date[:4] if b.release_date|length >= 4 else b.release_date }}{% endif %}
+          {% if b.pages %} &middot; {{ b.pages }} S.{% endif %}
+          {% if b.genre %} &middot; {{ b.genre }}{% endif %}
+        </div>
+      </div>
+    </a>
+    <div class="d-flex align-items-center gap-2 flex-shrink-0">
+      {% if b.status == 'Gelesen' %}<span class="status-badge badge-status-gelesen">Gelesen</span>
+      {% elif b.status == 'Am Lesen' %}<span class="status-badge {{ 'badge-status-am-hoeren' if b.is_audiobook else 'badge-status-am-lesen' }}">{{ 'Am Hören' if b.is_audiobook else 'Am Lesen' }}</span>
+      {% else %}<span class="status-badge badge-status-ungelesen">Ungelesen</span>{% endif %}
+      <button class="btn btn-sm book-quick-btn-list" title="Serie / Regal zuweisen"
+              onclick="openQuickAssign({{ b.id }}, {{ b.title | tojson }})">
+        <i class="fas fa-plus"></i>
+      </button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5">
+  <i class="fas fa-book-open" style="font-size:3rem;color:var(--border)"></i>
+  <p class="mt-3" style="color:var(--text-muted)">
+    {% if q %}Keine Bücher gefunden für „{{ q }}"{% else %}Noch keine Bücher vorhanden{% endif %}
+  </p>
+</div>
+{% endif %}
+
+<!-- ── Add Book Modal ── -->
+<div class="modal fade" id="addBookModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-plus-circle me-2" style="color:var(--accent)"></i>Buch hinzufügen</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Tabs -->
+        <ul class="nav nav-pills mb-3" id="addTabs">
+          <li class="nav-item">
+            <button class="nav-link active" id="add-scan-tab" data-bs-toggle="pill"
+                    data-bs-target="#add-scan" type="button"
+                    onclick="startScanner('add_isbn','add_')">
+              <i class="fas fa-camera me-1"></i>ISBN scannen
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" id="add-isbn-tab" data-bs-toggle="pill"
+                    data-bs-target="#add-isbnin" type="button" onclick="stopScanner()">
+              <i class="fas fa-keyboard me-1"></i>ISBN eingeben
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" id="add_manual-tab" data-bs-toggle="pill"
+                    data-bs-target="#add_manual" type="button" onclick="stopScanner()">
+              <i class="fas fa-edit me-1"></i>Manuell
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content">
+          <!-- Scan tab -->
+          <div class="tab-pane fade show active" id="add-scan">
+            <div id="qr-reader" style="width:100%;max-height:300px"></div>
+            <p class="text-center mt-2" style="font-size:.8rem;color:var(--text-muted)">
+              Kamera auf den Barcode des Buchrückens richten
+            </p>
+          </div>
+
+          <!-- ISBN input tab -->
+          <div class="tab-pane fade" id="add-isbnin">
+            <div class="d-flex gap-2 mt-2">
+              <input type="text" id="add_isbn_manual" class="form-control"
+                     placeholder="ISBN-10 oder ISBN-13 eingeben">
+              <button class="btn btn-primary" id="add_isbn_search_btn"
+                      onclick="lookupISBN(document.getElementById('add_isbn_manual').value,'add_')">
+                <i class="fas fa-search"></i> Suchen
+              </button>
+            </div>
+          </div>
+
+          <!-- Manual form tab -->
+          <div class="tab-pane fade" id="add_manual">
+            {% set prefix = 'add_' %}{% set wishlist_mode = false %}
+            {% include "book_form.html" with context %}
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+        <button class="btn btn-primary" onclick="submitAddBook()">
+          <i class="fas fa-save me-1"></i>Speichern
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Quick Assign Modal (Serie / Regal) ── -->
+<div class="modal fade" id="quickAssignModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-tag me-2" style="color:var(--accent)"></i>
+          Zuweisen: <span id="qaBookTitle" class="text-truncate" style="max-width:200px;display:inline-block;vertical-align:bottom"></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Tabs -->
+        <ul class="nav nav-tabs mb-3" role="tablist">
+          <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#qaSerieTab" type="button"><i class="fas fa-layer-group me-1"></i>Serie</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#qaRegalTab" type="button"><i class="fas fa-bookmark me-1"></i>Regal</button></li>
+        </ul>
+        <div class="tab-content">
+
+          <!-- Serie Tab -->
+          <div class="tab-pane fade show active" id="qaSerieTab">
+            <div class="mb-3" style="position:relative">
+              <label class="form-label small fw-semibold">Serie suchen oder neu erstellen</label>
+              <input type="text" id="qaSeriesInput" class="form-control" autocomplete="off"
+                     placeholder="Seriename eingeben…" oninput="qaSeriesFilter()">
+              <div id="qaSeriesSugg" class="autocomplete-dropdown" style="display:none"></div>
+              <input type="hidden" id="qaSeriesId">
+              <small id="qaSeriesNew" class="text-muted mt-1" style="display:none">
+                <i class="fas fa-plus-circle me-1" style="color:var(--accent)"></i>Neue Serie wird erstellt
+              </small>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Band Nr. <span class="text-muted fw-normal">(optional)</span></label>
+              <input type="number" id="qaSeriesOrder" class="form-control" min="1" placeholder="z. B. 1">
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-primary" onclick="saveQuickSeries()">
+                <i class="fas fa-save me-1"></i>Speichern
+              </button>
+              <button class="btn btn-outline-danger btn-sm" onclick="removeQuickSeries()" title="Serie entfernen">
+                <i class="fas fa-times me-1"></i>Serie entfernen
+              </button>
+            </div>
+          </div>
+
+          <!-- Regal Tab -->
+          <div class="tab-pane fade" id="qaRegalTab">
+            {% if all_shelves %}
+            <div class="d-flex flex-column gap-2 mb-3">
+              {% for shelf in all_shelves %}
+              <div class="d-flex align-items-center justify-content-between p-2 rounded"
+                   style="border:1px solid var(--border);background:var(--bg-card)">
+                <span><i class="fas fa-bookmark me-2" style="color:var(--accent)"></i>{{ shelf.name }}</span>
+                <button class="btn btn-sm btn-outline-primary" onclick="addToShelfQuick({{ shelf.id }})">
+                  <i class="fas fa-plus me-1"></i>Hinzufügen
+                </button>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted small mb-3">Noch keine Regale vorhanden.</p>
+            {% endif %}
+            <hr>
+            <label class="form-label small fw-semibold">Neues Regal erstellen & Buch direkt hinzufügen</label>
+            <div class="d-flex gap-2">
+              <input type="text" id="qaNewShelfName" class="form-control form-control-sm"
+                     placeholder="Regalname…">
+              <button class="btn btn-outline-primary btn-sm" onclick="createShelfAndAdd()">
+                <i class="fas fa-plus me-1"></i>Erstellen
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let searchTimer;
+function delaySearch() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => document.getElementById('searchForm').submit(), 500);
+}
+
+function openAddModal() {
+  clearBookForm('add_');
+  const modal = new bootstrap.Modal(document.getElementById('addBookModal'));
+  modal.show();
+  // Activate scan tab & start scanner
+  bootstrap.Tab.getOrCreateInstance(document.getElementById('add-scan-tab')).show();
+  setTimeout(() => startScanner('add_isbn', 'add_'), 300);
+}
+
+function clearBookForm(prefix) {
+  ['title','author','publisher','genre','pages','release_date','isbn','cover_url','series','volume']
+    .forEach(f => { const el = document.getElementById(prefix+f); if(el) el.value=''; });
+  const status = document.getElementById(prefix+'status');
+  if(status) status.value='Ungelesen';
+  const format = document.getElementById(prefix+'format');
+  if(format) format.value='Paperback';
+  const preview = document.getElementById(prefix+'cover_preview');
+  if(preview) { preview.src=''; preview.style.display='none'; }  const uploadContent = document.getElementById(prefix+'cover_upload_content');
+  if(uploadContent) uploadContent.style.display='flex';
+  const fileInput = document.getElementById(prefix+'cover_file');
+  if(fileInput) fileInput.value='';}
+
+async function submitAddBook() {
+  const p = 'add_';
+  if (!validateBookForm(p, false)) return;
+  const title = document.getElementById(p+'title')?.value?.trim();
+  const data = {
+    title, isbn: document.getElementById(p+'isbn')?.value,
+    author: document.getElementById(p+'author')?.value,
+    publisher: document.getElementById(p+'publisher')?.value,
+    genre: document.getElementById(p+'genre')?.value,
+    pages: parseInt(document.getElementById(p+'pages')?.value)||0,
+    format: document.getElementById(p+'format')?.value||'Paperback',
+    release_date: document.getElementById(p+'release_date')?.value,
+    series: document.getElementById(p+'series')?.value,
+    volume: document.getElementById(p+'volume')?.value,
+    status: document.getElementById(p+'status')?.value||'Ungelesen',
+    cover_url: document.getElementById(p+'cover_url')?.value,
+    is_audiobook: document.getElementById(p+'is_audiobook')?.checked || false,
+  };
+  try {
+    await apiFetch('/api/books', { method:'POST', body: JSON.stringify(data) });
+    bootstrap.Modal.getInstance(document.getElementById('addBookModal')).hide();
+    showToast('Buch hinzugefügt!', 'success');
+    setTimeout(() => location.reload(), 800);
+  } catch(_) {}
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  setupAutocomplete('add_author', '/api/authors/search');
+  setupAutocomplete('add_publisher', '/api/publishers/search');
+  setupAutocomplete('add_genre', '/api/genres/search');
+
+  // Scroll-Position wiederherstellen
+  const savedScroll = sessionStorage.getItem('books_scroll');
+  if (savedScroll !== null) {
+    window.scrollTo(0, parseInt(savedScroll, 10));
+    sessionStorage.removeItem('books_scroll');
+  }
+
+  // Scroll-Position bei Klick auf Buch speichern
+  document.querySelectorAll('a[href^="/books/"]').forEach(link => {
+    link.addEventListener('click', () => {
+      sessionStorage.setItem('books_scroll', window.scrollY);
+    });
+  });
+
+  // Ansicht wiederherstellen
+  const savedView = localStorage.getItem('books_view') || 'grid';
+  setView(savedView, false);
+});
+
+function setView(v, save = true) {
+  const isGrid = v === 'grid';
+  document.getElementById('viewGrid').style.display = isGrid ? '' : 'none';
+  document.getElementById('viewList').style.display = isGrid ? 'none' : '';
+  document.getElementById('btnGrid').classList.toggle('active', isGrid);
+  document.getElementById('btnList').classList.toggle('active', !isGrid);
+  if (save) localStorage.setItem('books_view', v);
+}
+
+// ── Quick Assign (Serie / Regal) ──
+let qaBookId = null;
+let allSeriesCache = null;
+
+function openQuickAssign(bookId, title) {
+  qaBookId = bookId;
+  document.getElementById('qaBookTitle').textContent = title;
+  document.getElementById('qaSeriesInput').value = '';
+  document.getElementById('qaSeriesId').value = '';
+  document.getElementById('qaSeriesOrder').value = '';
+  document.getElementById('qaSeriesNew').style.display = 'none';
+  document.getElementById('qaSeriesSugg').style.display = 'none';
+  const modal = new bootstrap.Modal(document.getElementById('quickAssignModal'));
+  modal.show();
+}
+
+async function getSeriesCache() {
+  if (allSeriesCache !== null) return allSeriesCache;
+  try {
+    const resp = await fetch('/api/series');
+    allSeriesCache = await resp.json();
+  } catch (_) { allSeriesCache = []; }
+  return allSeriesCache;
+}
+
+async function qaSeriesFilter() {
+  const q = document.getElementById('qaSeriesInput').value.trim().toLowerCase();
+  const rawName = document.getElementById('qaSeriesInput').value.trim();
+  const sugg = document.getElementById('qaSeriesSugg');
+  const hint = document.getElementById('qaSeriesNew');
+  document.getElementById('qaSeriesId').value = '';
+  if (!q) { sugg.style.display = 'none'; hint.style.display = 'none'; return; }
+  const all = await getSeriesCache();
+  const matches = all.filter(s => s.name.toLowerCase().includes(q));
+  hint.style.display = 'none';
+  const newEntry = `<div class="autocomplete-item" style="border-top:1px solid var(--border);color:var(--accent)" onclick="qaSelectSeries(0, ${JSON.stringify(rawName)})"><i class="fas fa-plus-circle me-1"></i>Neu erstellen: \u201e${rawName}\u201c</div>`;
+  sugg.innerHTML = matches.map(s =>
+    `<div class="autocomplete-item" onclick="qaSelectSeries(${s.id}, ${JSON.stringify(s.name)})">${s.name}</div>`
+  ).join('') + newEntry;
+  sugg.style.display = 'block';
+}
+
+function qaSelectSeries(id, name) {
+  document.getElementById('qaSeriesInput').value = name;
+  document.getElementById('qaSeriesId').value = id; // 0 = neue Serie erstellen
+  document.getElementById('qaSeriesSugg').style.display = 'none';
+  document.getElementById('qaSeriesNew').style.display = 'none';
+}
+
+async function saveQuickSeries() {
+  const nameInput = document.getElementById('qaSeriesInput').value.trim();
+  let seriesId = document.getElementById('qaSeriesId').value;
+  const order = document.getElementById('qaSeriesOrder').value;
+  if (!nameInput) { showToast('Bitte Seriename eingeben', 'warning'); return; }
+  try {
+    if (!seriesId || seriesId === '0') {
+      const res = await apiFetch('/api/series', { method: 'POST', body: JSON.stringify({ name: nameInput }) });
+      seriesId = res.id;
+      allSeriesCache = null;
+    }
+    await apiFetch(`/api/books/${qaBookId}/series`, {
+      method: 'PUT',
+      body: JSON.stringify({ series_id: parseInt(seriesId), series_order: order ? parseInt(order) : null })
+    });
+    showToast('Serie gespeichert!', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('quickAssignModal')).hide();
+  } catch (_) {}
+}
+
+async function removeQuickSeries() {
+  try {
+    await apiFetch(`/api/books/${qaBookId}/series`, {
+      method: 'PUT',
+      body: JSON.stringify({ series_id: null, series_order: null })
+    });
+    showToast('Serie entfernt!', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('quickAssignModal')).hide();
+  } catch (_) {}
+}
+
+async function addToShelfQuick(shelfId) {
+  try {
+    await apiFetch(`/api/shelves/${shelfId}/books`, {
+      method: 'POST',
+      body: JSON.stringify({ book_id: qaBookId })
+    });
+    showToast('Zum Regal hinzugefügt!', 'success');
+  } catch (_) {}
+}
+
+async function createShelfAndAdd() {
+  const name = document.getElementById('qaNewShelfName').value.trim();
+  if (!name) { showToast('Bitte Regalname eingeben', 'warning'); return; }
+  try {
+    const res = await apiFetch('/api/shelves', { method: 'POST', body: JSON.stringify({ name }) });
+    await apiFetch(`/api/shelves/${res.id}/books`, {
+      method: 'POST',
+      body: JSON.stringify({ book_id: qaBookId })
+    });
+    showToast('Regal erstellt & Buch hinzugefügt!', 'success');
+    document.getElementById('qaNewShelfName').value = '';
+    setTimeout(() => location.reload(), 900);
+  } catch (_) {}
+}
+
+// Vorschläge schließen bei Klick außerhalb
+document.addEventListener('click', e => {
+  if (!e.target.closest('#qaSeriesInput') && !e.target.closest('#qaSeriesSugg')) {
+    document.getElementById('qaSeriesSugg').style.display = 'none';
+  }
+});
+</script>
+
+<style>
+/* Quick-Assign-Button auf Buchkarten (Grid) */
+.book-item-wrap .book-quick-btn {
+  position: absolute;
+  top: 6px;
+  right: 14px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: .7rem;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
+  cursor: pointer;
+}
+.book-item-wrap:hover .book-quick-btn {
+  display: flex;
+}
+
+/* Quick-Assign-Button in Listenansicht */
+.book-quick-btn-list {
+  padding: 2px 8px;
+  font-size: .75rem;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  opacity: 0;
+  transition: opacity .15s;
+  cursor: pointer;
+}
+.book-quick-btn-list:hover { background: var(--accent); color: #fff; }
+*:hover > .d-flex > .book-quick-btn-list,
+.d-flex:hover .book-quick-btn-list { opacity: 1; }
+</style>
+{% endblock %}

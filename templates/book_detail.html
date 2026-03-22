@@ -1,0 +1,628 @@
+{% extends "base.html" %}
+{% block title %}{{ book.title }} – Reading Diary{% endblock %}
+{% block page_title %}Buchdetails{% endblock %}
+{% block head %}
+<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<!-- Back link -->
+<a href="/books" class="btn btn-sm mb-3" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted)">
+  <i class="fas fa-arrow-left me-1"></i>Zurück
+</a>
+
+<!-- Hero -->
+<div class="book-hero">
+  <div class="book-hero-cover">
+    {% if book.cover_url %}
+      <img src="{{ book.cover_url }}" alt="{{ book.title }}" style="width:100%;border-radius:10px">
+    {% else %}
+      <div class="book-cover-placeholder" style="min-height:195px">
+        <i class="fas fa-book" style="font-size:2.5rem"></i>
+        <span>{{ book.title }}</span>
+      </div>
+    {% endif %}
+  </div>
+  <div class="book-hero-info">
+    <div class="book-hero-title">{{ book.title }}</div>
+    <div class="book-hero-author">{{ book.author_name or '–' }}</div>
+    <div class="mb-2">
+      {% if book.status == 'Gelesen' %}<span class="status-badge badge-status-gelesen">Gelesen</span>
+      {% elif book.status == 'Am Lesen' %}<span class="status-badge {{ 'badge-status-am-hoeren' if book.is_audiobook else 'badge-status-am-lesen' }}">{{ 'Am Hören' if book.is_audiobook else 'Am Lesen' }}</span>
+      {% else %}<span class="status-badge badge-status-ungelesen">Ungelesen</span>{% endif %}
+    </div>
+    <div class="book-hero-meta">
+      {% if book.publisher_name %}<span><i class="fas fa-building"></i>{{ book.publisher_name }}</span>{% endif %}
+      {% if book.release_date %}<span><i class="fas fa-calendar"></i>{{ book.release_date }}</span>{% endif %}
+      {% if book.pages %}<span><i class="fas fa-file-alt"></i>{{ book.pages }} Seiten</span>{% endif %}
+      {% if book.isbn %}<span><i class="fas fa-barcode"></i>{{ book.isbn }}</span>{% endif %}
+      {% if book.format %}<span><i class="fas fa-book-open"></i>{{ book.format }}</span>{% endif %}
+      {% if book.genre %}<span><i class="fas fa-tag"></i>{{ book.genre }}</span>{% endif %}
+      {% if book.series %}<span><i class="fas fa-layer-group"></i>{{ book.series }}{% if book.volume %} Bd. {{ book.volume }}{% endif %}</span>{% endif %}
+    </div>
+    <div class="mt-3 d-flex gap-2 flex-wrap">
+      <button class="btn btn-primary btn-sm" onclick="openEditModal()">
+        <i class="fas fa-edit me-1"></i>Bearbeiten
+      </button>
+      <button class="btn btn-sm btn-danger" onclick="deleteBook()">
+        <i class="fas fa-trash me-1"></i>Löschen
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Reading Progress Section ── -->
+<div class="section-card">
+  <div class="section-title"><i class="fas fa-bookmark"></i>Lesefortschritt</div>
+
+  {% if book.pages %}
+  <div class="mb-3">
+    <div class="d-flex justify-content-between mb-1" style="font-size:.8rem;color:var(--text-muted)">
+      <span>Seite {{ current_page }} von {{ book.pages }}</span>
+      <span>{{ ((current_page / book.pages) * 100)|int }}%</span>
+    </div>
+    <div class="progress-bar-book">
+      <div class="progress-bar-book-fill" id="progressBarFill"
+           style="width:{{ ((current_page / book.pages) * 100)|int }}%"></div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="d-flex gap-2 mb-3">
+    <input type="number" id="newPage" class="form-control" style="max-width:160px"
+           placeholder="Aktuelle Seite" min="0"
+           {% if book.pages %}max="{{ book.pages }}"{% endif %}
+           value="{{ current_page }}">
+    <button class="btn btn-primary" onclick="saveProgress()">
+      <i class="fas fa-save me-1"></i>Speichern
+    </button>
+  </div>
+
+  {% if progress_history %}
+  <div style="max-height:250px;overflow-y:auto">
+    {% for p in progress_history %}
+    <div class="progress-history-item">
+      <i class="fas fa-clock" style="color:var(--text-muted);font-size:.8rem"></i>
+      <span style="color:var(--text-muted)">{{ p.timestamp[:16].replace('T',' ') }}</span>
+      <span class="ms-auto me-2">Seite {{ p.page }}</span>
+      {% if p.delta > 0 %}
+        <span class="delta-positive">+{{ p.delta }}</span>
+      {% elif p.delta < 0 %}
+        <span class="delta-negative">{{ p.delta }}</span>
+      {% else %}
+        <span style="color:var(--text-muted)">0</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p style="color:var(--text-muted);font-size:.85rem">Noch kein Fortschritt eingetragen.</p>
+  {% endif %}
+</div>
+
+{% if show_audiobook and book.is_audiobook %}
+<!-- ── Audio Progress Section ── -->
+<div class="section-card">
+  <div class="section-title"><i class="fas fa-headphones"></i>Hörfortschritt</div>
+
+  <div class="mb-3">
+    <div class="d-flex justify-content-between mb-1" style="font-size:.8rem;color:var(--text-muted)">
+      <span>{{ current_percent }}%</span>
+      <span>{{ current_percent }}% gehört</span>
+    </div>
+    <div class="progress-bar-book">
+      <div class="progress-bar-book-fill"
+           style="width:{{ current_percent }}%"></div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2 mb-3">
+    <div class="input-group" style="max-width:200px">
+      <input type="number" id="newPercent" class="form-control"
+             placeholder="Aktueller %" min="0" max="100"
+             value="{{ current_percent }}">
+      <span class="input-group-text">%</span>
+    </div>
+    <button class="btn btn-primary" onclick="saveAudioProgress()">
+      <i class="fas fa-save me-1"></i>Speichern
+    </button>
+  </div>
+
+  {% if audio_history %}
+  <div style="max-height:250px;overflow-y:auto">
+    {% for p in audio_history %}
+    <div class="progress-history-item">
+      <i class="fas fa-clock" style="color:var(--text-muted);font-size:.8rem"></i>
+      <span style="color:var(--text-muted)">{{ p.timestamp[:16].replace('T',' ') }}</span>
+      <span class="ms-auto me-2">{{ p.percent }}%</span>
+      {% if p.delta > 0 %}
+        <span class="delta-positive">+{{ p.delta }}%</span>
+      {% elif p.delta < 0 %}
+        <span class="delta-negative">{{ p.delta }}%</span>
+      {% else %}
+        <span style="color:var(--text-muted)">0%</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p style="color:var(--text-muted);font-size:.85rem">Noch kein Hörfortschritt eingetragen.</p>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- ── Rating Section ── -->
+<div class="section-card">
+  <div class="section-title"><i class="fas fa-star"></i>Bewertung</div>
+
+  <div class="row g-3">
+    <!-- Stars -->
+    {% if show_stars %}
+    <div class="col-12 col-sm-6">
+      <label class="form-label">Sterne (1–5)</label>
+      <div class="star-row" id="starsContainer">
+        {% for i in range(5) %}
+        <button type="button" class="star-btn"><i class="fas fa-star"></i></button>
+        {% endfor %}
+      </div>
+      <input type="hidden" id="ratingStars" value="{{ rating.stars if rating else 0 }}">
+    </div>
+    {% else %}
+    <input type="hidden" id="ratingStars" value="{{ rating.stars if rating else 0 }}">
+    {% endif %}
+
+    <!-- Spice -->
+    {% if show_spice %}
+    <div class="col-12 col-sm-6">
+      <label class="form-label">Spice (1–5) <i class="fas fa-pepper-hot" style="color:#ef4444"></i></label>
+      <div class="star-row" id="spiceContainer">
+        {% for i in range(5) %}
+        <button type="button" class="star-btn spice-btn"><i class="fas fa-pepper-hot"></i></button>
+        {% endfor %}
+      </div>
+      <input type="hidden" id="ratingSpice" value="{{ rating.spice if rating else 0 }}">
+    </div>
+    {% else %}
+    <input type="hidden" id="ratingSpice" value="{{ rating.spice if rating else 0 }}">
+    {% endif %}
+
+    <!-- Tension slider -->
+    {% if show_tension %}
+    <div class="col-12 col-sm-6">
+      <label class="form-label">Spannung (1–10): <strong id="tensionDisplay">{{ rating.tension if rating else 0 }}</strong></label>
+      <input type="range" class="tension-slider form-range" id="ratingTension"
+             min="0" max="10" value="{{ rating.tension if rating else 0 }}"
+             oninput="document.getElementById('tensionDisplay').textContent=this.value">
+    </div>
+    {% else %}
+    <input type="hidden" id="ratingTension" value="{{ rating.tension if rating else 0 }}">
+    {% endif %}
+
+    <!-- Type -->
+    {% if show_fiction %}
+    <div class="col-12 col-sm-6">
+      <label class="form-label">Typ</label>
+      <select id="ratingType" class="form-select">
+        <option value="Fiction" {{ 'selected' if not rating or rating.type == 'Fiction' }}>Fiction</option>
+        <option value="Non-Fiction" {{ 'selected' if rating and rating.type == 'Non-Fiction' }}>Non-Fiction</option>
+      </select>
+    </div>
+    {% else %}
+    <input type="hidden" id="ratingType" value="{{ rating.type if rating else 'Fiction' }}">
+    {% endif %}
+  </div>
+
+  <div class="mt-3">
+    <button class="btn btn-primary btn-sm" onclick="saveRating()">
+      <i class="fas fa-save me-1"></i>Bewertung speichern
+    </button>
+  </div>
+</div>
+
+<!-- ── Review Section ── -->
+{% if show_reviews %}
+<div class="section-card" id="reviewSection">
+  <div class="section-title"><i class="fas fa-pen-alt"></i>Rezension</div>
+  <div id="quill-editor">{{ review.content | safe if review and review.content else '' }}</div>
+  <div class="mt-3">
+    <button class="btn btn-primary btn-sm" onclick="saveReview()">
+      <i class="fas fa-save me-1"></i>Rezension speichern
+    </button>
+    <span id="reviewSaved" style="display:none;color:#22c55e;font-size:.8rem;margin-left:8px">
+      <i class="fas fa-check"></i> Gespeichert
+    </span>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── Notes Section ── -->
+<div class="section-card">
+  <div class="section-title"><i class="fas fa-sticky-note"></i>Kapitelnotizen</div>
+  <div id="notesList" class="mb-3">
+    {% for note in notes %}
+    <div class="note-item p-2 mb-2 rounded" style="border:1px solid var(--border);background:var(--bg)" id="note-{{ note.id }}">
+      <div class="d-flex justify-content-between align-items-start">
+        {% if note.chapter %}
+        <div style="font-size:.75rem;color:var(--accent);font-weight:600;margin-bottom:4px">
+          <i class="fas fa-bookmark me-1"></i>{{ note.chapter }}
+        </div>
+        {% endif %}
+        <div class="d-flex gap-1 ms-auto">
+          <button class="btn btn-sm btn-outline-secondary" style="padding:1px 6px;font-size:.7rem"
+                  onclick="editNote({{ note.id }}, '{{ note.chapter|e }}', this)">
+            <i class="fas fa-pen"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger" style="padding:1px 6px;font-size:.7rem"
+                  onclick="deleteNote({{ note.id }})">
+            <i class="fas fa-trash-alt"></i>
+          </button>
+        </div>
+      </div>
+      <div class="note-content" style="font-size:.88rem;color:var(--text);white-space:pre-wrap">{{ note.content }}</div>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted);font-size:.85rem">Noch keine Notizen vorhanden.</p>
+    {% endfor %}
+  </div>
+  <!-- Add note form -->
+  <div style="border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg)">
+    <input type="text" id="noteChapter" class="form-control form-control-sm mb-2"
+           placeholder="Kapitel (optional)">
+    <textarea id="noteContent" class="form-control form-control-sm mb-2" rows="3"
+              placeholder="Notiz eingeben…"></textarea>
+    <button class="btn btn-primary btn-sm" onclick="addNote()">
+      <i class="fas fa-plus me-1"></i>Notiz hinzufügen
+    </button>
+  </div>
+</div>
+
+<!-- ── Lent Section ── -->
+{% if show_lent %}
+<div class="section-card">
+  <div class="section-title"><i class="fas fa-hand-holding-heart"></i>Verliehen</div>
+  {% if book.lent_to %}
+  <div class="d-flex align-items-center gap-2 mb-3 p-2 rounded"
+       style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3)">
+    <i class="fas fa-user-friends" style="color:#f59e0b"></i>
+    <div>
+      <div style="font-weight:500;color:var(--text)">Verliehen an: {{ book.lent_to }}</div>
+      {% if book.lent_date %}<div style="font-size:.8rem;color:var(--text-muted)">seit {{ book.lent_date }}</div>{% endif %}
+    </div>
+    <button class="btn btn-sm btn-outline-success ms-auto" onclick="returnBook()">
+      <i class="fas fa-undo me-1"></i>Zurück erhalten
+    </button>
+  </div>
+  {% else %}
+  <p style="color:var(--text-muted);font-size:.85rem" id="lentStatus">Nicht verliehen.</p>
+  {% endif %}
+  <div class="d-flex gap-2">
+    <input type="text" id="lentTo" class="form-control form-control-sm"
+           placeholder="Name der Person" value="{{ book.lent_to or '' }}">
+    <input type="date" id="lentDate" class="form-control form-control-sm"
+           value="{{ book.lent_date or '' }}" style="max-width:160px">
+    <button class="btn btn-warning btn-sm text-white" onclick="saveLent()">
+      <i class="fas fa-save me-1"></i>Speichern
+    </button>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── Series Section ── -->
+<div class="section-card">
+  <div class="section-title"><i class="fas fa-layer-group"></i>Serie</div>
+  {% if book.series_group_name %}
+  <div class="mb-2">
+    <span class="badge" style="background:var(--accent);color:#fff;font-size:.85rem">
+      <i class="fas fa-layer-group me-1"></i>{{ book.series_group_name }}
+      {% if book.series_order %} – Band {{ book.series_order }}{% endif %}
+    </span>
+    <a href="/series/{{ book.series_id }}" class="btn btn-sm btn-outline-primary ms-2">
+      Zur Serienübersicht
+    </a>
+  </div>
+  {% endif %}
+  <div class="row g-2 mt-1">
+    <div class="col-12 col-sm-6">
+      <select id="seriesSelect" class="form-select form-select-sm">
+        <option value="">— Keine Serie —</option>
+        {% for s in all_series %}
+        <option value="{{ s.id }}" {{ 'selected' if book.series_id == s.id }}>{{ s.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-sm-3">
+      <input type="number" id="seriesOrder" class="form-control form-control-sm"
+             placeholder="Band Nr." min="1" value="{{ book.series_order or '' }}">
+    </div>
+    <div class="col-6 col-sm-3">
+      <button class="btn btn-primary btn-sm w-100" onclick="saveSeries()">
+        <i class="fas fa-save me-1"></i>Speichern
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Edit Modal ── -->
+<div class="modal fade" id="editBookModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-edit me-2" style="color:var(--accent)"></i>Buch bearbeiten</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Tabs -->
+        <ul class="nav nav-pills mb-3">
+          <li class="nav-item">
+            <button class="nav-link active" id="edit-scan-tab" data-bs-toggle="pill"
+                    data-bs-target="#edit-scan" type="button"
+                    onclick="startScanner('edit_isbn','edit_')">
+              <i class="fas fa-camera me-1"></i>ISBN scannen
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" id="edit-isbn-tab" data-bs-toggle="pill"
+                    data-bs-target="#edit-isbnin" type="button" onclick="stopScanner()">
+              <i class="fas fa-keyboard me-1"></i>ISBN eingeben
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" id="edit-manual-tab" data-bs-toggle="pill"
+                    data-bs-target="#edit-manual" type="button" onclick="stopScanner()">
+              <i class="fas fa-edit me-1"></i>Daten
+            </button>
+          </li>
+        </ul>
+        <div class="tab-content">
+          <div class="tab-pane fade show active" id="edit-scan">
+            <div id="qr-reader" style="width:100%;max-height:300px"></div>
+          </div>
+          <div class="tab-pane fade" id="edit-isbnin">
+            <div class="d-flex gap-2 mt-2">
+              <input type="text" id="edit_isbn_manual" class="form-control" placeholder="ISBN eingeben">
+              <button class="btn btn-primary" id="edit_isbn_search_btn"
+                      onclick="lookupISBN(document.getElementById('edit_isbn_manual').value,'edit_')">
+                <i class="fas fa-search"></i> Suchen
+              </button>
+            </div>
+          </div>
+          <div class="tab-pane fade" id="edit-manual">
+            {% set prefix = 'edit_' %}{% set wishlist_mode = false %}
+            {% include "book_form.html" with context %}
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+        <button class="btn btn-primary" onclick="submitEditBook()">
+          <i class="fas fa-save me-1"></i>Speichern
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+<script>
+const BOOK_ID = {{ book.id }};
+const BOOK_PAGES = {{ book.pages or 0 }};
+
+// ── Quill ──
+{% if show_reviews %}
+const quill = new Quill('#quill-editor', {
+  theme: 'snow',
+  modules: {
+    toolbar: [
+      [{ header: [1,2,3,false] }],
+      ['bold','italic','underline','strike'],
+      ['blockquote','code-block'],
+      [{ list:'ordered' },{ list:'bullet' }],
+      [{ color:[] },{ background:[] }],
+      ['link'],['clean']
+    ]
+  }
+});
+{% endif %}
+
+// ── Star ratings init ──
+document.addEventListener('DOMContentLoaded', () => {
+  initStarRating('starsContainer', 'ratingStars');
+  initStarRating('spiceContainer', 'ratingSpice');
+  setupAutocomplete('edit_author', '/api/authors/search');
+  setupAutocomplete('edit_publisher', '/api/publishers/search');
+  setupAutocomplete('edit_genre', '/api/genres/search');
+});
+
+// ── Progress ──
+async function saveProgress() {
+  const page = parseInt(document.getElementById('newPage').value) || 0;
+  try {
+    const d = await apiFetch(`/api/books/${BOOK_ID}/progress`, {
+      method: 'POST', body: JSON.stringify({ page })
+    });
+    showToast(`Seite ${d.page} gespeichert (${d.delta >= 0 ? '+' : ''}${d.delta})`, 'success');
+    setTimeout(() => location.reload(), 800);
+  } catch(_) {}
+}
+
+async function saveAudioProgress() {
+  const percent = Math.min(100, Math.max(0, parseInt(document.getElementById('newPercent').value) || 0));
+  try {
+    const d = await apiFetch(`/api/books/${BOOK_ID}/audio-progress`, {
+      method: 'POST', body: JSON.stringify({ percent })
+    });
+    showToast(`${d.percent}% gespeichert (${d.delta >= 0 ? '+' : ''}${d.delta}%)`, 'success');
+    setTimeout(() => location.reload(), 800);
+  } catch(_) {}
+}
+
+// ── Rating ──
+async function saveRating() {
+  const data = {
+    stars: parseInt(document.getElementById('ratingStars').value) || 0,
+    spice: parseInt(document.getElementById('ratingSpice').value) || 0,
+    tension: parseInt(document.getElementById('ratingTension').value) || 0,
+    type: document.getElementById('ratingType').value,
+  };
+  try {
+    await apiFetch(`/api/books/${BOOK_ID}/rating`, { method:'PUT', body: JSON.stringify(data) });
+    showToast('Bewertung gespeichert!', 'success');
+  } catch(_) {}
+}
+
+// ── Review ──
+async function saveReview() {
+  {% if show_reviews %}
+  const content = quill.root.innerHTML;
+  try {
+    await apiFetch(`/api/books/${BOOK_ID}/review`, { method:'PUT', body: JSON.stringify({ content }) });
+    const s = document.getElementById('reviewSaved');
+    s.style.display='inline';
+    setTimeout(() => s.style.display='none', 3000);
+  } catch(_) {}
+  {% endif %}
+}
+
+// ── Delete book ──
+function deleteBook() {
+  confirmDelete('Buch wirklich löschen? Alle Fortschritte und Bewertungen werden entfernt.',
+    `/api/books/${BOOK_ID}`, '/books');
+}
+
+// ── Edit modal ──
+function openEditModal() {
+  // Pre-fill form from current book data
+  const fields = {
+    'edit_title': '{{ book.title | e }}',
+    'edit_author': '{{ book.author_name | e if book.author_name else "" }}',
+    'edit_publisher': '{{ book.publisher_name | e if book.publisher_name else "" }}',
+    'edit_isbn': '{{ book.isbn or "" }}',
+    'edit_genre': '{{ book.genre or "" }}',
+    'edit_pages': '{{ book.pages or "" }}',
+    'edit_format': '{{ book.format or "Paperback" }}',
+    'edit_release_date': '{{ book.release_date or "" }}',
+    'edit_series': '{{ book.series or "" }}',
+    'edit_volume': '{{ book.volume or "" }}',
+    'edit_status': '{{ book.status or "Ungelesen" }}',
+    'edit_cover_url': '{{ book.cover_url or "" }}',
+  };
+  for (const [id, val] of Object.entries(fields)) {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  }
+  const audioCheck = document.getElementById('edit_is_audiobook');
+  if (audioCheck) audioCheck.checked = {{ 'true' if book.is_audiobook else 'false' }};
+  const preview = document.getElementById('edit_cover_preview');
+  const uploadContent = document.getElementById('edit_cover_upload_content');
+  const fileInput = document.getElementById('edit_cover_file');
+  if (fileInput) fileInput.value = '';
+  {% if book.cover_url %}
+    if (preview) { preview.src='{{ book.cover_url }}'; preview.style.display='block'; }
+    if (uploadContent) uploadContent.style.display='none';
+  {% else %}
+    if (preview) { preview.src=''; preview.style.display='none'; }
+    if (uploadContent) uploadContent.style.display='flex';
+  {% endif %}
+
+  // Show data tab
+  bootstrap.Tab.getOrCreateInstance(document.getElementById('edit-manual-tab')).show();
+  new bootstrap.Modal(document.getElementById('editBookModal')).show();
+}
+
+async function submitEditBook() {
+  const p = 'edit_';
+  if (!validateBookForm(p, false)) return;
+  const title = document.getElementById(p+'title')?.value?.trim();
+  const data = {
+    title, isbn: document.getElementById(p+'isbn')?.value,
+    author: document.getElementById(p+'author')?.value,
+    publisher: document.getElementById(p+'publisher')?.value,
+    genre: document.getElementById(p+'genre')?.value,
+    pages: parseInt(document.getElementById(p+'pages')?.value)||0,
+    format: document.getElementById(p+'format')?.value||'Paperback',
+    release_date: document.getElementById(p+'release_date')?.value,
+    series: document.getElementById(p+'series')?.value,
+    volume: document.getElementById(p+'volume')?.value,
+    status: document.getElementById(p+'status')?.value||'Ungelesen',
+    cover_url: document.getElementById(p+'cover_url')?.value,
+    is_audiobook: document.getElementById(p+'is_audiobook')?.checked || false,
+  };
+  try {
+    await apiFetch(`/api/books/${BOOK_ID}`, { method:'PUT', body: JSON.stringify(data) });
+    bootstrap.Modal.getInstance(document.getElementById('editBookModal')).hide();
+    showToast('Gespeichert!', 'success');
+    setTimeout(() => location.reload(), 800);
+  } catch(_) {}
+}
+
+// ── Notizen ──
+async function addNote() {
+  const chapter = document.getElementById('noteChapter').value.trim();
+  const content = document.getElementById('noteContent').value.trim();
+  if (!content) { showToast('Bitte eine Notiz eingeben', 'warning'); return; }
+  const res = await apiFetch(`/api/books/${BOOK_ID}/notes`, {
+    method: 'POST', body: JSON.stringify({ chapter, content })
+  });
+  if (res) { showToast('Notiz gespeichert', 'success'); setTimeout(() => location.reload(), 500); }
+}
+
+async function deleteNote(nid) {
+  if (!await showConfirm('Notiz löschen?')) return;
+  const res = await apiFetch(`/api/notes/${nid}`, { method: 'DELETE' });
+  if (res) { document.getElementById(`note-${nid}`).remove(); showToast('Notiz gelöscht', 'success'); }
+}
+
+function editNote(nid, chapter, btn) {
+  const noteEl = document.getElementById(`note-${nid}`);
+  const contentEl = noteEl.querySelector('.note-content');
+  const currentText = contentEl.textContent;
+  contentEl.innerHTML = `
+    <input type="text" id="editNoteChapter-${nid}" class="form-control form-control-sm mb-1" value="${chapter}">
+    <textarea id="editNoteContent-${nid}" class="form-control form-control-sm mb-1" rows="3">${currentText}</textarea>
+    <button class="btn btn-primary btn-sm me-1" onclick="saveNoteEdit(${nid})"><i class="fas fa-save me-1"></i>Speichern</button>
+    <button class="btn btn-secondary btn-sm" onclick="location.reload()">Abbrechen</button>
+  `;
+  btn.style.display = 'none';
+}
+
+async function saveNoteEdit(nid) {
+  const chapter = document.getElementById(`editNoteChapter-${nid}`).value.trim();
+  const content = document.getElementById(`editNoteContent-${nid}`).value.trim();
+  if (!content) { showToast('Notiz darf nicht leer sein', 'warning'); return; }
+  const res = await apiFetch(`/api/notes/${nid}`, {
+    method: 'PUT', body: JSON.stringify({ chapter, content })
+  });
+  if (res) { showToast('Notiz aktualisiert', 'success'); setTimeout(() => location.reload(), 500); }
+}
+
+// ── Verliehen ──
+async function saveLent() {
+  const lent_to = document.getElementById('lentTo').value.trim();
+  const lent_date = document.getElementById('lentDate').value;
+  const res = await apiFetch(`/api/books/${BOOK_ID}/lent`, {
+    method: 'PUT', body: JSON.stringify({ lent_to, lent_date })
+  });
+  if (res) { showToast('Gespeichert!', 'success'); setTimeout(() => location.reload(), 500); }
+}
+
+async function returnBook() {
+  const res = await apiFetch(`/api/books/${BOOK_ID}/lent`, {
+    method: 'PUT', body: JSON.stringify({ lent_to: null, lent_date: null })
+  });
+  if (res) { showToast('Als zurückgegeben markiert', 'success'); setTimeout(() => location.reload(), 500); }
+}
+
+// ── Serie ──
+async function saveSeries() {
+  const series_id = document.getElementById('seriesSelect').value || null;
+  const series_order = parseInt(document.getElementById('seriesOrder').value) || null;
+  const res = await apiFetch(`/api/books/${BOOK_ID}/series`, {
+    method: 'PUT', body: JSON.stringify({ series_id: series_id ? parseInt(series_id) : null, series_order })
+  });
+  if (res) { showToast('Serie gespeichert!', 'success'); setTimeout(() => location.reload(), 500); }
+}
+</script>
+{% endblock %}

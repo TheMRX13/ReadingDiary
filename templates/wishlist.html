@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+{% block title %}Wunschliste – Reading Diary{% endblock %}
+{% block page_title %}Wunschliste{% endblock %}
+{% block head %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <div class="search-bar flex-grow-1" style="max-width:360px">
+      <i class="fas fa-search search-icon"></i>
+      <form method="get" id="searchForm">
+        <input type="text" name="q" value="{{ q }}" class="form-control"
+               placeholder="Titel oder Autor suchen…" id="searchInput" oninput="delaySearch()">
+      </form>
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    <div class="btn-group" role="group">
+      <button id="btnGrid" class="btn btn-sm btn-outline-secondary" onclick="setView('grid')" title="Galerieansicht">
+        <i class="fas fa-th"></i>
+      </button>
+      <button id="btnList" class="btn btn-sm btn-outline-secondary" onclick="setView('list')" title="Listenansicht">
+        <i class="fas fa-list"></i>
+      </button>
+    </div>
+    <button class="btn btn-primary" onclick="openAddModal()">
+      <i class="fas fa-plus me-1"></i>Hinzufügen
+    </button>
+  </div>
+</div>
+
+{% if items %}
+<!-- Grid view -->
+<div class="row g-3" id="viewGrid">
+  {% for item in items %}
+  <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+    <div class="book-card" style="cursor:default">
+      {% if item.cover_url %}
+        <img src="{{ item.cover_url }}" alt="{{ item.title }}" class="book-cover" loading="lazy">
+      {% else %}
+        <div class="book-cover-placeholder">
+          <i class="fas fa-heart"></i>
+          <span>{{ item.title }}</span>
+        </div>
+      {% endif %}
+      <div class="book-info">
+        <div class="book-title">{{ item.title }}</div>
+        <div class="book-author">{{ item.author_name or '–' }}</div>
+        {% if item.publisher_name %}<div class="book-author" style="font-size:.7rem">{{ item.publisher_name }}</div>{% endif %}
+        <div class="mt-2 wishlist-actions">
+          <button class="btn btn-sm" style="background:rgba(59,130,246,.1);color:#60a5fa;border:1px solid rgba(59,130,246,.3);font-size:.72rem"
+                  onclick="openEditModal({{ item.id }})">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="btn btn-sm" style="background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.3);font-size:.72rem"
+                  onclick="confirmDelete('Eintrag löschen?','/api/wishlist/{{ item.id }}')">
+            <i class="fas fa-trash"></i>
+          </button>
+          <button class="btn btn-sm" style="background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.3);font-size:.72rem"
+                  onclick="openBuyModal({{ item.id }}, '{{ item.title | e }}')">
+            <i class="fas fa-shopping-cart"></i> Gekauft
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- List view -->
+<div id="viewList" style="display:none">
+  {% for item in items %}
+  <div class="d-flex align-items-center gap-3 p-2 mb-2 rounded"
+       style="border:1px solid var(--border);background:var(--bg-card)">
+    {% if item.cover_url %}
+      <img src="{{ item.cover_url }}" alt="{{ item.title }}" style="width:40px;height:56px;object-fit:cover;border-radius:3px;flex-shrink:0" loading="lazy">
+    {% else %}
+      <div style="width:40px;height:56px;background:var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="fas fa-heart" style="color:var(--text-muted)"></i>
+      </div>
+    {% endif %}
+    <div class="flex-grow-1 overflow-hidden">
+      <div style="font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ item.title }}</div>
+      <div style="font-size:.82rem;color:var(--text-muted)">{{ item.author_name or '–' }}</div>
+      <div style="font-size:.75rem;color:var(--text-muted)">
+        {% if item.publisher_name %}{{ item.publisher_name }}{% endif %}
+        {% if item.release_date %} &middot; {{ item.release_date[:4] if item.release_date|length >= 4 else item.release_date }}{% endif %}
+        {% if item.pages %} &middot; {{ item.pages }} S.{% endif %}
+      </div>
+    </div>
+    <div class="d-flex gap-2 flex-shrink-0">
+      <button class="btn btn-sm btn-outline-primary" onclick="openEditModal({{ item.id }})" title="Bearbeiten">
+        <i class="fas fa-edit"></i>
+      </button>
+      <button class="btn btn-sm btn-outline-success" onclick="openBuyModal({{ item.id }}, '{{ item.title | e }}')" title="Gekauft">
+        <i class="fas fa-shopping-cart"></i>
+      </button>
+      <button class="btn btn-sm btn-outline-danger" onclick="confirmDelete('Eintrag löschen?','/api/wishlist/{{ item.id }}')" title="Löschen">
+        <i class="fas fa-trash"></i>
+      </button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5">
+  <i class="fas fa-heart" style="font-size:3rem;color:var(--border)"></i>
+  <p class="mt-3" style="color:var(--text-muted)">
+    {% if q %}Keine Einträge für „{{ q }}"{% else %}Wunschliste ist leer{% endif %}
+  </p>
+</div>
+{% endif %}
+
+<!-- ── Add Wishlist Modal ── -->
+<div class="modal fade" id="addWishModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-plus-circle me-2" style="color:#f59e0b"></i>Zur Wunschliste hinzufügen</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <ul class="nav nav-pills mb-3">
+          <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#wish-scan"
+                    type="button" onclick="startScanner('wish_isbn','wish_')">
+              <i class="fas fa-camera me-1"></i>Scannen
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#wish-isbnin"
+                    type="button" onclick="stopScanner()">
+              <i class="fas fa-keyboard me-1"></i>ISBN
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" id="wish_manual-tab" data-bs-toggle="pill"
+                    data-bs-target="#wish-manual" type="button" onclick="stopScanner()">
+              <i class="fas fa-edit me-1"></i>Manuell
+            </button>
+          </li>
+        </ul>
+        <div class="tab-content">
+          <div class="tab-pane fade show active" id="wish-scan">
+            <div id="qr-reader" style="width:100%;max-height:300px"></div>
+          </div>
+          <div class="tab-pane fade" id="wish-isbnin">
+            <div class="d-flex gap-2 mt-2">
+              <input type="text" id="wish_isbn_manual" class="form-control" placeholder="ISBN eingeben">
+              <button class="btn btn-primary" id="wish_isbn_search_btn"
+                      onclick="lookupISBN(document.getElementById('wish_isbn_manual').value,'wish_')">
+                <i class="fas fa-search"></i> Suchen
+              </button>
+            </div>
+          </div>
+          <div class="tab-pane fade" id="wish-manual">
+            {% set prefix = 'wish_' %}{% set wishlist_mode = true %}
+            {% include "book_form.html" with context %}
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+        <button class="btn btn-primary" onclick="submitAddWish()">
+          <i class="fas fa-save me-1"></i>Speichern
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Edit Wishlist Modal ── -->
+<div class="modal fade" id="editWishModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-edit me-2" style="color:var(--accent)"></i>Eintrag bearbeiten</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        {% set prefix = 'wedit_' %}{% set wishlist_mode = true %}
+        {% include "book_form.html" with context %}
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+        <button class="btn btn-primary" onclick="submitEditWish()">
+          <i class="fas fa-save me-1"></i>Speichern
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Buy Modal ── -->
+<div class="modal fade" id="buyModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-shopping-cart me-2" style="color:#22c55e"></i>Gekauft!</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p style="color:var(--text-muted)" id="buyBookName" class="mb-3"></p>
+        <label class="form-label">Format des gekauften Exemplars</label>
+        <select id="buyFormat" class="form-select">
+          <option value="Paperback">Paperback</option>
+          <option value="Hardcover">Hardcover</option>
+          <option value="eBook">eBook</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+        <button class="btn btn-success" onclick="confirmBuy()">
+          <i class="fas fa-check me-1"></i>Zu Meine Bücher
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let searchTimer;
+function delaySearch() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => document.getElementById('searchForm').submit(), 500);
+}
+
+function setView(v, save = true) {
+  const isGrid = v === 'grid';
+  const g = document.getElementById('viewGrid');
+  const l = document.getElementById('viewList');
+  if (g) g.style.display = isGrid ? '' : 'none';
+  if (l) l.style.display = isGrid ? 'none' : '';
+  document.getElementById('btnGrid').classList.toggle('active', isGrid);
+  document.getElementById('btnList').classList.toggle('active', !isGrid);
+  if (save) localStorage.setItem('wishlist_view', v);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const savedView = localStorage.getItem('wishlist_view') || 'grid';
+  setView(savedView, false);
+});
+
+let _buyId = null;
+
+function openAddModal() {
+  ['wish_title','wish_author','wish_publisher','wish_genre','wish_pages',
+   'wish_release_date','wish_isbn','wish_cover_url','wish_series','wish_volume']
+    .forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  const s=document.getElementById('wish_status'); if(s) s.value='Ungelesen';
+  const p=document.getElementById('wish_cover_preview'); if(p){p.src='';p.style.display='none';}
+  const uc=document.getElementById('wish_cover_upload_content'); if(uc) uc.style.display='flex';
+  const fi=document.getElementById('wish_cover_file'); if(fi) fi.value='';
+  new bootstrap.Modal(document.getElementById('addWishModal')).show();
+  setTimeout(() => startScanner('wish_isbn','wish_'), 300);
+}
+
+async function submitAddWish() {
+  const p='wish_';
+  if(!validateBookForm(p, true)) return;
+  const title = document.getElementById(p+'title')?.value?.trim();
+  const data = {
+    title, isbn: document.getElementById(p+'isbn')?.value,
+    author: document.getElementById(p+'author')?.value,
+    publisher: document.getElementById(p+'publisher')?.value,
+    genre: document.getElementById(p+'genre')?.value,
+    pages: parseInt(document.getElementById(p+'pages')?.value)||0,
+    release_date: document.getElementById(p+'release_date')?.value,
+    series: document.getElementById(p+'series')?.value,
+    volume: document.getElementById(p+'volume')?.value,
+    status: document.getElementById(p+'status')?.value||'Ungelesen',
+    cover_url: document.getElementById(p+'cover_url')?.value,
+    is_audiobook: document.getElementById(p+'is_audiobook')?.checked || false,
+  };
+  try {
+    await apiFetch('/api/wishlist',{method:'POST',body:JSON.stringify(data)});
+    bootstrap.Modal.getInstance(document.getElementById('addWishModal')).hide();
+    showToast('Zur Wunschliste hinzugefügt!','success');
+    setTimeout(()=>location.reload(),800);
+  }catch(_){}
+}
+
+let _editId=null;
+async function openEditModal(id) {
+  _editId=id;
+  try {
+    const d=await apiFetch(`/api/wishlist/${id}`);
+    const set=(fid,val)=>{const el=document.getElementById(fid);if(el&&val!=null)el.value=val;};
+    set('wedit_title',d.title); set('wedit_author',d.author_name);
+    set('wedit_publisher',d.publisher_name); set('wedit_isbn',d.isbn);
+    set('wedit_genre',d.genre); set('wedit_pages',d.pages);
+    set('wedit_release_date',d.release_date); set('wedit_series',d.series);
+    set('wedit_volume',d.volume); set('wedit_status',d.status);
+    set('wedit_cover_url',d.cover_url);
+    const audioCheck = document.getElementById('wedit_is_audiobook');
+    if (audioCheck) audioCheck.checked = !!d.is_audiobook;
+    const preview=document.getElementById('wedit_cover_preview');
+    if(preview&&d.cover_url){preview.src=d.cover_url;preview.style.display='block';}
+    new bootstrap.Modal(document.getElementById('editWishModal')).show();
+  }catch(_){}
+}
+
+async function submitEditWish() {
+  const p='wedit_';
+  if(!validateBookForm(p, true)) return;
+  const title=document.getElementById(p+'title')?.value?.trim();
+  const data={
+    title, isbn:document.getElementById(p+'isbn')?.value,
+    author:document.getElementById(p+'author')?.value,
+    publisher:document.getElementById(p+'publisher')?.value,
+    genre:document.getElementById(p+'genre')?.value,
+    pages:parseInt(document.getElementById(p+'pages')?.value)||0,
+    release_date:document.getElementById(p+'release_date')?.value,
+    series:document.getElementById(p+'series')?.value,
+    volume:document.getElementById(p+'volume')?.value,
+    status:document.getElementById(p+'status')?.value||'Ungelesen',
+    cover_url:document.getElementById(p+'cover_url')?.value,
+    is_audiobook: document.getElementById(p+'is_audiobook')?.checked || false,
+  };
+  try {
+    await apiFetch(`/api/wishlist/${_editId}`,{method:'PUT',body:JSON.stringify(data)});
+    bootstrap.Modal.getInstance(document.getElementById('editWishModal')).hide();
+    showToast('Gespeichert!','success');
+    setTimeout(()=>location.reload(),800);
+  }catch(_){}
+}
+
+function openBuyModal(id, name) {
+  _buyId=id;
+  document.getElementById('buyBookName').textContent=`„${name}" zu Meine Bücher verschieben?`;
+  new bootstrap.Modal(document.getElementById('buyModal')).show();
+}
+
+async function confirmBuy() {
+  const fmt=document.getElementById('buyFormat').value;
+  try {
+    await apiFetch(`/api/wishlist/${_buyId}/buy`,{method:'POST',body:JSON.stringify({format:fmt})});
+    bootstrap.Modal.getInstance(document.getElementById('buyModal')).hide();
+    showToast('Buch zu Meine Bücher verschoben!','success');
+    setTimeout(()=>window.location.href='/books',1000);
+  }catch(_){}
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  setupAutocomplete('wish_author','/api/authors/search');
+  setupAutocomplete('wish_publisher','/api/publishers/search');
+  setupAutocomplete('wish_genre','/api/genres/search');
+  setupAutocomplete('wedit_author','/api/authors/search');
+  setupAutocomplete('wedit_publisher','/api/publishers/search');
+  setupAutocomplete('wedit_genre','/api/genres/search');
+});
+</script>
+{% endblock %}

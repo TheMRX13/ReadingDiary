@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Lieblingszitate – Reading Diary{% endblock %}
+{% block page_title %}Lieblingszitate{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <div class="search-bar flex-grow-1" style="max-width:360px">
+      <i class="fas fa-search search-icon"></i>
+      <form method="get" id="searchForm">
+        <input type="text" name="q" value="{{ q }}" class="form-control"
+               placeholder="Zitat oder Buch suchen…" id="searchInput" oninput="delaySearch()">
+      </form>
+    </div>
+  </div>
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addQuoteModal">
+    <i class="fas fa-plus me-1"></i>Zitat hinzufügen
+  </button>
+</div>
+
+{% if quotes %}
+<div class="row g-3">
+  {% for qt in quotes %}
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="quote-card fade-in">
+      <div class="quote-text">{{ qt.quote_text }}</div>
+      <div class="quote-meta">
+        <i class="fas fa-book" style="color:var(--accent)"></i>
+        <span>{{ qt.book_title }}</span>
+        {% if qt.author_name %}<span style="color:var(--text-muted)">· {{ qt.author_name }}</span>{% endif %}
+        {% if qt.page %}<span class="ms-auto">S. {{ qt.page }}</span>{% endif %}
+        <button class="btn btn-sm ms-2" style="padding:2px 6px;background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.3)"
+                onclick="confirmDelete('Zitat löschen?','/api/quotes/{{ qt.id }}')">
+          <i class="fas fa-trash" style="font-size:.7rem"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5">
+  <i class="fas fa-quote-left" style="font-size:3rem;color:var(--border)"></i>
+  <p class="mt-3" style="color:var(--text-muted)">
+    {% if q %}Keine Zitate für „{{ q }}"{% else %}Noch keine Zitate vorhanden{% endif %}
+  </p>
+</div>
+{% endif %}
+
+<!-- ── Add Quote Modal ── -->
+<div class="modal fade" id="addQuoteModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-quote-left me-2" style="color:var(--accent)"></i>Zitat hinzufügen</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Zitat *</label>
+          <textarea id="quoteText" class="form-control" rows="4"
+                    placeholder="Das Zitat eingeben…"></textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Buch *</label>
+          <select id="quoteBook" class="form-select">
+            <option value="">– Buch auswählen –</option>
+            {% for b in books %}
+            <option value="{{ b.id }}">{{ b.title }}{% if b.author_name %} ({{ b.author_name }}){% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Seite</label>
+          <input type="number" id="quotePage" class="form-control"
+                 placeholder="Seitenzahl (optional)" min="1">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+        <button class="btn btn-primary" onclick="submitQuote()">
+          <i class="fas fa-save me-1"></i>Speichern
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let searchTimer;
+function delaySearch() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => document.getElementById('searchForm').submit(), 500);
+}
+
+async function submitQuote() {
+  const text = document.getElementById('quoteText').value.trim();
+  const bookId = document.getElementById('quoteBook').value;
+  const page = document.getElementById('quotePage').value;
+
+  if (!text) { showToast('Bitte Zitat eingeben', 'warning'); return; }
+  if (!bookId) { showToast('Bitte ein Buch auswählen', 'warning'); return; }
+
+  try {
+    await apiFetch('/api/quotes', {
+      method: 'POST',
+      body: JSON.stringify({ quote_text: text, book_id: parseInt(bookId), page: page ? parseInt(page) : null })
+    });
+    bootstrap.Modal.getInstance(document.getElementById('addQuoteModal')).hide();
+    document.getElementById('quoteText').value = '';
+    document.getElementById('quoteBook').value = '';
+    document.getElementById('quotePage').value = '';
+    showToast('Zitat gespeichert!', 'success');
+    setTimeout(() => location.reload(), 800);
+  } catch(_) {}
+}
+</script>
+{% endblock %}

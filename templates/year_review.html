@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}Jahresrückblick {{ year }} – Reading Diary{% endblock %}
+{% block page_title %}Jahresrückblick {{ year }}{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<!-- Year navigation -->
+<div class="d-flex align-items-center gap-2 mb-4 flex-wrap">
+  <a href="/statistics" class="btn btn-sm" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted)">
+    <i class="fas fa-arrow-left me-1"></i>Statistiken
+  </a>
+  <div class="ms-auto d-flex gap-2 flex-wrap">
+    {% for y in available_years %}
+    <a href="/stats/year/{{ y }}"
+       class="btn btn-sm {{ 'btn-primary' if y == year else 'btn-outline-secondary' }}">{{ y }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Summary cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-sm-3">
+    <div class="stat-card text-center">
+      <div class="stat-value">{{ books_read|length }}</div>
+      <div class="stat-label">Bücher gelesen</div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3">
+    <div class="stat-card text-center">
+      <div class="stat-value">{{ total_pages }}</div>
+      <div class="stat-label">Seiten gelesen</div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3">
+    <div class="stat-card text-center">
+      <div class="stat-value">{{ (total_pages / books_read|length)|int if books_read else 0 }}</div>
+      <div class="stat-label">Ø Seiten/Buch</div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3">
+    <div class="stat-card text-center">
+      <div class="stat-value">{{ (books_read|length / 12)|round(1) }}</div>
+      <div class="stat-label">Ø Bücher/Monat</div>
+    </div>
+  </div>
+</div>
+
+<!-- Monthly chart -->
+<div class="card mb-4" style="background:var(--bg-card);border:1px solid var(--border)">
+  <div class="card-body">
+    <h6 class="mb-3"><i class="fas fa-chart-bar me-2" style="color:var(--accent)"></i>Bücher pro Monat</h6>
+    <canvas id="monthlyChart" height="80"></canvas>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Top Genres -->
+  {% if top_genres %}
+  <div class="col-12 col-md-6">
+    <div class="card h-100" style="background:var(--bg-card);border:1px solid var(--border)">
+      <div class="card-body">
+        <h6 class="mb-3"><i class="fas fa-tags me-2" style="color:var(--accent)"></i>Top Genre</h6>
+        {% for genre, cnt in top_genres %}
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span style="font-size:.9rem">{{ genre }}</span>
+          <span class="badge" style="background:var(--accent);color:#fff">{{ cnt }}</span>
+        </div>
+        {% set max_cnt = top_genres[0][1] %}
+        <div class="progress mb-2" style="height:5px">
+          <div class="progress-bar" style="width:{{ (cnt/max_cnt*100)|int }}%"></div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Best rated -->
+  {% if best %}
+  <div class="col-12 col-md-6">
+    <div class="card h-100" style="background:var(--bg-card);border:1px solid var(--border)">
+      <div class="card-body">
+        <h6 class="mb-3"><i class="fas fa-star me-2" style="color:var(--accent)"></i>Bestes Buch {{ year }}</h6>
+        <div class="d-flex gap-3 align-items-start">
+          {% if best.cover_url %}
+          <img src="{{ best.cover_url }}" alt="{{ best.title }}" style="width:70px;height:100px;object-fit:cover;border-radius:4px">
+          {% endif %}
+          <div>
+            <div style="font-weight:600;color:var(--text)">{{ best.title }}</div>
+            <div style="font-size:.85rem;color:var(--text-muted)">{{ best.author_name or '–' }}</div>
+            <div class="mt-2">
+              {% for i in range(best.stars or 0) %}
+              <i class="fas fa-star" style="color:#f59e0b;font-size:.9rem"></i>
+              {% endfor %}
+              {% for i in range(5-(best.stars or 0)) %}
+              <i class="far fa-star" style="color:var(--border);font-size:.9rem"></i>
+              {% endfor %}
+            </div>
+            <a href="/books/{{ best.id }}" class="btn btn-sm btn-outline-primary mt-2">
+              Zum Buch <i class="fas fa-arrow-right ms-1"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- All books list -->
+{% if books_read %}
+<div class="card mt-4" style="background:var(--bg-card);border:1px solid var(--border)">
+  <div class="card-body">
+    <h6 class="mb-3"><i class="fas fa-list me-2" style="color:var(--accent)"></i>Alle {{ books_read|length }} gelesenen Bücher</h6>
+    <div class="row g-2">
+      {% for b in books_read %}
+      <div class="col-12 col-sm-6">
+        <a href="/books/{{ b.id }}" class="text-decoration-none d-flex align-items-center gap-2 p-2 rounded"
+           style="border:1px solid var(--border);transition:background .15s"
+           onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background=''">
+          {% if b.cover_url %}
+          <img src="{{ b.cover_url }}" alt="{{ b.title }}" style="width:36px;height:50px;object-fit:cover;border-radius:3px" loading="lazy">
+          {% else %}
+          <div style="width:36px;height:50px;background:var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center">
+            <i class="fas fa-book" style="color:var(--text-muted);font-size:.8rem"></i>
+          </div>
+          {% endif %}
+          <div>
+            <div style="font-size:.88rem;font-weight:500;color:var(--text)">{{ b.title }}</div>
+            <div style="font-size:.75rem;color:var(--text-muted)">{{ b.author_name or '–' }}</div>
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="text-center py-5">
+  <i class="fas fa-calendar-times" style="font-size:3rem;color:var(--border)"></i>
+  <p class="mt-3" style="color:var(--text-muted)">Keine Bücher für {{ year }} gefunden</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
+const labelColor = isDark ? '#94a3b8' : '#64748b';
+
+const monthly = {{ monthly|tojson }};
+new Chart(document.getElementById('monthlyChart'), {
+  type: 'bar',
+  data: {
+    labels: monthly.map(m => m.label),
+    datasets: [{
+      label: 'Bücher',
+      data: monthly.map(m => m.count),
+      backgroundColor: 'rgba(59,130,246,0.7)',
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, ticks: { stepSize: 1, color: labelColor }, grid: { color: gridColor } },
+      x: { ticks: { color: labelColor }, grid: { display: false } }
+    }
+  }
+});
+</script>
+{% endblock %}

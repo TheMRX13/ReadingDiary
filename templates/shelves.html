@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Meine Regale – Reading Diary{% endblock %}
+{% block page_title %}Meine Regale{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left"></div>
+  <button class="btn btn-primary" onclick="openAddShelf()">
+    <i class="fas fa-plus me-1"></i>Regal hinzufügen
+  </button>
+</div>
+
+{% if shelves %}
+<div class="row g-3">
+  {% for shelf in shelves %}
+  <div class="col-12 col-md-6 col-lg-4">
+    <div class="card h-100" style="background:var(--bg-card);border:1px solid var(--border)">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <h5 class="card-title mb-0">
+            <a href="/shelves/{{ shelf.id }}" class="text-decoration-none" style="color:var(--text)">
+              <i class="fas fa-bookmark me-2" style="color:var(--accent)"></i>{{ shelf.name }}
+            </a>
+          </h5>
+          <div class="d-flex gap-1">
+            <button class="btn btn-sm btn-outline-secondary" onclick="openEditShelf({{ shelf.id }}, '{{ shelf.name|e }}')" title="Umbenennen">
+              <i class="fas fa-pen"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteShelf({{ shelf.id }}, '{{ shelf.name|e }}')" title="Löschen">
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          </div>
+        </div>
+        <p class="text-muted mt-2 mb-0" style="font-size:.85rem">{{ shelf.book_count }} {{ 'Buch' if shelf.book_count == 1 else 'Bücher' }}</p>
+      </div>
+      <div class="card-footer" style="background:transparent;border-top:1px solid var(--border)">
+        <a href="/shelves/{{ shelf.id }}" class="btn btn-sm btn-outline-primary w-100">
+          <i class="fas fa-eye me-1"></i>Regal öffnen
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5">
+  <i class="fas fa-bookmark" style="font-size:3rem;color:var(--border)"></i>
+  <p class="mt-3" style="color:var(--text-muted)">Noch keine Regale vorhanden</p>
+  <p class="text-muted" style="font-size:.85rem">Erstelle Regale wie „Favoriten", „Verliehen" oder „Möchte ich lesen".</p>
+</div>
+{% endif %}
+
+<!-- Add Shelf Modal -->
+<div class="modal fade" id="addShelfModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-bookmark me-2" style="color:var(--accent)"></i>Regal hinzufügen</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label">Name *</label>
+        <input type="text" id="shelfNameInput" class="form-control" placeholder="z.B. Favoriten">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+        <button type="button" class="btn btn-primary" onclick="saveShelf()">
+          <i class="fas fa-save me-1"></i>Speichern
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Shelf Modal -->
+<div class="modal fade" id="editShelfModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-pen me-2" style="color:var(--accent)"></i>Regal umbenennen</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editShelfId">
+        <label class="form-label">Name *</label>
+        <input type="text" id="editShelfName" class="form-control">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+        <button type="button" class="btn btn-primary" onclick="updateShelf()">
+          <i class="fas fa-save me-1"></i>Speichern
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const addShelfModal = new bootstrap.Modal(document.getElementById('addShelfModal'));
+const editShelfModal = new bootstrap.Modal(document.getElementById('editShelfModal'));
+
+function openAddShelf() {
+  document.getElementById('shelfNameInput').value = '';
+  addShelfModal.show();
+}
+
+async function saveShelf() {
+  const name = document.getElementById('shelfNameInput').value.trim();
+  if (!name) { showToast('Bitte einen Namen eingeben', 'warning'); return; }
+  const res = await apiFetch('/api/shelves', { method: 'POST', body: JSON.stringify({ name }) });
+  if (res) { addShelfModal.hide(); location.reload(); }
+}
+
+function openEditShelf(id, name) {
+  document.getElementById('editShelfId').value = id;
+  document.getElementById('editShelfName').value = name;
+  editShelfModal.show();
+}
+
+async function updateShelf() {
+  const id = document.getElementById('editShelfId').value;
+  const name = document.getElementById('editShelfName').value.trim();
+  if (!name) { showToast('Bitte einen Namen eingeben', 'warning'); return; }
+  const res = await apiFetch(`/api/shelves/${id}`, { method: 'PUT', body: JSON.stringify({ name }) });
+  if (res) { editShelfModal.hide(); location.reload(); }
+}
+
+async function deleteShelf(id, name) {
+  if (!await showConfirm(`Regal „${name}" löschen? Die Bücher bleiben erhalten.`)) return;
+  const res = await apiFetch(`/api/shelves/${id}`, { method: 'DELETE' });
+  if (res) location.reload();
+}
+</script>
+{% endblock %}
