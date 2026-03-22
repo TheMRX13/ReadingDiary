@@ -1,4 +1,19 @@
-﻿from flask import (Flask, render_template, request, redirect, url_for,
+﻿import subprocess
+import sys
+
+# Auto-install fehlende Pakete
+def _ensure_packages():
+    import importlib
+    required = {'flask': 'Flask==3.0.3', 'requests': 'requests==2.31.0'}
+    for module, pkg in required.items():
+        try:
+            importlib.import_module(module)
+        except ImportError:
+            subprocess.check_call([sys.executable, '-m', 'pip', 'install', pkg])
+
+_ensure_packages()
+
+from flask import (Flask, render_template, request, redirect, url_for,
                    session, jsonify, Response, make_response)
 import sqlite3
 import os
