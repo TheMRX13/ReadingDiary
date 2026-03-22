@@ -6,6 +6,10 @@ Eine persönliche Bücherverwaltung als Web-App – lokal gehostet, mobilfreundl
 ![Flask](https://img.shields.io/badge/Flask-3.0.3-black?logo=flask)
 ![SQLite](https://img.shields.io/badge/SQLite-3-blue?logo=sqlite)
 
+![License](https://img.shields.io/badge/License-Proprietary-red?style=for-the-badge)
+![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Web-green?style=for-the-badge)
+
+
 ---
 
 ## Features
@@ -72,4 +76,8 @@ Die Datenbank (`reading_diary.db`) wird automatisch beim ersten Start erstellt.
 
 ## Lizenz
 
-MIT License – frei nutzbar und anpassbar.
+© TheMRX - Pascal Keller. Alle Rechte vorbehalten.  
+Dieses Projekt ist proprietär – keine Nutzung, Weitergabe oder Veränderung ohne ausdrückliche Genehmigung.
+
+
+*Entwickelt mit ❤️ für Buchliebhaber von **TheMRX - Pascal Keller***
