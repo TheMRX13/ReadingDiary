@@ -31,8 +31,13 @@ Eine persönliche Bücherverwaltung als Web-App – lokal gehostet, mobilfreundl
 ## Installation
 
 ### Voraussetzungen
-- Python 3.10+
-- pip
+- **Python 3.10+** – [https://www.python.org/downloads/](https://www.python.org/downloads/)
+- pip (wird mit Python mitgeliefert)
+
+> **Kein Python installiert?**  
+> Öffne die Seite oben, lade den Installer für dein Betriebssystem herunter und führe ihn aus.  
+> **Windows:** Haken bei „Add Python to PATH" setzen, dann auf „Install Now" klicken.  
+> Danach ein neues Terminal öffnen und `python --version` eingeben – wenn eine Versionsnummer erscheint, ist alles bereit.
 
 ### Setup
 
