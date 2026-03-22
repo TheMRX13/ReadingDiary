@@ -203,6 +203,26 @@
 
 </div>
 
+<!-- ── Passwort ändern ── -->
+<div class="settings-section mt-4">
+  <div class="settings-section-title"><i class="fas fa-lock me-2" style="color:var(--accent)"></i>Passwort ändern</div>
+  <div class="row g-3" style="max-width:480px">
+    <div class="col-12">
+      <label class="form-label">Neues Passwort</label>
+      <input type="password" id="pwNew" class="form-control" placeholder="Neues Passwort (min. 4 Zeichen)">
+    </div>
+    <div class="col-12">
+      <label class="form-label">Neues Passwort wiederholen</label>
+      <input type="password" id="pwConfirm" class="form-control" placeholder="Wiederholen">
+    </div>
+    <div class="col-12">
+      <button class="btn btn-primary btn-sm" onclick="changePassword()">
+        <i class="fas fa-key me-1"></i>Passwort ändern
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Daten-Export ── -->
 <div class="settings-section mt-4">
   <div class="settings-section-title">Daten-Export</div>
@@ -278,6 +298,23 @@ async function deletePublisher(id, name) {
     await apiFetch(`/api/publishers/${id}`, { method:'DELETE' });
     showToast('Verlag gelöscht!','success');
     setTimeout(()=>location.reload(),800);
+  } catch(_) {}
+}
+
+async function changePassword() {
+  const newPw   = document.getElementById('pwNew').value;
+  const confirm = document.getElementById('pwConfirm').value;
+  if (!newPw) { showToast('Bitte neues Passwort eingeben', 'warning'); return; }
+  if (newPw !== confirm)  { showToast('Passwörter stimmen nicht überein', 'warning'); return; }
+  if (newPw.length < 4)   { showToast('Passwort muss mindestens 4 Zeichen haben', 'warning'); return; }
+  try {
+    await apiFetch('/api/settings/password', {
+      method: 'POST',
+      body: JSON.stringify({ new: newPw })
+    });
+    showToast('Passwort geändert!', 'success');
+    document.getElementById('pwNew').value = '';
+    document.getElementById('pwConfirm').value = '';
   } catch(_) {}
 }
 </script>

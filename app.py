@@ -31,7 +31,7 @@ app = Flask(__name__)
 app.secret_key = 'rd_s3cr3t_2024_xK9p#mN2vL5_reading_diary'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=36500)
 
-PASSWORD = "33823A3b"
+DEFAULT_PASSWORD = "admin"
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'reading_diary.db')
 
 
@@ -234,7 +234,10 @@ def login():
     error = None
     if request.method == 'POST':
         pw = request.form.get('password', '')
-        if pw == PASSWORD:
+        conn = get_db()
+        stored_pw = get_setting(conn, 'password', DEFAULT_PASSWORD)
+        conn.close()
+        if pw == stored_pw:
             session.permanent = True
             session['logged_in'] = True
             return redirect(url_for('dashboard'))
@@ -970,6 +973,20 @@ def update_settings():
         conn.execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES (?,?)", (key, str(value))
         )
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/api/settings/password', methods=['POST'])
+@login_required
+def change_password():
+    d = request.json or {}
+    new_pw = d.get('new', '').strip()
+    if len(new_pw) < 4:
+        return jsonify({'error': 'Passwort muss mindestens 4 Zeichen haben'}), 400
+    conn = get_db()
+    conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('password', ?)", (new_pw,))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
