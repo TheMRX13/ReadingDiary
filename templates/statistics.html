@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Statistiken – Reading Diary{% endblock %}
-{% block page_title %}Statistiken{% endblock %}
+{% block title %}{{ _('Statistics') }} – Reading Diary{% endblock %}
+{% block page_title %}{{ _('Statistics') }}{% endblock %}
 {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 {% endblock %}
@@ -13,49 +13,49 @@
   <div class="col-6 col-md-4 col-xl-2">
     <div class="stat-card">
       <div class="stat-icon blue"><i class="fas fa-book"></i></div>
-      <div><div class="stat-label">Gesamt</div><div class="stat-value">{{ total_books }}</div></div>
+      <div><div class="stat-label">{{ _('Total') }}</div><div class="stat-value">{{ total_books }}</div></div>
     </div>
   </div>
   <div class="col-6 col-md-4 col-xl-2">
     <div class="stat-card">
       <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
-      <div><div class="stat-label">Gelesen</div><div class="stat-value">{{ read_books }}</div></div>
+      <div><div class="stat-label">{{ _('Read') }}</div><div class="stat-value">{{ read_books }}</div></div>
     </div>
   </div>
   <div class="col-6 col-md-4 col-xl-2">
     <div class="stat-card">
       <div class="stat-icon amber"><i class="fas fa-book-open"></i></div>
-      <div><div class="stat-label">Am Lesen</div><div class="stat-value">{{ reading_books }}</div></div>
+      <div><div class="stat-label">{{ _('Reading') }}</div><div class="stat-value">{{ reading_books }}</div></div>
     </div>
   </div>
   <div class="col-6 col-md-4 col-xl-2">
     <div class="stat-card">
       <div class="stat-icon" style="background:rgba(148,163,184,.15);color:#94a3b8"><i class="fas fa-bookmark"></i></div>
-      <div><div class="stat-label">Ungelesen</div><div class="stat-value">{{ unread_books }}</div></div>
+      <div><div class="stat-label">{{ _('Unread') }}</div><div class="stat-value">{{ unread_books }}</div></div>
     </div>
   </div>
   <div class="col-6 col-md-4 col-xl-2">
     <div class="stat-card">
       <div class="stat-icon purple"><i class="fas fa-file-alt"></i></div>
-      <div><div class="stat-label">Seiten gelesen</div><div class="stat-value">{{ total_pages }}</div></div>
+      <div><div class="stat-label">{{ _('Pages read') }}</div><div class="stat-value">{{ total_pages }}</div></div>
     </div>
   </div>
   <div class="col-6 col-md-4 col-xl-2">
     <div class="stat-card">
       <div class="stat-icon" style="background:rgba(236,72,153,.15);color:#ec4899"><i class="fas fa-quote-left"></i></div>
-      <div><div class="stat-label">Zitate</div><div class="stat-value">{{ total_quotes }}</div></div>
+      <div><div class="stat-label">{{ _('Quotes') }}</div><div class="stat-value">{{ total_quotes }}</div></div>
     </div>
   </div>
   <div class="col-6 col-md-4 col-xl-2">
     <div class="stat-card">
       <div class="stat-icon" style="background:rgba(245,158,11,.15);color:#f59e0b"><i class="fas fa-fire"></i></div>
-      <div><div class="stat-label">Lesesträhne</div><div class="stat-value">{{ current_streak }} <small style="font-size:.8rem;font-weight:400">Tage</small></div></div>
+      <div><div class="stat-label">{{ _('Reading Streak') }}</div><div class="stat-value">{{ current_streak }} <small style="font-size:.8rem;font-weight:400">{{ _('Days') }}</small></div></div>
     </div>
   </div>
   <div class="col-6 col-md-4 col-xl-2">
     <div class="stat-card">
       <div class="stat-icon" style="background:rgba(239,68,68,.15);color:#ef4444"><i class="fas fa-trophy"></i></div>
-      <div><div class="stat-label">Höchste Strähne</div><div class="stat-value">{{ best_streak }} <small style="font-size:.8rem;font-weight:400">Tage</small></div></div>
+      <div><div class="stat-label">{{ _('Best Streak') }}</div><div class="stat-value">{{ best_streak }} <small style="font-size:.8rem;font-weight:400">{{ _('Days') }}</small></div></div>
     </div>
   </div>
 </div>
@@ -65,7 +65,7 @@
 {% if goals %}
 <div class="card mb-4">
   <div class="card-body">
-    <div class="section-title"><i class="fas fa-bullseye"></i>Leseziele</div>
+      <div class="section-title"><i class="fas fa-bullseye"></i>{{ _('Reading Goals') }}</div>
     <div class="row g-3">
       {% for g in goals %}
       <div class="col-12 col-md-6">
@@ -73,17 +73,15 @@
           <div class="d-flex align-items-center justify-content-between mb-1">
             <span style="font-weight:600;font-size:.875rem">
               {{ g.target }}
-              {{ 'Seiten' if g.goal_type == 'pages' else 'Bücher' }}
-              pro
-              {% if g.period == 'weekly' %}Woche
-              {% elif g.period == 'monthly' %}Monat
-              {% else %}Jahr{% endif %}
+              {{ g.goal_type | trgoaltype }}
+              {{ _('per') }}
+              {{ g.period | trperiod }}
             </span>
             <span class="status-badge {{ 'badge-status-am-lesen' if g.enabled else 'badge-status-ungelesen' }}">
-              {{ 'Aktiv' if g.enabled else 'Inaktiv' }}
+              {{ _('Active') if g.enabled else _('Inactive') }}
             </span>
           </div>
-          <small style="color:var(--text-muted)">Erstellt: {{ g.created_at[:10] }}</small>
+          <small style="color:var(--text-muted)">{{ _('Created:') }} {{ g.created_at[:10] | fmtdate }}</small>
         </div>
       </div>
       {% endfor %}
@@ -97,11 +95,11 @@
 <div class="card mb-4">
   <div class="card-body">
     <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-      <div class="section-title mb-0"><i class="fas fa-chart-line"></i>Leseaktivität</div>
+      <div class="section-title mb-0"><i class="fas fa-chart-line"></i>{{ _('Reading Activity') }}</div>
       <div class="d-flex gap-2">
-        <button class="btn btn-sm period-btn active-period" data-period="weekly">Wöchentlich</button>
-        <button class="btn btn-sm period-btn" data-period="monthly">Monatlich</button>
-        <button class="btn btn-sm period-btn" data-period="yearly">Jährlich</button>
+        <button class="btn btn-sm period-btn active-period" data-period="weekly">{{ _('Weekly') }}</button>
+        <button class="btn btn-sm period-btn" data-period="monthly">{{ _('Monthly') }}</button>
+        <button class="btn btn-sm period-btn" data-period="yearly">{{ _('Yearly') }}</button>
       </div>
     </div>
     <div class="chart-wrapper mb-4">
@@ -119,7 +117,7 @@
   <div class="col-12 col-md-6">
     <div class="card h-100">
       <div class="card-body">
-        <div class="section-title"><i class="fas fa-building"></i>Bücher nach Verlag</div>
+        <div class="section-title"><i class="fas fa-building"></i>{{ _('Books by Publisher') }}</div>
         <div class="chart-wrapper" style="height:240px">
           <canvas id="publishersChart"></canvas>
         </div>
@@ -141,7 +139,7 @@
   <div class="col-12 col-md-6">
     <div class="card h-100">
       <div class="card-body">
-        <div class="section-title"><i class="fas fa-user-pen"></i>Bücher nach Autor (Top 20)</div>
+        <div class="section-title"><i class="fas fa-user-pen"></i>{{ _('Books by Author (Top 20)') }}</div>
         <div class="chart-wrapper" style="height:240px">
           <canvas id="authorsChart"></canvas>
         </div>
@@ -162,9 +160,9 @@
 
 <!-- ── Jahresrückblick ── -->
 <div class="section-card mt-4">
-  <div class="section-title"><i class="fas fa-calendar-alt"></i>Jahresrückblick</div>
+  <div class="section-title"><i class="fas fa-calendar-alt"></i>{{ _('Year in Review') }}</div>
   <p style="color:var(--text-muted);font-size:.88rem" class="mb-3">
-    Wähle ein Jahr, um deinen persönlichen Rückblick zu sehen.
+    {{ _('Choose a year to see your personal review.') }}
   </p>
   <div class="d-flex flex-wrap gap-2">
     {% for y in range(2020, now_year + 1) | reverse %}

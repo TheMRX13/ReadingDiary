@@ -5,10 +5,10 @@
 {% block content %}
 <div class="d-flex align-items-center gap-2 mb-3">
   <a href="/series" class="btn btn-sm" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted)">
-    <i class="fas fa-arrow-left me-1"></i>Alle Serien
+    <i class="fas fa-arrow-left me-1"></i>{{ _('All Series') }}
   </a>
   <button class="btn btn-sm btn-primary ms-auto" onclick="openAddBook()">
-    <i class="fas fa-plus me-1"></i>Buch hinzufügen
+    <i class="fas fa-plus me-1"></i>{{ _('Add Book') }}
   </button>
 </div>
 
@@ -20,7 +20,7 @@
     <div class="card" style="background:var(--bg-card);border:1px solid var(--border)">
       <div class="card-body">
         <div class="d-flex justify-content-between mb-2">
-          <span>{{ read }} von {{ total }} Bänden gelesen</span>
+          <span>{{ read }} {{ _('of') }} {{ total }} {{ _('volumes read') }}</span>
           <span class="text-muted">{{ ((read/total)*100)|int }}%</span>
         </div>
         <div class="progress" style="height:10px">
@@ -46,13 +46,13 @@
             </div>
           {% endif %}
           <div class="book-info">
-            {% if b.series_order %}<div style="font-size:.7rem;color:var(--accent)">Band {{ b.series_order }}</div>{% endif %}
+            {% if b.series_order %}<div style="font-size:.7rem;color:var(--accent)">{{ _('Vol.') }} {{ b.series_order }}</div>{% endif %}
             <div class="book-title">{{ b.title }}</div>
             <div class="book-author">{{ b.author_name or '–' }}</div>
             <div class="mt-1">
-              {% if b.status == 'Gelesen' %}<span class="status-badge badge-status-gelesen">Gelesen</span>
-              {% elif b.status == 'Am Lesen' %}<span class="status-badge {{ 'badge-status-am-hoeren' if b.is_audiobook else 'badge-status-am-lesen' }}">{{ 'Am Hören' if b.is_audiobook else 'Am Lesen' }}</span>
-              {% else %}<span class="status-badge badge-status-ungelesen">Ungelesen</span>{% endif %}
+              {% if b.status == 'Gelesen' %}<span class="status-badge badge-status-gelesen">{{ _('Read') }}</span>
+              {% elif b.status == 'Am Lesen' %}<span class="status-badge {{ 'badge-status-am-hoeren' if b.is_audiobook else 'badge-status-am-lesen' }}">{{ _('Listening') if b.is_audiobook else _('Reading') }}</span>
+              {% else %}<span class="status-badge badge-status-ungelesen">{{ _('Unread') }}</span>{% endif %}
             </div>
           </div>
         </div>
@@ -60,7 +60,7 @@
       <button class="btn btn-sm btn-outline-danger"
               style="position:absolute;top:4px;right:4px;padding:2px 6px;font-size:.7rem"
               onclick="removeBook({{ b.id }}, '{{ b.title|e }}')"
-              title="Aus Serie entfernen">
+              title="{{ _('Remove from Series') }}">
         <i class="fas fa-times"></i>
       </button>
     </div>
@@ -70,9 +70,9 @@
 {% else %}
 <div class="text-center py-5">
   <i class="fas fa-book-open" style="font-size:3rem;color:var(--border)"></i>
-  <p class="mt-3" style="color:var(--text-muted)">Noch keine Bücher in dieser Serie</p>
+  <p class="mt-3" style="color:var(--text-muted)">{{ _('No books in this series yet') }}</p>
   <button class="btn btn-primary mt-2" onclick="openAddBook()">
-    <i class="fas fa-plus me-1"></i>Erstes Buch hinzufügen
+    <i class="fas fa-plus me-1"></i>{{ _('Add first book') }}
   </button>
 </div>
 {% endif %}
@@ -82,15 +82,15 @@
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-plus-circle me-2" style="color:var(--accent)"></i>Buch zur Serie hinzufügen</h5>
+        <h5 class="modal-title"><i class="fas fa-plus-circle me-2" style="color:var(--accent)"></i>{{ _('Add Book to Series') }}</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <input type="text" id="seriesBookSearch" class="form-control mb-2"
-               placeholder="Buch suchen…" oninput="filterSeriesBooks()">
+               placeholder="{{ _('Search book…') }}" oninput="filterSeriesBooks()">
         <div class="mb-3">
           <input type="number" id="seriesAddOrder" class="form-control form-control-sm"
-                 min="1" placeholder="Band Nr. (optional)" style="max-width:200px">
+                 min="1" placeholder="{{ _('Vol. No. (optional)') }}" style="max-width:200px">
         </div>
         <div id="seriesBookList" style="max-height:320px;overflow-y:auto">
           {% for b in all_books %}

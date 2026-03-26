@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de" data-bs-theme="{{ 'dark' if dark_mode else 'light' }}">
+<html lang="{{ current_language or 'de' }}" data-bs-theme="{{ 'dark' if dark_mode else 'light' }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -40,42 +40,42 @@
   <ul class="sidebar-nav">
     <li>
       <a href="/dashboard" class="{{ 'active' if request.path == '/dashboard' else '' }}">
-        <i class="fas fa-home"></i><span>Dashboard</span>
+        <i class="fas fa-home"></i><span>{{ _('Dashboard') }}</span>
       </a>
     </li>
     <li>
       <a href="/books" class="{{ 'active' if request.path.startswith('/books') else '' }}">
-        <i class="fas fa-book"></i><span>Meine Bücher</span>
+        <i class="fas fa-book"></i><span>{{ _('My Books') }}</span>
       </a>
     </li>
     <li>
       <a href="/wishlist" class="{{ 'active' if request.path == '/wishlist' else '' }}">
-        <i class="fas fa-heart"></i><span>Wunschliste</span>
+        <i class="fas fa-heart"></i><span>{{ _('Wishlist') }}</span>
       </a>
     </li>
     <li>
       <a href="/quotes" class="{{ 'active' if request.path == '/quotes' else '' }}">
-        <i class="fas fa-quote-left"></i><span>Lieblingszitate</span>
+        <i class="fas fa-quote-left"></i><span>{{ _('Favorite Quotes') }}</span>
       </a>
     </li>
     <li>
       <a href="/series" class="{{ 'active' if request.path.startswith('/series') else '' }}">
-        <i class="fas fa-layer-group"></i><span>Serien</span>
+        <i class="fas fa-layer-group"></i><span>{{ _('Series') }}</span>
       </a>
     </li>
     <li>
       <a href="/shelves" class="{{ 'active' if request.path.startswith('/shelves') else '' }}">
-        <i class="fas fa-bookmark"></i><span>Meine Regale</span>
+        <i class="fas fa-bookmark"></i><span>{{ _('My Shelves') }}</span>
       </a>
     </li>
     <li>
       <a href="/statistics" class="{{ 'active' if request.path == '/statistics' else '' }}">
-        <i class="fas fa-chart-bar"></i><span>Statistiken</span>
+        <i class="fas fa-chart-bar"></i><span>{{ _('Statistics') }}</span>
       </a>
     </li>
     <li>
       <a href="/settings" class="{{ 'active' if request.path == '/settings' else '' }}">
-        <i class="fas fa-cog"></i><span>Einstellungen</span>
+        <i class="fas fa-cog"></i><span>{{ _('Settings') }}</span>
       </a>
     </li>
   </ul>
@@ -83,8 +83,8 @@
   {% if show_streak and streak and streak > 0 %}
   <div class="sidebar-goal" style="border-color:rgba(245,158,11,0.4)">
     <div class="goal-label">
-      <span style="color:#f59e0b">&#x1F525;</span> Lesesträhne
-      <span class="ms-auto" style="color:#f59e0b;font-weight:700">{{ streak }} {{ 'Tag' if streak == 1 else 'Tage' }}</span>
+      <span style="color:#f59e0b">&#x1F525;</span> {{ _('Reading Streak') }}
+      <span class="ms-auto" style="color:#f59e0b;font-weight:700">{{ streak }} {{ _('Day') if streak == 1 else _('Days') }}</span>
     </div>
   </div>
   {% endif %}
@@ -92,19 +92,19 @@
   {% if goal and goal_progress %}
   <div class="sidebar-goal">
     <div class="goal-label">
-      <i class="fas fa-bullseye"></i> Leseziel
+      <i class="fas fa-bullseye"></i> {{ _('Reading Goal') }}
       <span class="ms-auto">
         {{ goal_progress.current }}/{{ goal_progress.target }}
-        {{ 'S.' if goal_progress.type == 'pages' else 'Bücher' }}
+        {{ _('p.') if goal_progress.type == 'pages' else _('Books') }}
       </span>
     </div>
     <div class="progress mt-1">
       <div class="progress-bar" style="width:{{ goal_progress.percent }}%"></div>
     </div>
     <small>
-      {% if goal.period == 'weekly' %}Diese Woche
-      {% elif goal.period == 'monthly' %}Diesen Monat
-      {% else %}Dieses Jahr{% endif %}
+      {% if goal.period == 'weekly' %}{{ _('This Week') }}
+      {% elif goal.period == 'monthly' %}{{ _('This Month') }}
+      {% else %}{{ _('This Year') }}{% endif %}
       &nbsp;·&nbsp;{{ goal_progress.percent }}%
     </small>
   </div>
@@ -112,7 +112,7 @@
 
   <div class="sidebar-footer">
     <a href="/logout" class="logout-btn">
-      <i class="fas fa-sign-out-alt"></i><span>Abmelden</span>
+      <i class="fas fa-sign-out-alt"></i><span>{{ _('Log out') }}</span>
     </a>
     <a href="https://github.com/TheMRX13/ReadingDiary" target="_blank" rel="noopener"
        style="display:flex;align-items:center;gap:6px;font-size:.75rem;color:var(--text-muted);text-decoration:none;padding:6px 8px;margin-top:4px;border-radius:8px;opacity:.7" 
@@ -130,7 +130,7 @@
     </button>
     <h1 class="topbar-title">{% block page_title %}{% endblock %}</h1>
     <div class="topbar-actions">
-      <button class="theme-toggle btn btn-sm" onclick="toggleTheme()" title="Design wechseln">
+      <button class="theme-toggle btn btn-sm" onclick="toggleTheme()" title="{{ _('Toggle theme') }}">
         <i class="fas {{ 'fa-sun' if dark_mode else 'fa-moon' }}"></i>
       </button>
     </div>
@@ -151,13 +151,13 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-trash-alt text-danger me-2"></i>Löschen bestätigen</h5>
+        <h5 class="modal-title"><i class="fas fa-trash-alt text-danger me-2"></i>{{ _('Confirm Delete') }}</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body" id="confirmModalMessage">Wirklich löschen?</div>
+      <div class="modal-body" id="confirmModalMessage">{{ _('Really delete?') }}</div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="confirmModalNo">Abbrechen</button>
-        <button type="button" class="btn btn-danger" id="confirmModalYes"><i class="fas fa-trash-alt me-1"></i>Löschen</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="confirmModalNo">{{ _('Cancel') }}</button>
+        <button type="button" class="btn btn-danger" id="confirmModalYes"><i class="fas fa-trash-alt me-1"></i>{{ _('Delete') }}</button>
       </div>
     </div>
   </div>

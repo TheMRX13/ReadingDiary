@@ -5,10 +5,10 @@
 {% block content %}
 <div class="d-flex align-items-center gap-2 mb-3">
   <a href="/shelves" class="btn btn-sm" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted)">
-    <i class="fas fa-arrow-left me-1"></i>Alle Regale
+    <i class="fas fa-arrow-left me-1"></i>{{ _('All Shelves') }}
   </a>
   <button class="btn btn-sm btn-primary ms-auto" onclick="openAddBook()">
-    <i class="fas fa-plus me-1"></i>Buch hinzufügen
+    <i class="fas fa-plus me-1"></i>{{ _('Add Book') }}
   </button>
 </div>
 
@@ -31,9 +31,9 @@
             <div class="book-title">{{ b.title }}</div>
             <div class="book-author">{{ b.author_name or '–' }}</div>
             <div class="mt-1">
-              {% if b.status == 'Gelesen' %}<span class="status-badge badge-status-gelesen">Gelesen</span>
-              {% elif b.status == 'Am Lesen' %}<span class="status-badge {{ 'badge-status-am-hoeren' if b.is_audiobook else 'badge-status-am-lesen' }}">{{ 'Am Hören' if b.is_audiobook else 'Am Lesen' }}</span>
-              {% else %}<span class="status-badge badge-status-ungelesen">Ungelesen</span>{% endif %}
+              {% if b.status == 'Gelesen' %}<span class="status-badge badge-status-gelesen">{{ _('Read') }}</span>
+              {% elif b.status == 'Am Lesen' %}<span class="status-badge {{ 'badge-status-am-hoeren' if b.is_audiobook else 'badge-status-am-lesen' }}">{{ _('Listening') if b.is_audiobook else _('Reading') }}</span>
+              {% else %}<span class="status-badge badge-status-ungelesen">{{ _('Unread') }}</span>{% endif %}
             </div>
           </div>
         </div>
@@ -41,7 +41,7 @@
       <button class="btn btn-sm btn-outline-danger"
               style="position:absolute;top:4px;right:4px;padding:2px 6px;font-size:.7rem"
               onclick="removeBook({{ shelf.id }}, {{ b.id }}, '{{ b.title|e }}')"
-              title="Aus Regal entfernen">
+              title="{{ _('Remove from Shelf') }}">
         <i class="fas fa-times"></i>
       </button>
     </div>
@@ -51,7 +51,7 @@
 {% else %}
 <div class="text-center py-5">
   <i class="fas fa-book-open" style="font-size:3rem;color:var(--border)"></i>
-  <p class="mt-3" style="color:var(--text-muted)">Dieses Regal ist noch leer</p>
+  <p class="mt-3" style="color:var(--text-muted)">{{ _('This shelf is empty') }}</p>
 </div>
 {% endif %}
 
@@ -60,12 +60,12 @@
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-plus-circle me-2" style="color:var(--accent)"></i>Buch hinzufügen</h5>
+        <h5 class="modal-title"><i class="fas fa-plus-circle me-2" style="color:var(--accent)"></i>{{ _('Add Book') }}</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <input type="text" id="shelfBookSearch" class="form-control mb-3"
-               placeholder="Buch suchen…" oninput="filterShelfBooks()">
+               placeholder="{{ _('Search book…') }}" oninput="filterShelfBooks()">
         <div id="shelfBookList" style="max-height:350px;overflow-y:auto">
           {% for b in all_books %}
           <div class="shelf-book-item d-flex align-items-center gap-2 p-2 rounded mb-1"

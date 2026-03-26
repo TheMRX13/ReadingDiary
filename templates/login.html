@@ -75,7 +75,7 @@
 <div class="login-card">
   <div class="login-logo"><i class="fas fa-book-open"></i></div>
   <div class="login-title">Reading Diary</div>
-  <div class="login-subtitle">Dein persönliches Lesetagebuch</div>
+  <div class="login-subtitle">{{ _('Your personal reading diary') }}</div>
 
   {% if error %}
   <div class="error-msg"><i class="fas fa-exclamation-circle me-2"></i>{{ error }}</div>
@@ -83,18 +83,18 @@
 
   <form method="post">
     <div class="mb-4">
-      <label class="form-label" style="color:#94a3b8;font-size:.8rem;font-weight:600">PASSWORT</label>
+      <label class="form-label" style="color:#94a3b8;font-size:.8rem;font-weight:600">{{ _('PASSWORD') }}</label>
       <div class="pw-wrap">
         <i class="fas fa-lock pw-icon"></i>
         <input type="password" name="password" id="pw" class="form-control form-control-login"
-               placeholder="Passwort eingeben" autofocus autocomplete="current-password">
+               placeholder="{{ _('Enter password') }}" autofocus autocomplete="current-password">
         <button type="button" class="pw-toggle" onclick="togglePW()">
           <i class="fas fa-eye" id="pw-eye"></i>
         </button>
       </div>
     </div>
     <button type="submit" class="btn btn-login">
-      <i class="fas fa-sign-in-alt me-2"></i>Anmelden
+      <i class="fas fa-sign-in-alt me-2"></i>{{ _('Log in') }}
     </button>
   </form>
   <div style="text-align:center;margin-top:24px">

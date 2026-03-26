@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ book.title }} – Reading Diary{% endblock %}
-{% block page_title %}Buchdetails{% endblock %}
+{% block page_title %}{{ _('Book Details') }}{% endblock %}
 {% block head %}
 <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -9,7 +9,7 @@
 {% block content %}
 <!-- Back link -->
 <a href="/books" class="btn btn-sm mb-3" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted)">
-  <i class="fas fa-arrow-left me-1"></i>Zurück
+  <i class="fas fa-arrow-left me-1"></i>{{ _('Back') }}
 </a>
 
 <!-- Hero -->
@@ -28,25 +28,25 @@
     <div class="book-hero-title">{{ book.title }}</div>
     <div class="book-hero-author">{{ book.author_name or '–' }}</div>
     <div class="mb-2">
-      {% if book.status == 'Gelesen' %}<span class="status-badge badge-status-gelesen">Gelesen</span>
-      {% elif book.status == 'Am Lesen' %}<span class="status-badge {{ 'badge-status-am-hoeren' if book.is_audiobook else 'badge-status-am-lesen' }}">{{ 'Am Hören' if book.is_audiobook else 'Am Lesen' }}</span>
-      {% else %}<span class="status-badge badge-status-ungelesen">Ungelesen</span>{% endif %}
+      {% if book.status == 'Gelesen' %}<span class="status-badge badge-status-gelesen">{{ _('Read') }}</span>
+      {% elif book.status == 'Am Lesen' %}<span class="status-badge {{ 'badge-status-am-hoeren' if book.is_audiobook else 'badge-status-am-lesen' }}">{{ _('Listening') if book.is_audiobook else _('Reading') }}</span>
+      {% else %}<span class="status-badge badge-status-ungelesen">{{ _('Unread') }}</span>{% endif %}
     </div>
     <div class="book-hero-meta">
       {% if book.publisher_name %}<span><i class="fas fa-building"></i>{{ book.publisher_name }}</span>{% endif %}
-      {% if book.release_date %}<span><i class="fas fa-calendar"></i>{{ book.release_date }}</span>{% endif %}
-      {% if book.pages %}<span><i class="fas fa-file-alt"></i>{{ book.pages }} Seiten</span>{% endif %}
+      {% if book.release_date %}<span><i class="fas fa-calendar"></i>{{ book.release_date | fmtdate }}</span>{% endif %}
+      {% if book.pages %}<span><i class="fas fa-file-alt"></i>{{ book.pages }} {{ _('Pages') }}</span>{% endif %}
       {% if book.isbn %}<span><i class="fas fa-barcode"></i>{{ book.isbn }}</span>{% endif %}
       {% if book.format %}<span><i class="fas fa-book-open"></i>{{ book.format }}</span>{% endif %}
       {% if book.genre %}<span><i class="fas fa-tag"></i>{{ book.genre }}</span>{% endif %}
-      {% if book.series %}<span><i class="fas fa-layer-group"></i>{{ book.series }}{% if book.volume %} Bd. {{ book.volume }}{% endif %}</span>{% endif %}
+      {% if book.series %}<span><i class="fas fa-layer-group"></i>{{ book.series }}{% if book.volume %} {{ _('Vol.') }} {{ book.volume }}{% endif %}</span>{% endif %}
     </div>
     <div class="mt-3 d-flex gap-2 flex-wrap">
       <button class="btn btn-primary btn-sm" onclick="openEditModal()">
-        <i class="fas fa-edit me-1"></i>Bearbeiten
+        <i class="fas fa-edit me-1"></i>{{ _('Edit') }}
       </button>
       <button class="btn btn-sm btn-danger" onclick="deleteBook()">
-        <i class="fas fa-trash me-1"></i>Löschen
+        <i class="fas fa-trash me-1"></i>{{ _('Delete') }}
       </button>
     </div>
   </div>
@@ -54,12 +54,12 @@
 
 <!-- ── Reading Progress Section ── -->
 <div class="section-card">
-  <div class="section-title"><i class="fas fa-bookmark"></i>Lesefortschritt</div>
+  <div class="section-title"><i class="fas fa-bookmark"></i>{{ _('Reading Progress') }}</div>
 
   {% if book.pages %}
   <div class="mb-3">
     <div class="d-flex justify-content-between mb-1" style="font-size:.8rem;color:var(--text-muted)">
-      <span>Seite {{ current_page }} von {{ book.pages }}</span>
+      <span>{{ _('Page') }} {{ current_page }} {{ _('of') }} {{ book.pages }}</span>
       <span>{{ ((current_page / book.pages) * 100)|int }}%</span>
     </div>
     <div class="progress-bar-book">
@@ -71,11 +71,11 @@
 
   <div class="d-flex gap-2 mb-3">
     <input type="number" id="newPage" class="form-control" style="max-width:160px"
-           placeholder="Aktuelle Seite" min="0"
+           placeholder="{{ _('Current page') }}" min="0"
            {% if book.pages %}max="{{ book.pages }}"{% endif %}
            value="{{ current_page }}">
     <button class="btn btn-primary" onclick="saveProgress()">
-      <i class="fas fa-save me-1"></i>Speichern
+      <i class="fas fa-save me-1"></i>{{ _('Save') }}
     </button>
   </div>
 
@@ -97,19 +97,19 @@
     {% endfor %}
   </div>
   {% else %}
-  <p style="color:var(--text-muted);font-size:.85rem">Noch kein Fortschritt eingetragen.</p>
+  <p style="color:var(--text-muted);font-size:.85rem">{{ _('No progress yet.') }}</p>
   {% endif %}
 </div>
 
 {% if show_audiobook and book.is_audiobook %}
 <!-- ── Audio Progress Section ── -->
 <div class="section-card">
-  <div class="section-title"><i class="fas fa-headphones"></i>Hörfortschritt</div>
+  <div class="section-title"><i class="fas fa-headphones"></i>{{ _('Listening Progress') }}</div>
 
   <div class="mb-3">
     <div class="d-flex justify-content-between mb-1" style="font-size:.8rem;color:var(--text-muted)">
       <span>{{ current_percent }}%</span>
-      <span>{{ current_percent }}% gehört</span>
+      <span>{{ current_percent }}% {{ _('listened') }}</span>
     </div>
     <div class="progress-bar-book">
       <div class="progress-bar-book-fill"
@@ -120,12 +120,12 @@
   <div class="d-flex gap-2 mb-3">
     <div class="input-group" style="max-width:200px">
       <input type="number" id="newPercent" class="form-control"
-             placeholder="Aktueller %" min="0" max="100"
+             placeholder="{{ _('Current %%') }}" min="0" max="100"
              value="{{ current_percent }}">
       <span class="input-group-text">%</span>
     </div>
     <button class="btn btn-primary" onclick="saveAudioProgress()">
-      <i class="fas fa-save me-1"></i>Speichern
+      <i class="fas fa-save me-1"></i>{{ _('Save') }}
     </button>
   </div>
 
@@ -147,20 +147,20 @@
     {% endfor %}
   </div>
   {% else %}
-  <p style="color:var(--text-muted);font-size:.85rem">Noch kein Hörfortschritt eingetragen.</p>
+  <p style="color:var(--text-muted);font-size:.85rem">{{ _('No listening progress yet.') }}</p>
   {% endif %}
 </div>
 {% endif %}
 
 <!-- ── Rating Section ── -->
 <div class="section-card">
-  <div class="section-title"><i class="fas fa-star"></i>Bewertung</div>
+  <div class="section-title"><i class="fas fa-star"></i>{{ _('Rating') }}</div>
 
   <div class="row g-3">
     <!-- Stars -->
     {% if show_stars %}
     <div class="col-12 col-sm-6">
-      <label class="form-label">Sterne (1–5)</label>
+      <label class="form-label">{{ _('Stars (1–5)') }}</label>
       <div class="star-row" id="starsContainer">
         {% for i in range(5) %}
         <button type="button" class="star-btn"><i class="fas fa-star"></i></button>
@@ -175,7 +175,7 @@
     <!-- Spice -->
     {% if show_spice %}
     <div class="col-12 col-sm-6">
-      <label class="form-label">Spice (1–5) <i class="fas fa-pepper-hot" style="color:#ef4444"></i></label>
+      <label class="form-label">{{ _('Spice (1–5)') }} <i class="fas fa-pepper-hot" style="color:#ef4444"></i></label>
       <div class="star-row" id="spiceContainer">
         {% for i in range(5) %}
         <button type="button" class="star-btn spice-btn"><i class="fas fa-pepper-hot"></i></button>
@@ -190,7 +190,7 @@
     <!-- Tension slider -->
     {% if show_tension %}
     <div class="col-12 col-sm-6">
-      <label class="form-label">Spannung (1–10): <strong id="tensionDisplay">{{ rating.tension if rating else 0 }}</strong></label>
+      <label class="form-label">{{ _('Tension (1–10):') }} <strong id="tensionDisplay">{{ rating.tension if rating else 0 }}</strong></label>
       <input type="range" class="tension-slider form-range" id="ratingTension"
              min="0" max="10" value="{{ rating.tension if rating else 0 }}"
              oninput="document.getElementById('tensionDisplay').textContent=this.value">
@@ -202,7 +202,7 @@
     <!-- Type -->
     {% if show_fiction %}
     <div class="col-12 col-sm-6">
-      <label class="form-label">Typ</label>
+      <label class="form-label">{{ _('Type') }}</label>
       <select id="ratingType" class="form-select">
         <option value="Fiction" {{ 'selected' if not rating or rating.type == 'Fiction' }}>Fiction</option>
         <option value="Non-Fiction" {{ 'selected' if rating and rating.type == 'Non-Fiction' }}>Non-Fiction</option>
@@ -215,7 +215,7 @@
 
   <div class="mt-3">
     <button class="btn btn-primary btn-sm" onclick="saveRating()">
-      <i class="fas fa-save me-1"></i>Bewertung speichern
+        <i class="fas fa-save me-1"></i>{{ _('Save rating') }}
     </button>
   </div>
 </div>
@@ -223,14 +223,14 @@
 <!-- ── Review Section ── -->
 {% if show_reviews %}
 <div class="section-card" id="reviewSection">
-  <div class="section-title"><i class="fas fa-pen-alt"></i>Rezension</div>
+  <div class="section-title"><i class="fas fa-pen-alt"></i>{{ _('Review') }}</div>
   <div id="quill-editor">{{ review.content | safe if review and review.content else '' }}</div>
   <div class="mt-3">
     <button class="btn btn-primary btn-sm" onclick="saveReview()">
-      <i class="fas fa-save me-1"></i>Rezension speichern
+      <i class="fas fa-save me-1"></i>{{ _('Save review') }}
     </button>
     <span id="reviewSaved" style="display:none;color:#22c55e;font-size:.8rem;margin-left:8px">
-      <i class="fas fa-check"></i> Gespeichert
+      <i class="fas fa-check"></i> {{ _('Saved') }}
     </span>
   </div>
 </div>
@@ -238,7 +238,7 @@
 
 <!-- ── Notes Section ── -->
 <div class="section-card">
-  <div class="section-title"><i class="fas fa-sticky-note"></i>Kapitelnotizen</div>
+  <div class="section-title"><i class="fas fa-sticky-note"></i>{{ _('Chapter Notes') }}</div>
   <div id="notesList" class="mb-3">
     {% for note in notes %}
     <div class="note-item p-2 mb-2 rounded" style="border:1px solid var(--border);background:var(--bg)" id="note-{{ note.id }}">
@@ -262,17 +262,17 @@
       <div class="note-content" style="font-size:.88rem;color:var(--text);white-space:pre-wrap">{{ note.content }}</div>
     </div>
     {% else %}
-    <p style="color:var(--text-muted);font-size:.85rem">Noch keine Notizen vorhanden.</p>
+    <p style="color:var(--text-muted);font-size:.85rem">{{ _('No notes yet.') }}</p>
     {% endfor %}
   </div>
   <!-- Add note form -->
   <div style="border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg)">
     <input type="text" id="noteChapter" class="form-control form-control-sm mb-2"
-           placeholder="Kapitel (optional)">
+           placeholder="{{ _('Chapter (optional)') }}">
     <textarea id="noteContent" class="form-control form-control-sm mb-2" rows="3"
-              placeholder="Notiz eingeben…"></textarea>
+              placeholder="{{ _('Enter note…') }}"></textarea>
     <button class="btn btn-primary btn-sm" onclick="addNote()">
-      <i class="fas fa-plus me-1"></i>Notiz hinzufügen
+      <i class="fas fa-plus me-1"></i>{{ _('Add Note') }}
     </button>
   </div>
 </div>
@@ -280,29 +280,29 @@
 <!-- ── Lent Section ── -->
 {% if show_lent %}
 <div class="section-card">
-  <div class="section-title"><i class="fas fa-hand-holding-heart"></i>Verliehen</div>
+  <div class="section-title"><i class="fas fa-hand-holding-heart"></i>{{ _('Lent out') }}</div>
   {% if book.lent_to %}
   <div class="d-flex align-items-center gap-2 mb-3 p-2 rounded"
        style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3)">
     <i class="fas fa-user-friends" style="color:#f59e0b"></i>
     <div>
-      <div style="font-weight:500;color:var(--text)">Verliehen an: {{ book.lent_to }}</div>
-      {% if book.lent_date %}<div style="font-size:.8rem;color:var(--text-muted)">seit {{ book.lent_date }}</div>{% endif %}
+      <div style="font-weight:500;color:var(--text)">{{ _('Lent to:') }} {{ book.lent_to }}</div>
+      {% if book.lent_date %}<div style="font-size:.8rem;color:var(--text-muted)">{{ _('since') }} {{ book.lent_date | fmtdate }}</div>{% endif %}
     </div>
     <button class="btn btn-sm btn-outline-success ms-auto" onclick="returnBook()">
-      <i class="fas fa-undo me-1"></i>Zurück erhalten
+        <i class="fas fa-undo me-1"></i>{{ _('Returned') }}
     </button>
   </div>
   {% else %}
-  <p style="color:var(--text-muted);font-size:.85rem" id="lentStatus">Nicht verliehen.</p>
+  <p style="color:var(--text-muted);font-size:.85rem" id="lentStatus">{{ _('Not lent out.') }}</p>
   {% endif %}
   <div class="d-flex gap-2">
     <input type="text" id="lentTo" class="form-control form-control-sm"
-           placeholder="Name der Person" value="{{ book.lent_to or '' }}">
+           placeholder="{{ _('Name of person') }}" value="{{ book.lent_to or '' }}">
     <input type="date" id="lentDate" class="form-control form-control-sm"
            value="{{ book.lent_date or '' }}" style="max-width:160px">
     <button class="btn btn-warning btn-sm text-white" onclick="saveLent()">
-      <i class="fas fa-save me-1"></i>Speichern
+      <i class="fas fa-save me-1"></i>{{ _('Save') }}
     </button>
   </div>
 </div>
@@ -310,22 +310,22 @@
 
 <!-- ── Series Section ── -->
 <div class="section-card">
-  <div class="section-title"><i class="fas fa-layer-group"></i>Serie</div>
+  <div class="section-title"><i class="fas fa-layer-group"></i>{{ _('Series') }}</div>
   {% if book.series_group_name %}
   <div class="mb-2">
     <span class="badge" style="background:var(--accent);color:#fff;font-size:.85rem">
       <i class="fas fa-layer-group me-1"></i>{{ book.series_group_name }}
-      {% if book.series_order %} – Band {{ book.series_order }}{% endif %}
+      {% if book.series_order %} – {{ _('Vol.') }} {{ book.series_order }}{% endif %}
     </span>
     <a href="/series/{{ book.series_id }}" class="btn btn-sm btn-outline-primary ms-2">
-      Zur Serienübersicht
+      {{ _('To Series Overview') }}
     </a>
   </div>
   {% endif %}
   <div class="row g-2 mt-1">
     <div class="col-12 col-sm-6">
       <select id="seriesSelect" class="form-select form-select-sm">
-        <option value="">— Keine Serie —</option>
+        <option value="">— {{ _('No Series') }} —</option>
         {% for s in all_series %}
         <option value="{{ s.id }}" {{ 'selected' if book.series_id == s.id }}>{{ s.name }}</option>
         {% endfor %}
@@ -333,11 +333,11 @@
     </div>
     <div class="col-6 col-sm-3">
       <input type="number" id="seriesOrder" class="form-control form-control-sm"
-             placeholder="Band Nr." min="1" value="{{ book.series_order or '' }}">
+             placeholder="{{ _('Vol. No.') }}" min="1" value="{{ book.series_order or '' }}">
     </div>
     <div class="col-6 col-sm-3">
       <button class="btn btn-primary btn-sm w-100" onclick="saveSeries()">
-        <i class="fas fa-save me-1"></i>Speichern
+        <i class="fas fa-save me-1"></i>{{ _('Save') }}
       </button>
     </div>
   </div>
@@ -348,7 +348,7 @@
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-edit me-2" style="color:var(--accent)"></i>Buch bearbeiten</h5>
+        <h5 class="modal-title"><i class="fas fa-edit me-2" style="color:var(--accent)"></i>{{ _('Edit Book') }}</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
@@ -358,19 +358,19 @@
             <button class="nav-link active" id="edit-scan-tab" data-bs-toggle="pill"
                     data-bs-target="#edit-scan" type="button"
                     onclick="startScanner('edit_isbn','edit_')">
-              <i class="fas fa-camera me-1"></i>ISBN scannen
+              <i class="fas fa-camera me-1"></i>{{ _('Scan ISBN') }}
             </button>
           </li>
           <li class="nav-item">
             <button class="nav-link" id="edit-isbn-tab" data-bs-toggle="pill"
                     data-bs-target="#edit-isbnin" type="button" onclick="stopScanner()">
-              <i class="fas fa-keyboard me-1"></i>ISBN eingeben
+              <i class="fas fa-keyboard me-1"></i>{{ _('Enter ISBN') }}
             </button>
           </li>
           <li class="nav-item">
             <button class="nav-link" id="edit-manual-tab" data-bs-toggle="pill"
                     data-bs-target="#edit-manual" type="button" onclick="stopScanner()">
-              <i class="fas fa-edit me-1"></i>Daten
+              <i class="fas fa-edit me-1"></i>{{ _('Data') }}
             </button>
           </li>
         </ul>
@@ -380,10 +380,10 @@
           </div>
           <div class="tab-pane fade" id="edit-isbnin">
             <div class="d-flex gap-2 mt-2">
-              <input type="text" id="edit_isbn_manual" class="form-control" placeholder="ISBN eingeben">
+              <input type="text" id="edit_isbn_manual" class="form-control" placeholder="{{ _('Enter ISBN') }}">
               <button class="btn btn-primary" id="edit_isbn_search_btn"
                       onclick="lookupISBN(document.getElementById('edit_isbn_manual').value,'edit_')">
-                <i class="fas fa-search"></i> Suchen
+                <i class="fas fa-search"></i> {{ _('Search') }}
               </button>
             </div>
           </div>
@@ -394,9 +394,9 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">{{ _('Cancel') }}</button>
         <button class="btn btn-primary" onclick="submitEditBook()">
-          <i class="fas fa-save me-1"></i>Speichern
+          <i class="fas fa-save me-1"></i>{{ _('Save') }}
         </button>
       </div>
     </div>

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Wunschliste – Reading Diary{% endblock %}
-{% block page_title %}Wunschliste{% endblock %}
+{% block title %}{{ _('Wishlist') }} – Reading Diary{% endblock %}
+{% block page_title %}{{ _('Wishlist') }}{% endblock %}
 {% block head %}
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 {% endblock %}
@@ -12,21 +12,21 @@
       <i class="fas fa-search search-icon"></i>
       <form method="get" id="searchForm">
         <input type="text" name="q" value="{{ q }}" class="form-control"
-               placeholder="Titel oder Autor suchen…" id="searchInput" oninput="delaySearch()">
+               placeholder="{{ _('Search title or author…') }}" id="searchInput" oninput="delaySearch()">
       </form>
     </div>
   </div>
   <div class="d-flex gap-2">
     <div class="btn-group" role="group">
-      <button id="btnGrid" class="btn btn-sm btn-outline-secondary" onclick="setView('grid')" title="Galerieansicht">
+      <button id="btnGrid" class="btn btn-sm btn-outline-secondary" onclick="setView('grid')" title="{{ _('Gallery view') }}">
         <i class="fas fa-th"></i>
       </button>
-      <button id="btnList" class="btn btn-sm btn-outline-secondary" onclick="setView('list')" title="Listenansicht">
+      <button id="btnList" class="btn btn-sm btn-outline-secondary" onclick="setView('list')" title="{{ _('List view') }}">
         <i class="fas fa-list"></i>
       </button>
     </div>
     <button class="btn btn-primary" onclick="openAddModal()">
-      <i class="fas fa-plus me-1"></i>Hinzufügen
+      <i class="fas fa-plus me-1"></i>{{ _('Add') }}
     </button>
   </div>
 </div>
@@ -60,7 +60,7 @@
           </button>
           <button class="btn btn-sm" style="background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.3);font-size:.72rem"
                   onclick="openBuyModal({{ item.id }}, '{{ item.title | e }}')">
-            <i class="fas fa-shopping-cart"></i> Gekauft
+            <i class="fas fa-shopping-cart"></i> {{ _('Bought') }}
           </button>
         </div>
       </div>
@@ -87,17 +87,17 @@
       <div style="font-size:.75rem;color:var(--text-muted)">
         {% if item.publisher_name %}{{ item.publisher_name }}{% endif %}
         {% if item.release_date %} &middot; {{ item.release_date[:4] if item.release_date|length >= 4 else item.release_date }}{% endif %}
-        {% if item.pages %} &middot; {{ item.pages }} S.{% endif %}
+        {% if item.pages %} &middot; {{ item.pages }} {{ _('p.') }}{% endif %}
       </div>
     </div>
     <div class="d-flex gap-2 flex-shrink-0">
-      <button class="btn btn-sm btn-outline-primary" onclick="openEditModal({{ item.id }})" title="Bearbeiten">
+      <button class="btn btn-sm btn-outline-primary" onclick="openEditModal({{ item.id }})" title="{{ _('Edit') }}">
         <i class="fas fa-edit"></i>
       </button>
-      <button class="btn btn-sm btn-outline-success" onclick="openBuyModal({{ item.id }}, '{{ item.title | e }}')" title="Gekauft">
+      <button class="btn btn-sm btn-outline-success" onclick="openBuyModal({{ item.id }}, '{{ item.title | e }}')" title="{{ _('Bought') }}">
         <i class="fas fa-shopping-cart"></i>
       </button>
-      <button class="btn btn-sm btn-outline-danger" onclick="confirmDelete('Eintrag löschen?','/api/wishlist/{{ item.id }}')" title="Löschen">
+      <button class="btn btn-sm btn-outline-danger" onclick="confirmDelete('{{ _('Delete entry?') }}','/api/wishlist/{{ item.id }}')" title="{{ _('Delete') }}">
         <i class="fas fa-trash"></i>
       </button>
     </div>
@@ -108,7 +108,7 @@
 <div class="text-center py-5">
   <i class="fas fa-heart" style="font-size:3rem;color:var(--border)"></i>
   <p class="mt-3" style="color:var(--text-muted)">
-    {% if q %}Keine Einträge für „{{ q }}"{% else %}Wunschliste ist leer{% endif %}
+    {% if q %}{{ _('No entries for') }} „{{ q }}“{% else %}{{ _('Wishlist is empty') }}{% endif %}
   </p>
 </div>
 {% endif %}
@@ -118,7 +118,7 @@
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-plus-circle me-2" style="color:#f59e0b"></i>Zur Wunschliste hinzufügen</h5>
+        <h5 class="modal-title"><i class="fas fa-plus-circle me-2" style="color:#f59e0b"></i>{{ _('Add to Wishlist') }}</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
@@ -126,19 +126,19 @@
           <li class="nav-item">
             <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#wish-scan"
                     type="button" onclick="startScanner('wish_isbn','wish_')">
-              <i class="fas fa-camera me-1"></i>Scannen
+              <i class="fas fa-camera me-1"></i>{{ _('Scan') }}
             </button>
           </li>
           <li class="nav-item">
             <button class="nav-link" data-bs-toggle="pill" data-bs-target="#wish-isbnin"
                     type="button" onclick="stopScanner()">
-              <i class="fas fa-keyboard me-1"></i>ISBN
+              <i class="fas fa-keyboard me-1"></i>{{ _('ISBN') }}
             </button>
           </li>
           <li class="nav-item">
             <button class="nav-link" id="wish_manual-tab" data-bs-toggle="pill"
                     data-bs-target="#wish-manual" type="button" onclick="stopScanner()">
-              <i class="fas fa-edit me-1"></i>Manuell
+              <i class="fas fa-edit me-1"></i>{{ _('Manual') }}
             </button>
           </li>
         </ul>
@@ -148,7 +148,7 @@
           </div>
           <div class="tab-pane fade" id="wish-isbnin">
             <div class="d-flex gap-2 mt-2">
-              <input type="text" id="wish_isbn_manual" class="form-control" placeholder="ISBN eingeben">
+              <input type="text" id="wish_isbn_manual" class="form-control" placeholder="{{ _('Enter ISBN') }}">
               <button class="btn btn-primary" id="wish_isbn_search_btn"
                       onclick="lookupISBN(document.getElementById('wish_isbn_manual').value,'wish_')">
                 <i class="fas fa-search"></i> Suchen
@@ -162,9 +162,9 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">{{ _('Cancel') }}</button>
         <button class="btn btn-primary" onclick="submitAddWish()">
-          <i class="fas fa-save me-1"></i>Speichern
+          <i class="fas fa-save me-1"></i>{{ _('Save') }}
         </button>
       </div>
     </div>
@@ -176,7 +176,7 @@
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-edit me-2" style="color:var(--accent)"></i>Eintrag bearbeiten</h5>
+        <h5 class="modal-title"><i class="fas fa-edit me-2" style="color:var(--accent)"></i>{{ _('Edit Entry') }}</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
@@ -184,9 +184,9 @@
         {% include "book_form.html" with context %}
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">{{ _('Cancel') }}</button>
         <button class="btn btn-primary" onclick="submitEditWish()">
-          <i class="fas fa-save me-1"></i>Speichern
+          <i class="fas fa-save me-1"></i>{{ _('Save') }}
         </button>
       </div>
     </div>
@@ -198,12 +198,12 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-shopping-cart me-2" style="color:#22c55e"></i>Gekauft!</h5>
+        <h5 class="modal-title"><i class="fas fa-shopping-cart me-2" style="color:#22c55e"></i>{{ _('Bought!') }}</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <p style="color:var(--text-muted)" id="buyBookName" class="mb-3"></p>
-        <label class="form-label">Format des gekauften Exemplars</label>
+        <label class="form-label">{{ _('Format of purchased copy') }}</label>
         <select id="buyFormat" class="form-select">
           <option value="Paperback">Paperback</option>
           <option value="Hardcover">Hardcover</option>
@@ -211,9 +211,9 @@
         </select>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">{{ _('Cancel') }}</button>
         <button class="btn btn-success" onclick="confirmBuy()">
-          <i class="fas fa-check me-1"></i>Zu Meine Bücher
+          <i class="fas fa-check me-1"></i>{{ _('Move to My Books') }}
         </button>
       </div>
     </div>

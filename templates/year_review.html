@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Jahresrückblick {{ year }} – Reading Diary{% endblock %}
-{% block page_title %}Jahresrückblick {{ year }}{% endblock %}
+{% block title %}{{ _('Year in Review') }} {{ year }} – Reading Diary{% endblock %}
+{% block page_title %}{{ _('Year in Review') }} {{ year }}{% endblock %}
 
 {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -10,7 +10,7 @@
 <!-- Year navigation -->
 <div class="d-flex align-items-center gap-2 mb-4 flex-wrap">
   <a href="/statistics" class="btn btn-sm" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted)">
-    <i class="fas fa-arrow-left me-1"></i>Statistiken
+    <i class="fas fa-arrow-left me-1"></i>{{ _('Statistics') }}
   </a>
   <div class="ms-auto d-flex gap-2 flex-wrap">
     {% for y in available_years %}
@@ -25,25 +25,25 @@
   <div class="col-6 col-sm-3">
     <div class="stat-card text-center">
       <div class="stat-value">{{ books_read|length }}</div>
-      <div class="stat-label">Bücher gelesen</div>
+      <div class="stat-label">{{ _('Books read') }}</div>
     </div>
   </div>
   <div class="col-6 col-sm-3">
     <div class="stat-card text-center">
       <div class="stat-value">{{ total_pages }}</div>
-      <div class="stat-label">Seiten gelesen</div>
+      <div class="stat-label">{{ _('Pages read') }}</div>
     </div>
   </div>
   <div class="col-6 col-sm-3">
     <div class="stat-card text-center">
       <div class="stat-value">{{ (total_pages / books_read|length)|int if books_read else 0 }}</div>
-      <div class="stat-label">Ø Seiten/Buch</div>
+      <div class="stat-label">Ø {{ _('Pages/Book') }}</div>
     </div>
   </div>
   <div class="col-6 col-sm-3">
     <div class="stat-card text-center">
       <div class="stat-value">{{ (books_read|length / 12)|round(1) }}</div>
-      <div class="stat-label">Ø Bücher/Monat</div>
+      <div class="stat-label">Ø {{ _('Books/Month') }}</div>
     </div>
   </div>
 </div>
@@ -51,7 +51,7 @@
 <!-- Monthly chart -->
 <div class="card mb-4" style="background:var(--bg-card);border:1px solid var(--border)">
   <div class="card-body">
-    <h6 class="mb-3"><i class="fas fa-chart-bar me-2" style="color:var(--accent)"></i>Bücher pro Monat</h6>
+    <h6 class="mb-3"><i class="fas fa-chart-bar me-2" style="color:var(--accent)"></i>{{ _('Books per Month') }}</h6>
     <canvas id="monthlyChart" height="80"></canvas>
   </div>
 </div>
@@ -62,7 +62,7 @@
   <div class="col-12 col-md-6">
     <div class="card h-100" style="background:var(--bg-card);border:1px solid var(--border)">
       <div class="card-body">
-        <h6 class="mb-3"><i class="fas fa-tags me-2" style="color:var(--accent)"></i>Top Genre</h6>
+        <h6 class="mb-3"><i class="fas fa-tags me-2" style="color:var(--accent)"></i>{{ _('Top Genre') }}</h6>
         {% for genre, cnt in top_genres %}
         <div class="d-flex justify-content-between align-items-center mb-2">
           <span style="font-size:.9rem">{{ genre }}</span>
@@ -83,7 +83,7 @@
   <div class="col-12 col-md-6">
     <div class="card h-100" style="background:var(--bg-card);border:1px solid var(--border)">
       <div class="card-body">
-        <h6 class="mb-3"><i class="fas fa-star me-2" style="color:var(--accent)"></i>Bestes Buch {{ year }}</h6>
+        <h6 class="mb-3"><i class="fas fa-star me-2" style="color:var(--accent)"></i>{{ _('Best Book') }} {{ year }}</h6>
         <div class="d-flex gap-3 align-items-start">
           {% if best.cover_url %}
           <img src="{{ best.cover_url }}" alt="{{ best.title }}" style="width:70px;height:100px;object-fit:cover;border-radius:4px">
@@ -100,7 +100,7 @@
               {% endfor %}
             </div>
             <a href="/books/{{ best.id }}" class="btn btn-sm btn-outline-primary mt-2">
-              Zum Buch <i class="fas fa-arrow-right ms-1"></i>
+              {{ _('To Book') }} <i class="fas fa-arrow-right ms-1"></i>
             </a>
           </div>
         </div>
@@ -114,7 +114,7 @@
 {% if books_read %}
 <div class="card mt-4" style="background:var(--bg-card);border:1px solid var(--border)">
   <div class="card-body">
-    <h6 class="mb-3"><i class="fas fa-list me-2" style="color:var(--accent)"></i>Alle {{ books_read|length }} gelesenen Bücher</h6>
+    <h6 class="mb-3"><i class="fas fa-list me-2" style="color:var(--accent)"></i>{{ _('All') }} {{ books_read|length }} {{ _('books read') }}</h6>
     <div class="row g-2">
       {% for b in books_read %}
       <div class="col-12 col-sm-6">

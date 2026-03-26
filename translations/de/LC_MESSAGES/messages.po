@@ -1,0 +1,794 @@
+# German translations for Reading Diary
+# Copyright (C) 2026 TheMRX - Pascal Keller
+msgid ""
+msgstr ""
+"Project-Id-Version: ReadingDiary 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-01-01 00:00+0000\n"
+"PO-Revision-Date: 2026-01-01 00:00+0000\n"
+"Last-Translator: TheMRX\n"
+"Language: de\n"
+"Language-Team: de\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel\n"
+
+# Navigation
+msgid "Dashboard"
+msgstr "Dashboard"
+
+msgid "My Books"
+msgstr "Meine Bücher"
+
+msgid "Wishlist"
+msgstr "Wunschliste"
+
+msgid "Favorite Quotes"
+msgstr "Lieblingszitate"
+
+msgid "Series"
+msgstr "Serien"
+
+msgid "My Shelves"
+msgstr "Meine Regale"
+
+msgid "Statistics"
+msgstr "Statistiken"
+
+msgid "Settings"
+msgstr "Einstellungen"
+
+# Sidebar
+msgid "Reading Streak"
+msgstr "Lesesträhne"
+
+msgid "Day"
+msgstr "Tag"
+
+msgid "Days"
+msgstr "Tage"
+
+msgid "Reading Goal"
+msgstr "Leseziel"
+
+msgid "p."
+msgstr "S."
+
+msgid "Books"
+msgstr "Bücher"
+
+msgid "This Week"
+msgstr "Diese Woche"
+
+msgid "This Month"
+msgstr "Diesen Monat"
+
+msgid "This Year"
+msgstr "Dieses Jahr"
+
+msgid "Log out"
+msgstr "Abmelden"
+
+msgid "Toggle theme"
+msgstr "Design wechseln"
+
+# Confirm modal
+msgid "Confirm Delete"
+msgstr "Löschen bestätigen"
+
+msgid "Really delete?"
+msgstr "Wirklich löschen?"
+
+msgid "Cancel"
+msgstr "Abbrechen"
+
+msgid "Delete"
+msgstr "Löschen"
+
+# Status badges
+msgid "Unread"
+msgstr "Ungelesen"
+
+msgid "Reading"
+msgstr "Am Lesen"
+
+msgid "Read"
+msgstr "Gelesen"
+
+msgid "Listening"
+msgstr "Am Hören"
+
+# Login
+msgid "Your personal reading diary"
+msgstr "Dein persönliches Lesetagebuch"
+
+msgid "PASSWORD"
+msgstr "PASSWORT"
+
+msgid "Enter password"
+msgstr "Passwort eingeben"
+
+msgid "Log in"
+msgstr "Anmelden"
+
+msgid "Invalid password!"
+msgstr "Falsches Passwort!"
+
+# Dashboard
+msgid "Total books"
+msgstr "Bücher gesamt"
+
+msgid "Quotes"
+msgstr "Zitate"
+
+msgid "Currently Reading"
+msgstr "Aktuell am Lesen"
+
+msgid "Recently Added"
+msgstr "Zuletzt hinzugefügt"
+
+msgid "No books yet."
+msgstr "Noch keine Bücher vorhanden."
+
+msgid "Add first book →"
+msgstr "Erstes Buch hinzufügen →"
+
+# Statistics
+msgid "Total"
+msgstr "Gesamt"
+
+msgid "Pages read"
+msgstr "Seiten gelesen"
+
+msgid "Best Streak"
+msgstr "Höchste Strähne"
+
+msgid "Reading Goals"
+msgstr "Leseziele"
+
+msgid "per"
+msgstr "pro"
+
+msgid "Active"
+msgstr "Aktiv"
+
+msgid "Inactive"
+msgstr "Inaktiv"
+
+msgid "Created:"
+msgstr "Erstellt:"
+
+msgid "Reading Activity"
+msgstr "Leseaktivität"
+
+msgid "Weekly"
+msgstr "Wöchentlich"
+
+msgid "Monthly"
+msgstr "Monatlich"
+
+msgid "Yearly"
+msgstr "Jährlich"
+
+msgid "Books by Publisher"
+msgstr "Bücher nach Verlag"
+
+msgid "Books by Author (Top 20)"
+msgstr "Bücher nach Autor (Top 20)"
+
+msgid "Year in Review"
+msgstr "Jahresrückblick"
+
+msgid "Choose a year to see your personal review."
+msgstr "Wähle ein Jahr, um deinen persönlichen Rückblick zu sehen."
+
+# Year Review
+msgid "Books read"
+msgstr "Bücher gelesen"
+
+msgid "Pages/Book"
+msgstr "Seiten/Buch"
+
+msgid "Books/Month"
+msgstr "Bücher/Monat"
+
+msgid "Books per Month"
+msgstr "Bücher pro Monat"
+
+msgid "Top Genre"
+msgstr "Top Genre"
+
+msgid "Best Book"
+msgstr "Bestes Buch"
+
+msgid "To Book"
+msgstr "Zum Buch"
+
+msgid "All"
+msgstr "Alle"
+
+msgid "books read"
+msgstr "gelesene Bücher"
+
+# Settings – Display
+msgid "Display"
+msgstr "Darstellung"
+
+msgid "Dark Mode"
+msgstr "Dark Mode"
+
+msgid "Activate dark color scheme"
+msgstr "Dunkles Farbschema aktivieren"
+
+msgid "Language"
+msgstr "Sprache"
+
+msgid "Interface language"
+msgstr "Oberflächensprache"
+
+msgid "Choose the display language for the app"
+msgstr "Wähle die Anzeigesprache der App"
+
+msgid "Reviews"
+msgstr "Rezensionen"
+
+msgid "Show review function for books"
+msgstr "Rezensionfunktion bei Büchern anzeigen"
+
+msgid "Lent out"
+msgstr "Verliehen"
+
+msgid "Show lending status"
+msgstr "Verleih-Status anzeigen"
+
+msgid "Show reading streak in sidebar"
+msgstr "Lesesträhne im Seitenmenü anzeigen"
+
+msgid "Audiobook"
+msgstr "Hörbuch"
+
+msgid "Show audiobook function and listening progress"
+msgstr "Hörbuch-Funktion und Hörfortschritt anzeigen"
+
+# Settings – Statistics
+msgid "Statistics Sections"
+msgstr "Statistik-Sektionen"
+
+msgid "Total Numbers"
+msgstr "Gesamtzahlen"
+
+msgid "Books, pages, quotes"
+msgstr "Bücher, Seiten, Zitate"
+
+msgid "By Publisher"
+msgstr "Nach Verlag"
+
+msgid "Books per publisher"
+msgstr "Bücher pro Verlag"
+
+msgid "By Author"
+msgstr "Nach Autor"
+
+msgid "Books per author"
+msgstr "Bücher pro Autor"
+
+msgid "Charts"
+msgstr "Diagramme"
+
+msgid "Pages/books over time"
+msgstr "Seiten/Bücher über Zeit"
+
+# Settings – Ratings
+msgid "Ratings"
+msgstr "Bewertungen"
+
+msgid "Stars"
+msgstr "Sterne"
+
+msgid "Show star rating (1–5)"
+msgstr "Sterne-Bewertung (1–5) anzeigen"
+
+msgid "Spice"
+msgstr "Spice"
+
+msgid "Show spice rating (1–5)"
+msgstr "Spice-Bewertung (1–5) anzeigen"
+
+msgid "Tension"
+msgstr "Spannung"
+
+msgid "Show tension slider (1–10)"
+msgstr "Spannungs-Slider (1–10) anzeigen"
+
+msgid "Type"
+msgstr "Typ"
+
+msgid "Show Fiction / Non-Fiction"
+msgstr "Fiction / Non-Fiction anzeigen"
+
+# Settings – Goal
+msgid "Set Reading Goal"
+msgstr "Leseziel setzen"
+
+msgid "Pages"
+msgstr "Seiten"
+
+msgid "Period"
+msgstr "Zeitraum"
+
+msgid "Goal"
+msgstr "Ziel"
+
+msgid "e.g. 30"
+msgstr "z.B. 30"
+
+msgid "Deactivate"
+msgstr "Deaktivieren"
+
+msgid "Activate"
+msgstr "Aktivieren"
+
+msgid "Delete reading goal?"
+msgstr "Leseziel löschen?"
+
+# Settings – Authors/Publishers
+msgid "Manage Authors"
+msgstr "Autoren verwalten"
+
+msgid "No authors available"
+msgstr "Keine Autoren vorhanden"
+
+msgid "Manage Publishers"
+msgstr "Verlage verwalten"
+
+msgid "No publishers available"
+msgstr "Keine Verlage vorhanden"
+
+# Settings – Password
+msgid "Change Password"
+msgstr "Passwort ändern"
+
+msgid "New Password"
+msgstr "Neues Passwort"
+
+msgid "New password (min. 4 chars)"
+msgstr "Neues Passwort (min. 4 Zeichen)"
+
+msgid "Repeat new password"
+msgstr "Neues Passwort wiederholen"
+
+msgid "Repeat"
+msgstr "Wiederholen"
+
+# Settings – Export
+msgid "Data Export"
+msgstr "Daten-Export"
+
+msgid "Download all books as CSV file – compatible with Excel and Google Sheets."
+msgstr "Alle Bücher als CSV-Datei herunterladen – kompatibel mit Excel und Google Sheets."
+
+msgid "Download CSV"
+msgstr "CSV herunterladen"
+
+msgid "Complete backup of all book data as JSON file."
+msgstr "Vollständiges Backup aller Buchdaten als JSON-Datei."
+
+msgid "Download JSON"
+msgstr "JSON herunterladen"
+
+msgid "Saved!"
+msgstr "Gespeichert!"
+
+# Books page
+msgid "Search title, author or ISBN…"
+msgstr "Titel, Autor oder ISBN suchen…"
+
+msgid "Gallery view"
+msgstr "Galerieansicht"
+
+msgid "List view"
+msgstr "Listenansicht"
+
+msgid "Add Book"
+msgstr "Buch hinzufügen"
+
+msgid "No books found for"
+msgstr "Keine Bücher gefunden für"
+
+msgid "No books yet"
+msgstr "Noch keine Bücher vorhanden"
+
+msgid "Assign series / shelf"
+msgstr "Serie / Regal zuweisen"
+
+msgid "Scan ISBN"
+msgstr "ISBN scannen"
+
+msgid "Enter ISBN"
+msgstr "ISBN eingeben"
+
+msgid "Manual"
+msgstr "Manuell"
+
+msgid "Point camera at book barcode"
+msgstr "Kamera auf den Barcode des Buchrückens richten"
+
+msgid "Enter ISBN-10 or ISBN-13"
+msgstr "ISBN-10 oder ISBN-13 eingeben"
+
+msgid "Search"
+msgstr "Suchen"
+
+msgid "Save"
+msgstr "Speichern"
+
+msgid "Search or create series"
+msgstr "Serie suchen oder neu erstellen"
+
+msgid "Series name…"
+msgstr "Seriename eingeben…"
+
+msgid "New series will be created"
+msgstr "Neue Serie wird erstellt"
+
+msgid "Vol. No."
+msgstr "Band Nr."
+
+msgid "optional"
+msgstr "optional"
+
+msgid "e.g. 1"
+msgstr "z.B. 1"
+
+msgid "Remove series"
+msgstr "Serie entfernen"
+
+msgid "Add"
+msgstr "Hinzufügen"
+
+msgid "No shelves yet."
+msgstr "Noch keine Regale vorhanden."
+
+msgid "Create new shelf & add book directly"
+msgstr "Neues Regal erstellen & Buch direkt hinzufügen"
+
+msgid "Shelf name…"
+msgstr "Regalname…"
+
+msgid "Create"
+msgstr "Erstellen"
+
+msgid "Shelf"
+msgstr "Regal"
+
+# Quotes page
+msgid "Search quote or book…"
+msgstr "Zitat oder Buch suchen…"
+
+msgid "Add Quote"
+msgstr "Zitat hinzufügen"
+
+msgid "Delete quote?"
+msgstr "Zitat löschen?"
+
+msgid "No quotes for"
+msgstr "Keine Zitate für"
+
+msgid "No quotes yet"
+msgstr "Noch keine Zitate vorhanden"
+
+msgid "Quote"
+msgstr "Zitat"
+
+msgid "Enter the quote…"
+msgstr "Das Zitat eingeben…"
+
+msgid "Book"
+msgstr "Buch"
+
+msgid "Select book"
+msgstr "Buch auswählen"
+
+msgid "Page"
+msgstr "Seite"
+
+msgid "Page number (optional)"
+msgstr "Seitenzahl (optional)"
+
+# Series page
+msgid "Add Series"
+msgstr "Serie hinzufügen"
+
+msgid "of"
+msgstr "von"
+
+msgid "read"
+msgstr "gelesen"
+
+msgid "Show Books"
+msgstr "Bücher anzeigen"
+
+msgid "No series yet"
+msgstr "Noch keine Serien vorhanden"
+
+msgid "Series name"
+msgstr "Serienname"
+
+msgid "e.g. Throne of Glass"
+msgstr "z.B. Throne of Glass"
+
+msgid "Assign books"
+msgstr "Bücher zuweisen"
+
+msgid "You can assign books on the series page or in the book detail view."
+msgstr "Du kannst Bücher auf der Serienseite oder in der Buchdetailansicht zuweisen."
+
+# Shelves page
+msgid "Add Shelf"
+msgstr "Regal hinzufügen"
+
+msgid "Open Shelf"
+msgstr "Regal öffnen"
+
+msgid "No shelves yet"
+msgstr "Noch keine Regale vorhanden"
+
+msgid "Create shelves like \"Favorites\", \"Lent out\" or \"Want to read\"."
+msgstr "Erstelle Regale wie „Favoriten", „Verliehen" oder „Möchte ich lesen"."
+
+msgid "Name"
+msgstr "Name"
+
+msgid "e.g. Favorites"
+msgstr "z.B. Favoriten"
+
+msgid "Rename Shelf"
+msgstr "Regal umbenennen"
+
+# series_detail page
+msgid "All Series"
+msgstr "Alle Serien"
+
+msgid "volumes read"
+msgstr "Bände gelesen"
+
+msgid "Vol."
+msgstr "Band"
+
+msgid "Remove from Series"
+msgstr "Aus Serie entfernen"
+
+msgid "No books in this series yet"
+msgstr "Noch keine Bücher in dieser Serie"
+
+msgid "Add first book"
+msgstr "Erstes Buch hinzufügen"
+
+msgid "Add Book to Series"
+msgstr "Buch zur Serie hinzufügen"
+
+msgid "Search book…"
+msgstr "Buch suchen…"
+
+msgid "Vol. No. (optional)"
+msgstr "Band Nr. (optional)"
+
+# shelf_detail page
+msgid "All Shelves"
+msgstr "Alle Regale"
+
+msgid "Remove from Shelf"
+msgstr "Aus Regal entfernen"
+
+msgid "This shelf is empty"
+msgstr "Dieses Regal ist noch leer"
+
+# wishlist page
+msgid "Search title or author…"
+msgstr "Titel oder Autor suchen…"
+
+msgid "Bought"
+msgstr "Gekauft"
+
+msgid "Edit"
+msgstr "Bearbeiten"
+
+msgid "Delete entry?"
+msgstr "Eintrag löschen?"
+
+msgid "No entries for"
+msgstr "Keine Einträge für"
+
+msgid "Wishlist is empty"
+msgstr "Wunschliste ist leer"
+
+msgid "Add to Wishlist"
+msgstr "Zur Wunschliste hinzufügen"
+
+msgid "Scan"
+msgstr "Scannen"
+
+msgid "ISBN"
+msgstr "ISBN"
+
+msgid "Enter ISBN"
+msgstr "ISBN eingeben"
+
+msgid "Edit Entry"
+msgstr "Eintrag bearbeiten"
+
+msgid "Bought!"
+msgstr "Gekauft!"
+
+msgid "Format of purchased copy"
+msgstr "Format des gekauften Exemplars"
+
+msgid "Move to My Books"
+msgstr "Zu Meine Bücher"
+
+# book_detail page
+msgid "Book Details"
+msgstr "Buchdetails"
+
+msgid "Back"
+msgstr "Zurück"
+
+msgid "Pages"
+msgstr "Seiten"
+
+msgid "Edit"
+msgstr "Bearbeiten"
+
+msgid "Reading Progress"
+msgstr "Lesefortschritt"
+
+msgid "Page"
+msgstr "Seite"
+
+msgid "No progress yet."
+msgstr "Noch kein Fortschritt eingetragen."
+
+msgid "Current page"
+msgstr "Aktuelle Seite"
+
+msgid "Listening Progress"
+msgstr "Hörfortschritt"
+
+msgid "listened"
+msgstr "gehört"
+
+msgid "No listening progress yet."
+msgstr "Noch kein Hörfortschritt eingetragen."
+
+msgid "Current %%"
+msgstr "Aktueller %%"
+
+msgid "Rating"
+msgstr "Bewertung"
+
+msgid "Stars (1–5)"
+msgstr "Sterne (1–5)"
+
+msgid "Spice (1–5)"
+msgstr "Spice (1–5)"
+
+msgid "Tension (1–10):"
+msgstr "Spannung (1–10):"
+
+msgid "Save rating"
+msgstr "Bewertung speichern"
+
+msgid "Review"
+msgstr "Rezension"
+
+msgid "Save review"
+msgstr "Rezension speichern"
+
+msgid "Saved"
+msgstr "Gespeichert"
+
+msgid "Chapter Notes"
+msgstr "Kapitelnotizen"
+
+msgid "No notes yet."
+msgstr "Noch keine Notizen vorhanden."
+
+msgid "Chapter (optional)"
+msgstr "Kapitel (optional)"
+
+msgid "Enter note…"
+msgstr "Notiz eingeben…"
+
+msgid "Add Note"
+msgstr "Notiz hinzufügen"
+
+msgid "Lent to:"
+msgstr "Verliehen an:"
+
+msgid "since"
+msgstr "seit"
+
+msgid "Returned"
+msgstr "Zurück erhalten"
+
+msgid "Not lent out."
+msgstr "Nicht verliehen."
+
+msgid "Name of person"
+msgstr "Name der Person"
+
+msgid "No Series"
+msgstr "Keine Serie"
+
+msgid "Vol. No."
+msgstr "Band Nr."
+
+msgid "To Series Overview"
+msgstr "Zur Serienübersicht"
+
+msgid "Edit Book"
+msgstr "Buch bearbeiten"
+
+msgid "Data"
+msgstr "Daten"
+
+# book_form
+msgid "Title"
+msgstr "Titel"
+
+msgid "Book title"
+msgstr "Buchtitel"
+
+msgid "Author"
+msgstr "Autor"
+
+msgid "Publisher"
+msgstr "Verlag"
+
+msgid "Genre"
+msgstr "Genre"
+
+msgid "e.g. Fantasy, Crime"
+msgstr "z.B. Fantasy, Krimi"
+
+msgid "Release date"
+msgstr "Erscheinungsdatum"
+
+msgid "Format"
+msgstr "Format"
+
+msgid "Status"
+msgstr "Status"
+
+msgid "Series"
+msgstr "Reihe"
+
+msgid "Volume"
+msgstr "Band"
+
+msgid "Book cover"
+msgstr "Buchcover"
+
+msgid "Upload cover"
+msgstr "Cover hochladen"
+
+msgid "Click or drag & drop (JPG, PNG, WebP)"
+msgstr "Klicken oder Drag & Drop (JPG, PNG, WebP)"
+
+# Translated filter values (used in trstatus/trperiod/trgoaltype)
+msgid "weekly"
+msgstr "wöchentlich"
+
+msgid "monthly"
+msgstr "monatlich"
+
+msgid "yearly"
+msgstr "jährlich"
+
+msgid "pages"
+msgstr "Seiten"
+
+msgid "books"
+msgstr "Bücher"

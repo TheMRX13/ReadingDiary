@@ -4,7 +4,11 @@ import sys
 # Auto-install fehlende Pakete
 def _ensure_packages():
     import importlib
-    required = {'flask': 'Flask==3.0.3', 'requests': 'requests==2.31.0'}
+    required = {
+        'flask':       'Flask==3.0.3',
+        'requests':    'requests==2.31.0',
+        'flask_babel': 'Flask-Babel>=4.0.0',
+    }
     for module, pkg in required.items():
         try:
             importlib.import_module(module)
@@ -15,6 +19,7 @@ _ensure_packages()
 
 from flask import (Flask, render_template, request, redirect, url_for,
                    session, jsonify, Response, make_response)
+from flask_babel import Babel, gettext as _
 import sqlite3
 import os
 import requests
@@ -30,6 +35,16 @@ import uuid
 app = Flask(__name__)
 app.secret_key = 'rd_s3cr3t_2024_xK9p#mN2vL5_reading_diary'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=36500)
+app.config['BABEL_DEFAULT_LOCALE'] = 'en'
+app.config['BABEL_DEFAULT_TIMEZONE'] = 'UTC'
+
+SUPPORTED_LANGUAGES = ['de', 'en']
+
+def get_locale():
+    lang = session.get('language', 'en')
+    return lang if lang in SUPPORTED_LANGUAGES else 'en'
+
+babel = Babel(app, locale_selector=get_locale)
 
 DEFAULT_PASSWORD = "admin"
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'reading_diary.db')
@@ -125,9 +140,14 @@ def goal_progress(conn, goal):
 
 def reading_streak(conn):
     """Berechnet aktuelle Lesesträhne in Tagen.
-    Gilt auch noch am heutigen Tag, wenn gestern gelesen wurde."""
+    Gilt auch noch am heutigen Tag, wenn gestern gelesen/gehört wurde.
+    Kombiniert reading_progress (Lesen) und audio_progress (Hörbücher)."""
     rows = conn.execute(
-        "SELECT DISTINCT DATE(timestamp) as d FROM reading_progress ORDER BY d DESC"
+        "SELECT DISTINCT DATE(timestamp) as d FROM ("
+        "  SELECT timestamp FROM reading_progress"
+        "  UNION"
+        "  SELECT timestamp FROM audio_progress"
+        ") ORDER BY d DESC"
     ).fetchall()
     if not rows:
         return 0
@@ -150,9 +170,14 @@ def reading_streak(conn):
 
 
 def max_reading_streak(conn):
-    """Berechnet die höchste jemals erreichte Lesesträhne."""
+    """Berechnet die höchste jemals erreichte Lesesträhne.
+    Kombiniert reading_progress (Lesen) und audio_progress (Hörbücher)."""
     rows = conn.execute(
-        "SELECT DISTINCT DATE(timestamp) as d FROM reading_progress ORDER BY d ASC"
+        "SELECT DISTINCT DATE(timestamp) as d FROM ("
+        "  SELECT timestamp FROM reading_progress"
+        "  UNION"
+        "  SELECT timestamp FROM audio_progress"
+        ") ORDER BY d ASC"
     ).fetchall()
     if not rows:
         return 0
@@ -168,6 +193,45 @@ def max_reading_streak(conn):
         else:
             current = 1
     return max_streak
+
+
+@app.template_filter('trstatus')
+def translate_status(status):
+    """Translates DB status value (always German) to current UI language."""
+    return {
+        'Ungelesen': _('Unread'),
+        'Am Lesen':  _('Reading'),
+        'Gelesen':   _('Read'),
+        'Am H\u00f6ren': _('Listening'),
+    }.get(status, status)
+
+
+@app.template_filter('trperiod')
+def translate_period(period):
+    return {
+        'weekly':  _('Weekly'),
+        'monthly': _('Monthly'),
+        'yearly':  _('Yearly'),
+    }.get(period, period)
+
+
+@app.template_filter('trgoaltype')
+def translate_goal_type(goal_type):
+    return {
+        'pages': _('Pages'),
+        'books': _('Books'),
+    }.get(goal_type, goal_type)
+
+
+@app.template_filter('fmtdate')
+def format_date(value):
+    """Konvertiert yyyy-mm-dd zu dd.mm.yyyy für die Anzeige."""
+    if not value:
+        return value
+    s = str(value).strip()
+    if len(s) == 10 and s[4] == '-' and s[7] == '-':
+        return s[8:10] + '.' + s[5:7] + '.' + s[0:4]
+    return s
 
 
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -197,6 +261,9 @@ def inject_globals():
         show_lent      = get_setting(conn, 'show_lent',      'true') == 'true'
         show_streak    = get_setting(conn, 'show_streak',    'true') == 'true'
         show_audiobook = get_setting(conn, 'show_audiobook', 'true') == 'true'
+        language = get_setting(conn, 'language', 'de')
+        if session.get('language') != language:
+            session['language'] = language
         goal = get_active_goal(conn)
         progress = goal_progress(conn, goal)
         streak = reading_streak(conn)
@@ -211,6 +278,7 @@ def inject_globals():
             'show_lent': show_lent,
             'show_streak': show_streak,
             'show_audiobook': show_audiobook,
+            'current_language': language,
             'goal': goal,
             'goal_progress': progress,
             'streak': streak,
@@ -236,12 +304,14 @@ def login():
         pw = request.form.get('password', '')
         conn = get_db()
         stored_pw = get_setting(conn, 'password', DEFAULT_PASSWORD)
+        lang = get_setting(conn, 'language', 'de')
         conn.close()
         if pw == stored_pw:
             session.permanent = True
             session['logged_in'] = True
+            session['language'] = lang
             return redirect(url_for('dashboard'))
-        error = 'Falsches Passwort!'
+        error = _('Invalid password!')
     return render_template('login.html', error=error)
 
 
@@ -978,6 +1048,20 @@ def update_settings():
     return jsonify({'success': True})
 
 
+@app.route('/api/settings/language', methods=['POST'])
+@login_required
+def set_language():
+    lang = (request.json or {}).get('lang', 'de')
+    if lang not in SUPPORTED_LANGUAGES:
+        lang = 'de'
+    conn = get_db()
+    conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('language', ?)", (lang,))
+    conn.commit()
+    conn.close()
+    session['language'] = lang
+    return jsonify({'success': True})
+
+
 @app.route('/api/settings/password', methods=['POST'])
 @login_required
 def change_password():
@@ -1044,7 +1128,7 @@ def stats_charts():
     conn = get_db()
     period = request.args.get('period', 'monthly')
     now = datetime.now(timezone.utc)
-    months_de = ['Jan', 'Feb', 'MÃ¤r', 'Apr', 'Mai', 'Jun',
+    months_de = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun',
                  'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
 
     labels, pages_data, books_data = [], [], []
@@ -1238,7 +1322,7 @@ def year_review(year):
                 if g:
                     genres[g] = genres.get(g, 0) + 1
     top_genres = sorted(genres.items(), key=lambda x: x[1], reverse=True)[:5]
-    months_de = ['Jan', 'Feb', 'MÃ¤r', 'Apr', 'Mai', 'Jun',
+    months_de = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun',
                  'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
     monthly = []
     for m in range(1, 13):

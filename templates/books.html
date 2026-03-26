@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Meine Bücher – Reading Diary{% endblock %}
-{% block page_title %}Meine Bücher{% endblock %}
+{% block title %}{{ _('My Books') }} – Reading Diary{% endblock %}
+{% block page_title %}{{ _('My Books') }}{% endblock %}
 {% block head %}
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 {% endblock %}
@@ -13,22 +13,22 @@
       <i class="fas fa-search search-icon"></i>
       <form method="get" id="searchForm">
         <input type="text" name="q" value="{{ q }}" class="form-control"
-               placeholder="Titel, Autor oder ISBN suchen…" id="searchInput"
+               placeholder="{{ _('Search title, author or ISBN…') }}" id="searchInput"
                oninput="delaySearch()">
       </form>
     </div>
   </div>
   <div class="d-flex gap-2">
     <div class="btn-group" role="group">
-      <button id="btnGrid" class="btn btn-sm btn-outline-secondary" onclick="setView('grid')" title="Galerieansicht">
+      <button id="btnGrid" class="btn btn-sm btn-outline-secondary" onclick="setView('grid')" title="{{ _('Gallery view') }}">
         <i class="fas fa-th"></i>
       </button>
-      <button id="btnList" class="btn btn-sm btn-outline-secondary" onclick="setView('list')" title="Listenansicht">
+      <button id="btnList" class="btn btn-sm btn-outline-secondary" onclick="setView('list')" title="{{ _('List view') }}">
         <i class="fas fa-list"></i>
       </button>
     </div>
     <button class="btn btn-primary" onclick="openAddModal()">
-      <i class="fas fa-plus me-1"></i>Buch hinzufügen
+      <i class="fas fa-plus me-1"></i>{{ _('Add Book') }}
     </button>
   </div>
 </div>
@@ -55,9 +55,9 @@
           {% if b.publisher_name %}<div class="book-author" style="font-size:.7rem">{{ b.publisher_name }}</div>{% endif %}
           {% if b.release_date %}<div class="book-author" style="font-size:.7rem">{{ b.release_date[:4] if b.release_date|length >= 4 else b.release_date }}</div>{% endif %}
           <div class="mt-1">
-            {% if b.status == 'Gelesen' %}<span class="status-badge badge-status-gelesen">Gelesen</span>
-            {% elif b.status == 'Am Lesen' %}<span class="status-badge {{ 'badge-status-am-hoeren' if b.is_audiobook else 'badge-status-am-lesen' }}">{{ 'Am Hören' if b.is_audiobook else 'Am Lesen' }}</span>
-            {% else %}<span class="status-badge badge-status-ungelesen">Ungelesen</span>{% endif %}
+            {% if b.status == 'Gelesen' %}<span class="status-badge badge-status-gelesen">{{ _('Read') }}</span>
+            {% elif b.status == 'Am Lesen' %}<span class="status-badge {{ 'badge-status-am-hoeren' if b.is_audiobook else 'badge-status-am-lesen' }}">{{ _('Listening') if b.is_audiobook else _('Reading') }}</span>
+            {% else %}<span class="status-badge badge-status-ungelesen">{{ _('Unread') }}</span>{% endif %}
           </div>
         </div>
       </div>
@@ -91,16 +91,16 @@
         <div style="font-size:.75rem;color:var(--text-muted)">
           {% if b.publisher_name %}{{ b.publisher_name }}{% endif %}
           {% if b.release_date %} &middot; {{ b.release_date[:4] if b.release_date|length >= 4 else b.release_date }}{% endif %}
-          {% if b.pages %} &middot; {{ b.pages }} S.{% endif %}
+          {% if b.pages %} &middot; {{ b.pages }} {{ _('p.') }}{% endif %}
           {% if b.genre %} &middot; {{ b.genre }}{% endif %}
         </div>
       </div>
     </a>
     <div class="d-flex align-items-center gap-2 flex-shrink-0">
-      {% if b.status == 'Gelesen' %}<span class="status-badge badge-status-gelesen">Gelesen</span>
-      {% elif b.status == 'Am Lesen' %}<span class="status-badge {{ 'badge-status-am-hoeren' if b.is_audiobook else 'badge-status-am-lesen' }}">{{ 'Am Hören' if b.is_audiobook else 'Am Lesen' }}</span>
-      {% else %}<span class="status-badge badge-status-ungelesen">Ungelesen</span>{% endif %}
-      <button class="btn btn-sm book-quick-btn-list" title="Serie / Regal zuweisen"
+      {% if b.status == 'Gelesen' %}<span class="status-badge badge-status-gelesen">{{ _('Read') }}</span>
+      {% elif b.status == 'Am Lesen' %}<span class="status-badge {{ 'badge-status-am-hoeren' if b.is_audiobook else 'badge-status-am-lesen' }}">{{ _('Listening') if b.is_audiobook else _('Reading') }}</span>
+      {% else %}<span class="status-badge badge-status-ungelesen">{{ _('Unread') }}</span>{% endif %}
+      <button class="btn btn-sm book-quick-btn-list" title="{{ _('Assign series / shelf') }}"
               onclick="openQuickAssign({{ b.id }}, {{ b.title | tojson }})">
         <i class="fas fa-plus"></i>
       </button>
@@ -112,7 +112,7 @@
 <div class="text-center py-5">
   <i class="fas fa-book-open" style="font-size:3rem;color:var(--border)"></i>
   <p class="mt-3" style="color:var(--text-muted)">
-    {% if q %}Keine Bücher gefunden für „{{ q }}"{% else %}Noch keine Bücher vorhanden{% endif %}
+    {% if q %}{{ _('No books found for') }} „{{ q }}“{% else %}{{ _('No books yet') }}{% endif %}
   </p>
 </div>
 {% endif %}
@@ -122,7 +122,7 @@
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-plus-circle me-2" style="color:var(--accent)"></i>Buch hinzufügen</h5>
+        <h5 class="modal-title"><i class="fas fa-plus-circle me-2" style="color:var(--accent)"></i>{{ _('Add Book') }}</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
@@ -132,19 +132,19 @@
             <button class="nav-link active" id="add-scan-tab" data-bs-toggle="pill"
                     data-bs-target="#add-scan" type="button"
                     onclick="startScanner('add_isbn','add_')">
-              <i class="fas fa-camera me-1"></i>ISBN scannen
+              <i class="fas fa-camera me-1"></i>{{ _('Scan ISBN') }}
             </button>
           </li>
           <li class="nav-item">
             <button class="nav-link" id="add-isbn-tab" data-bs-toggle="pill"
                     data-bs-target="#add-isbnin" type="button" onclick="stopScanner()">
-              <i class="fas fa-keyboard me-1"></i>ISBN eingeben
+              <i class="fas fa-keyboard me-1"></i>{{ _('Enter ISBN') }}
             </button>
           </li>
           <li class="nav-item">
             <button class="nav-link" id="add_manual-tab" data-bs-toggle="pill"
                     data-bs-target="#add_manual" type="button" onclick="stopScanner()">
-              <i class="fas fa-edit me-1"></i>Manuell
+              <i class="fas fa-edit me-1"></i>{{ _('Manual') }}
             </button>
           </li>
         </ul>
@@ -154,7 +154,7 @@
           <div class="tab-pane fade show active" id="add-scan">
             <div id="qr-reader" style="width:100%;max-height:300px"></div>
             <p class="text-center mt-2" style="font-size:.8rem;color:var(--text-muted)">
-              Kamera auf den Barcode des Buchrückens richten
+              {{ _('Point camera at book barcode') }}
             </p>
           </div>
 
@@ -162,10 +162,10 @@
           <div class="tab-pane fade" id="add-isbnin">
             <div class="d-flex gap-2 mt-2">
               <input type="text" id="add_isbn_manual" class="form-control"
-                     placeholder="ISBN-10 oder ISBN-13 eingeben">
+                     placeholder="{{ _('Enter ISBN-10 or ISBN-13') }}">
               <button class="btn btn-primary" id="add_isbn_search_btn"
                       onclick="lookupISBN(document.getElementById('add_isbn_manual').value,'add_')">
-                <i class="fas fa-search"></i> Suchen
+                <i class="fas fa-search"></i> {{ _('Search') }}
               </button>
             </div>
           </div>
@@ -178,9 +178,9 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">{{ _('Cancel') }}</button>
         <button class="btn btn-primary" onclick="submitAddBook()">
-          <i class="fas fa-save me-1"></i>Speichern
+          <i class="fas fa-save me-1"></i>{{ _('Save') }}
         </button>
       </div>
     </div>
@@ -201,33 +201,33 @@
       <div class="modal-body">
         <!-- Tabs -->
         <ul class="nav nav-tabs mb-3" role="tablist">
-          <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#qaSerieTab" type="button"><i class="fas fa-layer-group me-1"></i>Serie</button></li>
-          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#qaRegalTab" type="button"><i class="fas fa-bookmark me-1"></i>Regal</button></li>
+          <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#qaSerieTab" type="button"><i class="fas fa-layer-group me-1"></i>{{ _('Series') }}</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#qaRegalTab" type="button"><i class="fas fa-bookmark me-1"></i>{{ _('Shelf') }}</button></li>
         </ul>
         <div class="tab-content">
 
           <!-- Serie Tab -->
           <div class="tab-pane fade show active" id="qaSerieTab">
             <div class="mb-3" style="position:relative">
-              <label class="form-label small fw-semibold">Serie suchen oder neu erstellen</label>
+              <label class="form-label small fw-semibold">{{ _('Search or create series') }}</label>
               <input type="text" id="qaSeriesInput" class="form-control" autocomplete="off"
-                     placeholder="Seriename eingeben…" oninput="qaSeriesFilter()">
+                     placeholder="{{ _('Series name…') }}" oninput="qaSeriesFilter()">
               <div id="qaSeriesSugg" class="autocomplete-dropdown" style="display:none"></div>
               <input type="hidden" id="qaSeriesId">
               <small id="qaSeriesNew" class="text-muted mt-1" style="display:none">
-                <i class="fas fa-plus-circle me-1" style="color:var(--accent)"></i>Neue Serie wird erstellt
+                <i class="fas fa-plus-circle me-1" style="color:var(--accent)"></i>{{ _('New series will be created') }}
               </small>
             </div>
             <div class="mb-3">
-              <label class="form-label small fw-semibold">Band Nr. <span class="text-muted fw-normal">(optional)</span></label>
-              <input type="number" id="qaSeriesOrder" class="form-control" min="1" placeholder="z. B. 1">
+              <label class="form-label small fw-semibold">{{ _('Vol. No.') }} <span class="text-muted fw-normal">({{ _('optional') }})</span></label>
+              <input type="number" id="qaSeriesOrder" class="form-control" min="1" placeholder="{{ _('e.g. 1') }}">
             </div>
             <div class="d-flex gap-2">
               <button class="btn btn-primary" onclick="saveQuickSeries()">
-                <i class="fas fa-save me-1"></i>Speichern
+                <i class="fas fa-save me-1"></i>{{ _('Save') }}
               </button>
-              <button class="btn btn-outline-danger btn-sm" onclick="removeQuickSeries()" title="Serie entfernen">
-                <i class="fas fa-times me-1"></i>Serie entfernen
+              <button class="btn btn-outline-danger btn-sm" onclick="removeQuickSeries()" title="{{ _('Remove series') }}">
+                <i class="fas fa-times me-1"></i>{{ _('Remove series') }}
               </button>
             </div>
           </div>
@@ -241,21 +241,21 @@
                    style="border:1px solid var(--border);background:var(--bg-card)">
                 <span><i class="fas fa-bookmark me-2" style="color:var(--accent)"></i>{{ shelf.name }}</span>
                 <button class="btn btn-sm btn-outline-primary" onclick="addToShelfQuick({{ shelf.id }})">
-                  <i class="fas fa-plus me-1"></i>Hinzufügen
+                  <i class="fas fa-plus me-1"></i>{{ _('Add') }}
                 </button>
               </div>
               {% endfor %}
             </div>
             {% else %}
-            <p class="text-muted small mb-3">Noch keine Regale vorhanden.</p>
+            <p class="text-muted small mb-3">{{ _('No shelves yet.') }}</p>
             {% endif %}
             <hr>
-            <label class="form-label small fw-semibold">Neues Regal erstellen & Buch direkt hinzufügen</label>
+            <label class="form-label small fw-semibold">{{ _('Create new shelf & add book directly') }}</label>
             <div class="d-flex gap-2">
               <input type="text" id="qaNewShelfName" class="form-control form-control-sm"
-                     placeholder="Regalname…">
+                     placeholder="{{ _('Shelf name…') }}">
               <button class="btn btn-outline-primary btn-sm" onclick="createShelfAndAdd()">
-                <i class="fas fa-plus me-1"></i>Erstellen
+                <i class="fas fa-plus me-1"></i>{{ _('Create') }}
               </button>
             </div>
           </div>

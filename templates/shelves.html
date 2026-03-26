@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Meine Regale – Reading Diary{% endblock %}
-{% block page_title %}Meine Regale{% endblock %}
+{% block title %}{{ _('My Shelves') }} – Reading Diary{% endblock %}
+{% block page_title %}{{ _('My Shelves') }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
   <div class="page-header-left"></div>
   <button class="btn btn-primary" onclick="openAddShelf()">
-    <i class="fas fa-plus me-1"></i>Regal hinzufügen
+      <i class="fas fa-plus me-1"></i>{{ _('Add Shelf') }}
   </button>
 </div>
 
@@ -31,11 +31,11 @@
             </button>
           </div>
         </div>
-        <p class="text-muted mt-2 mb-0" style="font-size:.85rem">{{ shelf.book_count }} {{ 'Buch' if shelf.book_count == 1 else 'Bücher' }}</p>
+        <p class="text-muted mt-2 mb-0" style="font-size:.85rem">{{ shelf.book_count }} {{ _('Book') if shelf.book_count == 1 else _('Books') }}</p>
       </div>
       <div class="card-footer" style="background:transparent;border-top:1px solid var(--border)">
         <a href="/shelves/{{ shelf.id }}" class="btn btn-sm btn-outline-primary w-100">
-          <i class="fas fa-eye me-1"></i>Regal öffnen
+          <i class="fas fa-eye me-1"></i>{{ _('Open Shelf') }}
         </a>
       </div>
     </div>
@@ -45,8 +45,8 @@
 {% else %}
 <div class="text-center py-5">
   <i class="fas fa-bookmark" style="font-size:3rem;color:var(--border)"></i>
-  <p class="mt-3" style="color:var(--text-muted)">Noch keine Regale vorhanden</p>
-  <p class="text-muted" style="font-size:.85rem">Erstelle Regale wie „Favoriten", „Verliehen" oder „Möchte ich lesen".</p>
+  <p class="mt-3" style="color:var(--text-muted)">{{ _('No shelves yet') }}</p>
+  <p class="text-muted" style="font-size:.85rem">{{ _('Create shelves like "Favorites", "Lent out" or "Want to read".') }}</p>
 </div>
 {% endif %}
 
@@ -55,17 +55,17 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-bookmark me-2" style="color:var(--accent)"></i>Regal hinzufügen</h5>
+        <h5 class="modal-title"><i class="fas fa-bookmark me-2" style="color:var(--accent)"></i>{{ _('Add Shelf') }}</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <label class="form-label">Name *</label>
-        <input type="text" id="shelfNameInput" class="form-control" placeholder="z.B. Favoriten">
+        <label class="form-label">{{ _('Name') }} *</label>
+        <input type="text" id="shelfNameInput" class="form-control" placeholder="{{ _('e.g. Favorites') }}">
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ _('Cancel') }}</button>
         <button type="button" class="btn btn-primary" onclick="saveShelf()">
-          <i class="fas fa-save me-1"></i>Speichern
+          <i class="fas fa-save me-1"></i>{{ _('Save') }}
         </button>
       </div>
     </div>
@@ -77,18 +77,18 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-pen me-2" style="color:var(--accent)"></i>Regal umbenennen</h5>
+        <h5 class="modal-title"><i class="fas fa-pen me-2" style="color:var(--accent)"></i>{{ _('Rename Shelf') }}</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="editShelfId">
-        <label class="form-label">Name *</label>
+        <label class="form-label">{{ _('Name') }} *</label>
         <input type="text" id="editShelfName" class="form-control">
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ _('Cancel') }}</button>
         <button type="button" class="btn btn-primary" onclick="updateShelf()">
-          <i class="fas fa-save me-1"></i>Speichern
+          <i class="fas fa-save me-1"></i>{{ _('Save') }}
         </button>
       </div>
     </div>
