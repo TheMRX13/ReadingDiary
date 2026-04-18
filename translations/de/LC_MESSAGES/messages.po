@@ -175,6 +175,88 @@ msgstr "Jährlich"
 msgid "Books by Publisher"
 msgstr "Bücher nach Verlag"
 
+# Statistics – neue Felder
+msgid "Avg. Rating"
+msgstr "Ø Bewertung"
+
+msgid "Books this year"
+msgstr "Bücher dieses Jahr"
+
+msgid "Avg. Books / Month"
+msgstr "Ø Bücher / Monat"
+
+msgid "Favorite Genre"
+msgstr "Lieblingsgenre"
+
+msgid "Audiobook Statistics"
+msgstr "Hörbuch-Statistiken"
+
+msgid "Listened"
+msgstr "Gehört"
+
+msgid "Currently Listening"
+msgstr "Am Hören"
+
+msgid "Not yet listened"
+msgstr "Noch nicht gehört"
+
+msgid "Audiobooks this year"
+msgstr "Hörbücher dieses Jahr"
+
+msgid "Listening Days"
+msgstr "Hörtage"
+
+msgid "Avg. Progress / Listening Day"
+msgstr "Ø Fortschritt / Hörtag"
+
+msgid "Progress Entries"
+msgstr "Fortschrittseinträge"
+
+msgid "Reading & Listening Habits"
+msgstr "Lese- & Hörgewohnheiten"
+
+msgid "Active Reading Days"
+msgstr "Aktive Lesetage"
+
+msgid "Active Listening Days"
+msgstr "Aktive Hörtage"
+
+msgid "Avg. Pages / Reading Day"
+msgstr "Ø Seiten / Lesetag"
+
+msgid "Total Active Days"
+msgstr "Aktive Tage gesamt"
+
+msgid "No tracking data yet."
+msgstr "Noch keine Tracking-Daten vorhanden."
+
+msgid "Log reading progress in the book detail to see speed stats."
+msgstr "Trage Lesefortschritte in der Buchdetailansicht ein, um Geschwindigkeitsstatistiken zu sehen."
+
+msgid "Books by Genre"
+msgstr "Bücher nach Genre"
+
+msgid "Books by Format"
+msgstr "Bücher nach Format"
+
+msgid "Listened audiobooks"
+msgstr "Gehörte Hörbücher"
+
+msgid "Read books"
+msgstr "Gelesene Bücher"
+
+msgid "Read pages"
+msgstr "Gelesene Seiten"
+
+msgid "Total Audiobooks"
+msgstr "Hörbücher gesamt"
+
+msgid "Activity"
+msgstr "Aktivität"
+
+msgid "Streak days"
+msgstr "Strähnen-Tage"
+
 msgid "Books by Author (Top 20)"
 msgstr "Bücher nach Autor (Top 20)"
 
@@ -792,3 +874,666 @@ msgstr "Seiten"
 
 msgid "books"
 msgstr "Bücher"
+
+
+# Series multi-select & back navigation
+msgid "Back to Series"
+msgstr "Zurück zur Serie"
+
+msgid "book(s) selected"
+msgstr "Buch/Bücher ausgewählt"
+
+msgid "Add"
+msgstr "Hinzufügen"
+
+# ── Settings – neu (Passwort, 2FA, Werbung) ──────────────────────
+msgid "All Reading Goals"
+msgstr "Alle Leseziele"
+
+msgid "Current Password"
+msgstr "Aktuelles Passwort"
+
+msgid "Min. 10 chars, 1 uppercase, 1 lowercase, 1 special"
+msgstr "Mind. 10 Zeichen, 1 Großbuchstabe, 1 Kleinbuchstabe, 1 Sonderzeichen"
+
+msgid "Confirmation"
+msgstr "Bestätigung"
+
+msgid "Save Password"
+msgstr "Passwort speichern"
+
+msgid "Two-Factor Authentication"
+msgstr "Zwei-Faktor-Authentifizierung"
+
+msgid "2FA is active"
+msgstr "2FA ist aktiv"
+
+msgid "Disable 2FA"
+msgstr "2FA deaktivieren"
+
+msgid "Protect your account with a one-time code from an authenticator app (e.g. Google Authenticator)."
+msgstr "Schütze deinen Account mit einem Einmal-Code aus einer Authenticator-App (z.B. Google Authenticator)."
+
+msgid "Set up 2FA"
+msgstr "2FA einrichten"
+
+msgid "Scan this QR code with your authenticator app:"
+msgstr "Scanne diesen QR-Code mit deiner Authenticator-App:"
+
+msgid "Enter code"
+msgstr "Code eingeben"
+
+msgid "Confirm"
+msgstr "Bestätigen"
+
+msgid "My Advertisement"
+msgstr "Meine Werbung"
+
+msgid "This banner is shown to all users at the bottom of the settings page."
+msgstr "Dieses Banner wird allen Nutzern ganz unten in den Einstellungen angezeigt."
+
+msgid "Logo / Image"
+msgstr "Logo / Bild"
+
+msgid "Headline"
+msgstr "Überschrift"
+
+msgid "Short description text..."
+msgstr "Kurzer Beschreibungstext..."
+
+msgid "e.g. Book Club"
+msgstr "z.B. Bücherbande"
+
+msgid "Save Advertisement"
+msgstr "Werbung speichern"
+
+msgid "Hide Advertisement"
+msgstr "Werbung ausblenden"
+
+msgid "Show Advertisement"
+msgstr "Werbung einblenden"
+
+msgid "Preview"
+msgstr "Vorschau"
+
+# ── Toast-Meldungen (Settings) ───────────────────────────────────
+msgid "Please enter a goal"
+msgstr "Bitte Ziel eingeben"
+
+msgid "Reading goal set!"
+msgstr "Leseziel gesetzt!"
+
+msgid "Really delete author"
+msgstr "Autor wirklich löschen"
+
+msgid "Author deleted!"
+msgstr "Autor gelöscht!"
+
+msgid "Really delete publisher"
+msgstr "Verlag wirklich löschen"
+
+msgid "Publisher deleted!"
+msgstr "Verlag gelöscht!"
+
+msgid "Please enter current password"
+msgstr "Bitte aktuelles Passwort eingeben"
+
+msgid "Please enter new password"
+msgstr "Bitte neues Passwort eingeben"
+
+msgid "Passwords do not match"
+msgstr "Passwörter stimmen nicht überein"
+
+msgid "Password must be at least 10 characters"
+msgstr "Passwort muss mindestens 10 Zeichen haben"
+
+msgid "Password needs at least one uppercase letter"
+msgstr "Passwort braucht mindestens einen Großbuchstaben"
+
+msgid "Password needs at least one lowercase letter"
+msgstr "Passwort braucht mindestens einen Kleinbuchstaben"
+
+msgid "Password needs at least one special character"
+msgstr "Passwort braucht mindestens ein Sonderzeichen"
+
+msgid "Password changed successfully!"
+msgstr "Passwort erfolgreich geändert!"
+
+msgid "Error changing password"
+msgstr "Fehler beim Ändern des Passworts"
+
+msgid "Error setting up 2FA"
+msgstr "Fehler beim Einrichten der 2FA"
+
+msgid "Please enter 6-digit code"
+msgstr "Bitte 6-stelligen Code eingeben"
+
+msgid "2FA activated successfully!"
+msgstr "2FA erfolgreich aktiviert!"
+
+msgid "Invalid code"
+msgstr "Ungültiger Code"
+
+msgid "Really disable 2FA? Your account will be less secure."
+msgstr "2FA wirklich deaktivieren? Dein Account wird dadurch weniger sicher."
+
+msgid "2FA disabled"
+msgstr "2FA deaktiviert"
+
+msgid "Upload failed"
+msgstr "Upload fehlgeschlagen"
+
+msgid "Logo uploaded!"
+msgstr "Logo hochgeladen!"
+
+msgid "Please enter at least a headline or text"
+msgstr "Bitte mindestens Überschrift oder Text eingeben"
+
+msgid "Advertisement saved!"
+msgstr "Werbung gespeichert!"
+
+msgid "Error saving"
+msgstr "Fehler beim Speichern"
+
+msgid "Error"
+msgstr "Fehler"
+
+# ── Fehlerseite ──────────────────────────────────────────────────
+msgid "Back to Home"
+msgstr "Zurück zur Startseite"
+
+msgid "Something went wrong."
+msgstr "Etwas ist schiefgelaufen."
+
+msgid "Page not found."
+msgstr "Seite nicht gefunden."
+
+msgid "Access denied."
+msgstr "Zugriff verweigert."
+
+msgid "Too many requests. Please wait."
+msgstr "Zu viele Anfragen. Bitte warte kurz."
+
+# Login, Register, 2FA
+msgid "Dein persönliches Lesetagebuch"
+msgstr "Dein persönliches Lesetagebuch"
+
+msgid "BENUTZERNAME ODER E-MAIL"
+msgstr "BENUTZERNAME ODER E-MAIL"
+
+msgid "Benutzername oder E-Mail"
+msgstr "Benutzername oder E-Mail"
+
+msgid "PASSWORT"
+msgstr "PASSWORT"
+
+msgid "Passwort eingeben"
+msgstr "Passwort eingeben"
+
+msgid "Anmelden"
+msgstr "Anmelden"
+
+msgid "Noch kein Account? Registrieren"
+msgstr "Noch kein Account? Registrieren"
+
+msgid "Passwort vergessen?"
+msgstr "Passwort vergessen?"
+
+msgid "Erstelle deinen Account"
+msgstr "Erstelle deinen Account"
+
+msgid "Benutzername"
+msgstr "Benutzername"
+
+msgid "E-Mail-Adresse"
+msgstr "E-Mail-Adresse"
+
+msgid "3–50 Zeichen, nur Buchstaben, Zahlen und _"
+msgstr "3–50 Zeichen, nur Buchstaben, Zahlen und _"
+
+msgid "Mindestens 10 Zeichen"
+msgstr "Mindestens 10 Zeichen"
+
+msgid "Mindestens 1 Großbuchstabe"
+msgstr "Mindestens 1 Großbuchstabe"
+
+msgid "Mindestens 1 Kleinbuchstabe"
+msgstr "Mindestens 1 Kleinbuchstabe"
+
+msgid "Mindestens 1 Sonderzeichen (!@#$%% ...)"
+msgstr "Mindestens 1 Sonderzeichen (!@#$%% ...)"
+
+msgid "Passwort wiederholen"
+msgstr "Passwort wiederholen"
+
+msgid "Passwort bestätigen"
+msgstr "Passwort bestätigen"
+
+msgid "Account erstellen"
+msgstr "Account erstellen"
+
+msgid "Bereits einen Account?"
+msgstr "Bereits einen Account?"
+
+msgid "Jetzt anmelden"
+msgstr "Jetzt anmelden"
+
+msgid "Ich habe die"
+msgstr "Ich habe die"
+
+msgid "Datenschutzerklärung"
+msgstr "Datenschutzerklärung"
+
+msgid "gelesen und akzeptiere sie."
+msgstr "gelesen und akzeptiere sie."
+
+msgid "2-Faktor-Auth"
+msgstr "2-Faktor-Auth"
+
+msgid "Gib den 6-stelligen Code aus deiner Authenticator-App ein."
+msgstr "Gib den 6-stelligen Code aus deiner Authenticator-App ein."
+
+msgid "Authenticator-Code"
+msgstr "Authenticator-Code"
+
+msgid "Bestätigen"
+msgstr "Bestätigen"
+
+msgid "Zurück zum Login"
+msgstr "Zurück zum Login"
+
+# Forgot Password
+msgid "Passwort vergessen?"
+msgstr "Passwort vergessen?"
+
+msgid "Wir helfen dir, es zurückzusetzen"
+msgstr "Wir helfen dir, es zurückzusetzen"
+
+msgid "Falls ein Account mit dieser E-Mail oder diesem Benutzernamen existiert, erhältst du bald einen Reset-Link."
+msgstr "Falls ein Account mit dieser E-Mail oder diesem Benutzernamen existiert, erhältst du bald einen Reset-Link."
+
+msgid "Reset-Link senden"
+msgstr "Reset-Link senden"
+
+msgid "Passwort zurücksetzen"
+msgstr "Passwort zurücksetzen"
+
+msgid "Erstelle ein neues sicheres Passwort"
+msgstr "Erstelle ein neues sicheres Passwort"
+
+msgid "Passwort erfolgreich zurückgesetzt! Du kannst dich jetzt mit deinem neuen Passwort anmelden."
+msgstr "Passwort erfolgreich zurückgesetzt! Du kannst dich jetzt mit deinem neuen Passwort anmelden."
+
+msgid "Zum Login"
+msgstr "Zum Login"
+
+msgid "Neues Passwort"
+msgstr "Neues Passwort"
+
+msgid "Passwort aktualisieren"
+msgstr "Passwort aktualisieren"
+
+# Legal pages
+msgid "Impressum"
+msgstr "Impressum"
+
+msgid "Datenschutz"
+msgstr "Datenschutz"
+
+msgid "Verantwortlicher"
+msgstr "Verantwortlicher"
+
+msgid "Name:"
+msgstr "Name:"
+
+msgid "E-Mail:"
+msgstr "E-Mail:"
+
+msgid "Über diese Website"
+msgstr "Über diese Website"
+
+msgid "Reading Diary ist eine private Website für persönliche Leseverwaltung. Sie ist nicht öffentlich verfügbar und nur für registrierte Benutzer zugänglich."
+msgstr "Reading Diary ist eine private Website für persönliche Leseverwaltung. Sie ist nicht öffentlich verfügbar und nur für registrierte Benutzer zugänglich."
+
+msgid "Rechtliche Grundlagen"
+msgstr "Rechtliche Grundlagen"
+
+msgid "Da diese Website nur einem geschlossenen Benutzerkreis zugänglich ist und keine gewerbliche Tätigkeit ausgeübt wird, gelten vereinfachte gesetzliche Bestimmungen."
+msgstr "Da diese Website nur einem geschlossenen Benutzerkreis zugänglich ist und keine gewerbliche Tätigkeit ausgeübt wird, gelten vereinfachte gesetzliche Bestimmungen."
+
+msgid "Anwendbare Gesetze:"
+msgstr "Anwendbare Gesetze:"
+
+msgid "DSGVO (Datenschutz-Grundverordnung)"
+msgstr "DSGVO (Datenschutz-Grundverordnung)"
+
+msgid "Österreichisches Datenschutzgesetz (DSG)"
+msgstr "Österreichisches Datenschutzgesetz (DSG)"
+
+msgid "Urheberrechtsgesetz (UrhG)"
+msgstr "Urheberrechtsgesetz (UrhG)"
+
+msgid "Haftung für Inhalte"
+msgstr "Haftung für Inhalte"
+
+msgid "Wir bemühen uns, aktuelle und korrekte Inhalte bereitzustellen. Wir können jedoch keine Haftung für die Korrektheit oder Vollständigkeit aller Inhalte übernehmen."
+msgstr "Wir bemühen uns, aktuelle und korrekte Inhalte bereitzustellen. Wir können jedoch keine Haftung für die Korrektheit oder Vollständigkeit aller Inhalte übernehmen."
+
+msgid "Unsere Datenschutzerklärung"
+msgstr "Unsere Datenschutzerklärung"
+
+msgid "gibt weitere Informationen zur Verarbeitung personenbezogener Daten."
+msgstr "gibt weitere Informationen zur Verarbeitung personenbezogener Daten."
+
+msgid "Kontakt & Support"
+msgstr "Kontakt & Support"
+
+msgid "Für Fragen, Anliegen oder Feedback erreichst du uns unter:"
+msgstr "Für Fragen, Anliegen oder Feedback erreichst du uns unter:"
+
+# Datenschutz
+msgid "Verantwortlicher für die Datenverarbeitung"
+msgstr "Verantwortlicher für die Datenverarbeitung"
+
+msgid "Welche Daten werden verarbeitet"
+msgstr "Welche Daten werden verarbeitet"
+
+msgid "Registrierungsdaten:"
+msgstr "Registrierungsdaten:"
+
+msgid "Session-Daten:"
+msgstr "Session-Daten:"
+
+msgid "Benutzergenerierte Inhalte:"
+msgstr "Benutzergenerierte Inhalte:"
+
+msgid "Gehashtes Passwort"
+msgstr "Gehashtes Passwort"
+
+msgid "Session-ID"
+msgstr "Session-ID"
+
+msgid "Login-Status"
+msgstr "Login-Status"
+
+msgid "Sprachpräferenz"
+msgstr "Sprachpräferenz"
+
+msgid "Bücher und Leseverlauf"
+msgstr "Bücher und Leseverlauf"
+
+msgid "Bewertungen und Rezensionen"
+msgstr "Bewertungen und Rezensionen"
+
+msgid "Notizen und Zitate"
+msgstr "Notizen und Zitate"
+
+msgid "Lesefortschritt"
+msgstr "Lesefortschritt"
+
+msgid "Rechtsgrundlage"
+msgstr "Rechtsgrundlage"
+
+msgid "Die Verarbeitung deiner Daten erfolgt auf Grundlage von:"
+msgstr "Die Verarbeitung deiner Daten erfolgt auf Grundlage von:"
+
+msgid "Art. 6 Abs. 1 lit. a DSGVO – Deine Einwilligung bei der Registrierung"
+msgstr "Art. 6 Abs. 1 lit. a DSGVO – Deine Einwilligung bei der Registrierung"
+
+msgid "Art. 6 Abs. 1 lit. b DSGVO – Erfüllung eines Vertrags (Nutzung des Dienstes)"
+msgstr "Art. 6 Abs. 1 lit. b DSGVO – Erfüllung eines Vertrags (Nutzung des Dienstes)"
+
+msgid "Art. 6 Abs. 1 lit. f DSGVO – Berechtigte Interessen (Sicherheit, Spam-Prävention)"
+msgstr "Art. 6 Abs. 1 lit. f DSGVO – Berechtigte Interessen (Sicherheit, Spam-Prävention)"
+
+msgid "Speicherdauer"
+msgstr "Speicherdauer"
+
+msgid "Deine Daten werden gespeichert, solange dein Account aktiv ist. Nach Löschung deines Accounts werden deine Daten innerhalb von 30 Tagen vollständig gelöscht, soweit keine gesetzlichen Aufbewahrungsfristen gelten."
+msgstr "Deine Daten werden gespeichert, solange dein Account aktiv ist. Nach Löschung deines Accounts werden deine Daten innerhalb von 30 Tagen vollständig gelöscht, soweit keine gesetzlichen Aufbewahrungsfristen gelten."
+
+msgid "Cookies"
+msgstr "Cookies"
+
+msgid "Diese Website verwendet nur essenzielle Cookies für:"
+msgstr "Diese Website verwendet nur essenzielle Cookies für:"
+
+msgid "Session-Verwaltung (Login-Status)"
+msgstr "Session-Verwaltung (Login-Status)"
+
+msgid "CSRF-Schutz"
+msgstr "CSRF-Schutz"
+
+msgid "Wir verwenden keine Tracking-, Analytics- oder Werbecookies."
+msgstr "Wir verwenden keine Tracking-, Analytics- oder Werbecookies."
+
+msgid "Deine Rechte"
+msgstr "Deine Rechte"
+
+msgid "Nach der DSGVO hast du folgende Rechte:"
+msgstr "Nach der DSGVO hast du folgende Rechte:"
+
+msgid "Auskunftsrecht"
+msgstr "Auskunftsrecht"
+
+msgid "Artikel 15 DSGVO"
+msgstr "Artikel 15 DSGVO"
+
+msgid "Berichtigungsrecht"
+msgstr "Berichtigungsrecht"
+
+msgid "Artikel 16 DSGVO"
+msgstr "Artikel 16 DSGVO"
+
+msgid "Löschungsrecht (Recht auf Vergessenwerden)"
+msgstr "Löschungsrecht (Recht auf Vergessenwerden)"
+
+msgid "Artikel 17 DSGVO"
+msgstr "Artikel 17 DSGVO"
+
+msgid "Recht auf Einschränkung"
+msgstr "Recht auf Einschränkung"
+
+msgid "Artikel 18 DSGVO"
+msgstr "Artikel 18 DSGVO"
+
+msgid "Datenübertragbarkeit"
+msgstr "Datenübertragbarkeit"
+
+msgid "Artikel 20 DSGVO"
+msgstr "Artikel 20 DSGVO"
+
+msgid "Kontaktiere uns unter support@softarchiv.com, um diese Rechte geltend zu machen."
+msgstr "Kontaktiere uns unter support@softarchiv.com, um diese Rechte geltend zu machen."
+
+msgid "Sicherheit"
+msgstr "Sicherheit"
+
+msgid "Wir verwenden TLS-Verschlüsselung (HTTPS) für die sichere Datenübertragung. Passwörter werden mit Argon2 gehashed."
+msgstr "Wir verwenden TLS-Verschlüsselung (HTTPS) für die sichere Datenübertragung. Passwörter werden mit Argon2 gehashed."
+
+msgid "Datenschutzbeauftragter"
+msgstr "Datenschutzbeauftragter"
+
+msgid "Fragen zum Datenschutz kannst du an uns richten:"
+msgstr "Fragen zum Datenschutz kannst du an uns richten:"
+
+msgid "Reading Diary Profil"
+msgstr "Reading Diary Profil"
+
+msgid "Follower"
+msgstr "Follower"
+
+msgid "Following"
+msgstr "Following"
+
+msgid "Folgst du"
+msgstr "Folgst du"
+
+msgid "Folgen"
+msgstr "Folgen"
+
+msgid "im Überblick"
+msgstr "im Überblick"
+
+msgid "Bücher gelesen"
+msgstr "Bücher gelesen"
+
+msgid "Seiten gelesen"
+msgstr "Seiten gelesen"
+
+msgid "Duelle gewonnen"
+msgstr "Duelle gewonnen"
+
+msgid "Aktuell am Lesen"
+msgstr "Aktuell am Lesen"
+
+msgid "Lieblingsbücher"
+msgstr "Lieblingsbücher"
+
+msgid "Gemeinsame Bücher mit dir"
+msgstr "Gemeinsame Bücher mit dir"
+
+msgid "Noch keine gemeinsamen Bücher."
+msgstr "Noch keine gemeinsamen Bücher."
+
+msgid "Lese-Duelle"
+msgstr "Lese-Duelle"
+
+msgid "Gewonnen"
+msgstr "Gewonnen"
+
+msgid "hat gewonnen"
+msgstr "hat gewonnen"
+
+msgid "Unentschieden"
+msgstr "Unentschieden"
+
+msgid "vs."
+msgstr "vs."
+
+msgid "Zu einem Buddy-Read einladen"
+msgstr "Zu einem Buddy-Read einladen"
+
+msgid "Buddy-Read starten"
+msgstr "Buddy-Read starten"
+
+msgid "Zurück zum Dashboard"
+msgstr "Zurück zum Dashboard"
+
+msgid "Melde dich an"
+msgstr "Melde dich an"
+
+msgid "zu folgen, gemeinsame Bücher zu sehen oder ein Buddy-Read zu starten."
+msgstr "zu folgen, gemeinsame Bücher zu sehen oder ein Buddy-Read zu starten."
+
+msgid "Installiere Reading Diary als App auf deinem Gerät für schnellen Zugriff."
+msgstr "Installiere Reading Diary als App auf deinem Gerät für schnellen Zugriff."
+
+msgid "My Profile"
+msgstr "Mein Profil"
+
+msgid "Lesercommunity und Aktivitäten"
+msgstr "Lesercommunity und Aktivitäten"
+
+msgid "USER SUCHEN"
+msgstr "USER SUCHEN"
+
+msgid "Benutzername eingeben…"
+msgstr "Benutzername eingeben…"
+
+msgid "Neuer Beitrag"
+msgstr "Neuer Beitrag"
+
+msgid "Buchtitel (optional)"
+msgstr "Buchtitel (optional)"
+
+msgid "Rezension, Gedanke oder Empfehlung…"
+msgstr "Rezension, Gedanke oder Empfehlung…"
+
+msgid "Rezension"
+msgstr "Rezension"
+
+msgid "Empfehlung"
+msgstr "Empfehlung"
+
+msgid "Fortschritt"
+msgstr "Fortschritt"
+
+msgid "Posten"
+msgstr "Posten"
+
+msgid "Noch keine Beiträge. Sei der Erste!"
+msgstr "Noch keine Beiträge. Sei der Erste!"
+
+msgid "Bücher gesamt"
+msgstr "Bücher gesamt"
+
+msgid "Aktive Leser"
+msgstr "Aktive Leser"
+
+msgid "Bücher d. Monat"
+msgstr "Bücher d. Monat"
+
+msgid "Seiten d. Monat"
+msgstr "Seiten d. Monat"
+
+msgid "Vorgeschlagene Buddies"
+msgstr "Vorgeschlagene Buddies"
+
+msgid "Neues Mitglied"
+msgstr "Neues Mitglied"
+
+msgid "Folgen"
+msgstr "Folgen"
+
+msgid "Du folgst schon allen Lesern!"
+msgstr "Du folgst schon allen Lesern!"
+
+msgid "Beliebteste Genres"
+msgstr "Beliebteste Genres"
+
+msgid "Melden"
+msgstr "Melden"
+
+msgid "Grund wählen..."
+msgstr "Grund wählen..."
+
+msgid "Spam"
+msgstr "Spam"
+
+msgid "Beleidigung / Hassrede"
+msgstr "Beleidigung / Hassrede"
+
+msgid "Unangemessene Bilder"
+msgstr "Unangemessene Bilder"
+
+msgid "Betrug / Fake"
+msgstr "Betrug / Fake"
+
+msgid "Urheberrechtsverletzung"
+msgstr "Urheberrechtsverletzung"
+
+msgid "Anderes"
+msgstr "Anderes"
+
+msgid "Kein User gefunden"
+msgstr "Kein User gefunden"
+
+msgid "Beitrag löschen?"
+msgstr "Beitrag löschen?"
+
+msgid "Bitte Inhalt eingeben"
+msgstr "Bitte Inhalt eingeben"
+
+msgid "Bitte Grund wählen"
+msgstr "Bitte Grund wählen"
+
+msgid "Meldung eingereicht. Danke!"
+msgstr "Meldung eingereicht. Danke!"
+
+msgid "Gefolgt"
+msgstr "Gefolgt"
+
+msgid "Profil"
+msgstr "Profil"

@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div class="d-flex align-items-center gap-3">
+    <a href="{{ url_for('buddies') }}" style="color:#64748b;text-decoration:none;"><i class="fas fa-arrow-left"></i></a>
+    <div>
+      <h1 class="page-title">{{ br.book_title }}</h1>
+      <p style="color:#94a3b8;margin-top:.25rem;">
+        Buddy-Read mit {{ br.partner_name if is_initiator else br.initiator_name }}
+        {% if br.status == 'finished' %}<span style="background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);border-radius:6px;padding:.15rem .6rem;font-size:.75rem;font-weight:700;margin-left:.5rem;">✓ Abgeschlossen</span>{% endif %}
+      </p>
+    </div>
+  </div>
+  {% if br.status == 'active' %}
+  <button onclick="abandonRead({{ br.id }})" style="background:#7f1d1d;color:#f87171;border:1px solid #ef4444;border-radius:8px;padding:.4rem .9rem;font-size:.82rem;cursor:pointer;">
+    <i class="fas fa-times me-1"></i>Abbrechen
+  </button>
+  {% endif %}
+</div>
+
+<!-- Progress -->
+<div class="card mb-4" style="background:#1e293b;border:none;border-radius:12px;padding:1.5rem;">
+  <h6 style="color:#f1f5f9;margin-bottom:1.25rem;"><i class="fas fa-chart-line me-2" style="color:#3b82f6"></i>Lesefortschritt</h6>
+  {% set my_page = br.initiator_page if is_initiator else br.partner_page %}
+  {% set buddy_page = br.partner_page if is_initiator else br.initiator_page %}
+  {% set buddy_name = br.partner_name if is_initiator else br.initiator_name %}
+  {% set total = br.total_pages or 1 %}
+
+  <div class="mb-3">
+    <div class="d-flex justify-content-between mb-1">
+      <span style="color:#94a3b8;font-size:.82rem;">Du - Seite {{ my_page }}{% if br.total_pages %} / {{ br.total_pages }}{% endif %}</span>
+      <span style="color:#3b82f6;font-size:.82rem;">{{ [my_page*100//total, 100]|min }}%</span>
+    </div>
+    <div style="background:#0f172a;border-radius:6px;height:10px;">
+      <div style="background:linear-gradient(90deg,#3b82f6,#818cf8);height:10px;border-radius:6px;width:{{ [my_page*100//total, 100]|min }}%;transition:width .5s;"></div>
+    </div>
+  </div>
+  <div class="mb-3">
+    <div class="d-flex justify-content-between mb-1">
+      <span style="color:#94a3b8;font-size:.82rem;">{{ buddy_name }} - Seite {{ buddy_page }}{% if br.total_pages %} / {{ br.total_pages }}{% endif %}</span>
+      <span style="color:#22c55e;font-size:.82rem;">{{ [buddy_page*100//total, 100]|min }}%</span>
+    </div>
+    <div style="background:#0f172a;border-radius:6px;height:10px;">
+      <div style="background:linear-gradient(90deg,#22c55e,#4ade80);height:10px;border-radius:6px;width:{{ [buddy_page*100//total, 100]|min }}%;transition:width .5s;"></div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2 align-items-center flex-wrap">
+    <input type="number" id="my-progress-input" value="{{ my_page }}" min="0" {% if br.total_pages %}max="{{ br.total_pages }}"{% endif %}
+           style="width:120px;background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:8px;padding:.5rem .75rem;font-size:.9rem;">
+    <button onclick="updateProgress()" style="background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:.5rem 1rem;font-weight:600;cursor:pointer;">
+      <i class="fas fa-save me-1"></i>Fortschritt speichern
+    </button>
+    <button onclick="setWaiting()" style="background:#78350f;color:#fcd34d;border:none;border-radius:8px;padding:.5rem 1rem;cursor:pointer;font-size:.85rem;">
+      <i class="fas fa-hourglass me-1"></i>Ich warte auf dich
+    </button>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Chat -->
+  <div class="col-12 col-lg-7">
+    <div class="card" style="background:#1e293b;border:none;border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;height:480px;">
+      <h6 style="color:#f1f5f9;margin-bottom:1rem;"><i class="fas fa-comments me-2" style="color:#3b82f6"></i>Spoiler-Safe Chat</h6>
+      <div id="chat-messages" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;padding-right:.25rem;">
+        {% for msg in messages %}
+        <div class="d-flex gap-2 {% if msg.sender_id == uid %}justify-content-end{% endif %}">
+          <div style="max-width:75%;background:{% if msg.sender_id == uid %}#1e3a5f{% else %}#0f172a{% endif %};border-radius:10px;padding:.6rem .9rem;">
+            <div style="color:#64748b;font-size:.7rem;margin-bottom:.2rem;">{{ msg.username }} - {{ msg.created_at[:16] }}</div>
+            {% if msg.is_spoiler %}
+            <div class="spoiler-msg" onclick="this.classList.toggle('revealed')" style="cursor:pointer;">
+              <span class="spoiler-hidden" style="background:#ef4444;color:#fff;padding:.15rem .4rem;border-radius:4px;font-size:.75rem;"><i class="fas fa-eye-slash me-1"></i>Spoiler - klicken zum Anzeigen</span>
+              <span class="spoiler-text" style="display:none;color:#f1f5f9;font-size:.9rem;">{{ msg.content }}</span>
+            </div>
+            <style>.spoiler-msg.revealed .spoiler-hidden{display:none!important}.spoiler-msg.revealed .spoiler-text{display:block!important}</style>
+            {% else %}
+            <div style="color:#f1f5f9;font-size:.9rem;">{{ msg.content }}</div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="mt-2 d-flex gap-2 align-items-end">
+        <div style="flex:1;">
+          <textarea id="chat-input" placeholder="Nachricht..." rows="2"
+                    style="width:100%;background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:8px;padding:.6rem .9rem;font-size:.9rem;resize:none;"></textarea>
+          <label style="color:#64748b;font-size:.75rem;cursor:pointer;">
+            <input type="checkbox" id="spoiler-flag" style="margin-right:.3rem;">Spoiler markieren
+          </label>
+        </div>
+        <button onclick="sendMessage()" style="background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:.65rem 1rem;cursor:pointer;align-self:flex-start;">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Meilensteine -->
+  <div class="col-12 col-lg-5">
+    <div class="card" style="background:#1e293b;border:none;border-radius:12px;padding:1.25rem;">
+      <h6 style="color:#f1f5f9;margin-bottom:1rem;"><i class="fas fa-flag me-2" style="color:#f59e0b"></i>Meilensteine</h6>
+      {% for m in milestones %}
+      <div class="d-flex align-items-center gap-2 mb-2 p-2" style="background:#0f172a;border-radius:8px;">
+        <div style="flex:1;">
+          <div style="color:#f1f5f9;font-size:.88rem;">{{ m.description }}</div>
+          {% if m.target_page %}<div style="color:#64748b;font-size:.75rem;">Bis Seite {{ m.target_page }}</div>{% endif %}
+        </div>
+        <div style="font-size:.75rem;text-align:center;">
+          {% if is_initiator %}
+            <span style="color:{% if m.completed_by_initiator %}#22c55e{% else %}#4b5563{% endif %};">Du: {{ 'x' if m.completed_by_initiator else 'o' }}</span>
+          {% else %}
+            <span style="color:{% if m.completed_by_partner %}#22c55e{% else %}#4b5563{% endif %};">Du: {{ 'x' if m.completed_by_partner else 'o' }}</span>
+          {% endif %}
+        </div>
+      </div>
+      {% else %}
+      <p style="color:#4b5563;font-size:.82rem;text-align:center;padding:.75rem 0;">Noch keine Meilensteine.</p>
+      {% endfor %}
+
+      <div style="border-top:1px solid #334155;margin-top:1rem;padding-top:1rem;">
+        <input type="text" id="milestone-desc" placeholder="z.B. Bis Kapitel 5 lesen"
+               style="width:100%;background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:8px;padding:.5rem .75rem;font-size:.85rem;margin-bottom:.5rem;">
+        <div class="d-flex gap-2">
+          <input type="number" id="milestone-page" placeholder="Bis Seite..." min="0"
+                 style="flex:1;background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:8px;padding:.5rem .75rem;font-size:.85rem;">
+          <button onclick="addMilestone()" style="background:#f59e0b;color:#000;border:none;border-radius:8px;padding:.5rem .9rem;font-weight:600;cursor:pointer;font-size:.85rem;">
+            <i class="fas fa-plus"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const READ_ID = {{ br.id }};
+
+async function updateProgress(waiting=false) {
+  const page = parseInt(document.getElementById('my-progress-input').value) || 0;
+  const res = await fetch(`/api/buddies/read/${READ_ID}/progress`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ page, waiting })
+  });
+  const d = await res.json();
+  if (d.success) { showToast('Fortschritt gespeichert!'); location.reload(); }
+  else alert('Fehler: ' + d.error);
+}
+
+function setWaiting() { updateProgress(true); }
+
+async function sendMessage() {
+  const content = document.getElementById('chat-input').value.trim();
+  const is_spoiler = document.getElementById('spoiler-flag').checked;
+  if (!content) return;
+  const res = await fetch(`/api/buddies/read/${READ_ID}/message`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ content, is_spoiler })
+  });
+  const d = await res.json();
+  if (d.success) {
+    document.getElementById('chat-input').value = '';
+    document.getElementById('spoiler-flag').checked = false;
+    location.reload();
+  } else alert('Fehler: ' + d.error);
+}
+
+async function addMilestone() {
+  const description = document.getElementById('milestone-desc').value.trim();
+  const target_page = parseInt(document.getElementById('milestone-page').value) || 0;
+  if (!description) return;
+  const res = await fetch(`/api/buddies/read/${READ_ID}/milestone`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ description, target_page })
+  });
+  const d = await res.json();
+  if (d.success) location.reload();
+}
+
+// Auto-scroll chat to bottom
+const chat = document.getElementById('chat-messages');
+if (chat) chat.scrollTop = chat.scrollHeight;
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#22c55e;color:#fff;padding:.75rem 1.25rem;border-radius:10px;font-weight:600;z-index:9999;';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+async function abandonRead(readId) {
+  if (!confirm('Buddy-Read wirklich abbrechen?')) return;
+  const res = await fetch(`/api/buddies/read/${readId}/abandon`, { method: 'POST' });
+  const d = await res.json();
+  if (d.success) window.location.href = '/buddies';
+  else alert('Fehler: ' + d.error);
+}
+</script>
+{% endblock %}

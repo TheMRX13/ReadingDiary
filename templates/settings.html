@@ -5,7 +5,7 @@
 {% block content %}
 <div class="row g-4">
 
-  <!-- ── Darstellung ── -->
+  <!-- ══ Reihe 1: Darstellung | Statistik-Sektionen ══ -->
   <div class="col-12 col-lg-6">
     <div class="section-card">
       <div class="section-title"><i class="fas fa-palette"></i>{{ _('Display') }}</div>
@@ -47,7 +47,6 @@
     </div>
   </div>
 
-  <!-- ── Statistik-Sektionen ── -->
   <div class="col-12 col-lg-6">
     <div class="section-card">
       <div class="section-title"><i class="fas fa-chart-pie"></i>{{ _('Statistics Sections') }}</div>
@@ -75,7 +74,7 @@
     </div>
   </div>
 
-  <!-- ── Bewertungen ── -->
+  <!-- ══ Reihe 2: Bewertungen | Leseziel ══ -->
   <div class="col-12 col-lg-6">
     <div class="section-card">
       <div class="section-title"><i class="fas fa-star"></i>{{ _('Ratings') }}</div>
@@ -103,7 +102,6 @@
     </div>
   </div>
 
-  <!-- ── Leseziel ── -->
   <div class="col-12 col-lg-6">
     <div class="section-card">
       <div class="section-title"><i class="fas fa-bullseye"></i>{{ _('Set Reading Goal') }}</div>
@@ -136,15 +134,13 @@
       {% if goals %}
       <div class="mt-4">
         <p style="font-size:.8rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">
-          Alle Leseziele
+          {{ _('All Reading Goals') }}
         </p>
         {% for g in goals %}
         <div class="d-flex align-items-center gap-2 mb-2 p-2 rounded-3"
              style="background:var(--bg);border:1px solid var(--border);font-size:.85rem">
           <div class="flex-grow-1">
-          {{ g.target }} {{ g.goal_type | trgoaltype }}
-              {{ _('per') }}
-              {{ g.period | trperiod }}
+            {{ g.target }} {{ g.goal_type | trgoaltype }} {{ _('per') }} {{ g.period | trperiod }}
           </div>
           <span class="status-badge {{ 'badge-status-am-lesen' if g.enabled else 'badge-status-ungelesen' }}">
             {{ _('Active') if g.enabled else _('Inactive') }}
@@ -164,72 +160,98 @@
     </div>
   </div>
 
-  <!-- ── Autoren & Verlage ── -->
+  <!-- ══ Reihe 3: Sprache | Passwort ändern ══ -->
   <div class="col-12 col-lg-6">
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-users"></i>{{ _('Manage Authors') }}</div>
-      {% if authors %}
-      <div style="max-height:220px;overflow-y:auto">
-        {% for a in authors %}
-        <div class="d-flex align-items-center justify-content-between py-1"
-             style="{{ 'border-top:1px solid var(--border)' if not loop.first else '' }}">
-          <span style="font-size:.875rem">{{ a.name }}</span>
-          <button class="btn btn-sm" style="background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.3);padding:2px 6px;font-size:.75rem"
-                  onclick="deleteAuthor({{ a.id }}, '{{ a.name | e }}')">
-            <i class="fas fa-trash"></i>
-          </button>
+      <div class="section-title"><i class="fas fa-language"></i>{{ _('Language') }}</div>
+      <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+        <div>
+          <div style="font-weight:600;font-size:.9rem">{{ _('Interface language') }}</div>
+          <small style="color:var(--text-muted)">{{ _('Choose the display language for the app') }}</small>
         </div>
-        {% endfor %}
-      </div>
-      {% else %}
-      <p style="color:var(--text-muted);font-size:.85rem">{{ _('No authors available') }}</p>
-      {% endif %}
-    </div>
-
-    <div class="section-card mt-4">
-      <div class="section-title"><i class="fas fa-building"></i>{{ _('Manage Publishers') }}</div>
-      {% if publishers %}
-      <div style="max-height:220px;overflow-y:auto">
-        {% for p in publishers %}
-        <div class="d-flex align-items-center justify-content-between py-1"
-             style="{{ 'border-top:1px solid var(--border)' if not loop.first else '' }}">
-          <span style="font-size:.875rem">{{ p.name }}</span>
-          <button class="btn btn-sm" style="background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.3);padding:2px 6px;font-size:.75rem"
-                  onclick="deletePublisher({{ p.id }}, '{{ p.name | e }}')">
-            <i class="fas fa-trash"></i>
-          </button>
-        </div>
-        {% endfor %}
-      </div>
-      {% else %}
-      <p style="color:var(--text-muted);font-size:.85rem">{{ _('No publishers available') }}</p>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- ── Passwort ändern ── -->
-  <div class="col-12 col-lg-6">
-    <div class="section-card">
-      <div class="section-title"><i class="fas fa-lock"></i>{{ _('Change Password') }}</div>
-      <div class="row g-3">
-        <div class="col-12">
-          <label class="form-label">{{ _('New Password') }}</label>
-          <input type="password" id="pwNew" class="form-control" placeholder="{{ _('New password (min. 4 chars)') }}">
-        </div>
-        <div class="col-12">
-          <label class="form-label">{{ _('Repeat new password') }}</label>
-          <input type="password" id="pwConfirm" class="form-control" placeholder="{{ _('Repeat') }}">
-        </div>
-        <div class="col-12">
-          <button class="btn btn-primary btn-sm" onclick="changePassword()">
-            <i class="fas fa-key me-1"></i>{{ _('Change Password') }}
-          </button>
-        </div>
+        <select class="form-select" style="width:auto;min-width:170px" onchange="setLanguage(this.value)">
+          <option value="de" {{ 'selected' if current_language == 'de' else '' }}>🇩🇪  Deutsch</option>
+          <option value="en" {{ 'selected' if current_language == 'en' else '' }}>🇬🇧  English</option>
+        </select>
       </div>
     </div>
   </div>
 
-  <!-- ── Daten-Export ── -->
+  <div class="col-12 col-lg-6">
+    <div class="section-card">
+      <div class="section-title"><i class="fas fa-key"></i>{{ _('Change Password') }}</div>
+      <div class="mb-3">
+        <label class="form-label" style="font-size:.85rem;">{{ _('Current Password') }}</label>
+        <input type="password" id="pwCurrent" class="form-control" placeholder="{{ _('Current Password') }}">
+      </div>
+      <div class="mb-3">
+        <label class="form-label" style="font-size:.85rem;">{{ _('New Password') }}</label>
+        <input type="password" id="pwNew" class="form-control" placeholder="{{ _('Min. 10 chars, 1 uppercase, 1 lowercase, 1 special') }}">
+        <small style="color:var(--text-muted);">{{ _('Min. 10 chars, 1 uppercase, 1 lowercase, 1 special') }}</small>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" style="font-size:.85rem;">{{ _('Repeat new password') }}</label>
+        <input type="password" id="pwNew2" class="form-control" placeholder="{{ _('Confirmation') }}">
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="changePassword()">
+        <i class="fas fa-save me-1"></i>{{ _('Save Password') }}
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ Reihe 4: 2FA | Daten-Export ══ -->
+  <div class="col-12 col-lg-6">
+    <div class="section-card">
+      <div class="section-title"><i class="fas fa-shield-halved"></i>{{ _('Two-Factor Authentication') }}</div>
+      {% if totp_enabled %}
+      <div class="alert" style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#4ade80;border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;">
+        <i class="fas fa-check-circle me-2"></i>{{ _('2FA is active') }}
+      </div>
+      <button class="btn btn-sm" style="background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.3);"
+              onclick="disable2FA()">
+        <i class="fas fa-times me-1"></i>{{ _('Disable 2FA') }}
+      </button>
+      {% else %}
+      <p style="color:var(--text-muted);font-size:.87rem;">{{ _('Protect your account with a one-time code from an authenticator app (e.g. Google Authenticator).') }}</p>
+      <button class="btn btn-primary btn-sm" onclick="setup2FA()">
+        <i class="fas fa-qrcode me-1"></i>{{ _('Set up 2FA') }}
+      </button>
+      <div id="qr-container" style="display:none;margin-top:1rem;">
+        <p style="font-size:.85rem;color:var(--text-muted);">{{ _('Scan this QR code with your authenticator app:') }}</p>
+        <img id="qr-img" src="" alt="QR Code" style="border-radius:8px;background:#fff;padding:8px;max-width:180px;">
+        <div style="margin-top:.75rem;display:flex;gap:.5rem;align-items:center;">
+          <input type="text" id="totp-code" class="form-control" style="max-width:140px;"
+                 placeholder="{{ _('Enter code') }}" maxlength="6" inputmode="numeric">
+          <button class="btn btn-success btn-sm" onclick="confirm2FA()">{{ _('Confirm') }}</button>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── Benachrichtigungen ── -->
+  <div class="col-12 col-lg-6">
+    <div class="section-card">
+      <div class="section-title"><i class="fas fa-bell me-2" style="color:#f59e0b"></i>{{ _('Benachrichtigungen') }}</div>
+      <div id="notif-prefs-container">
+        <div class="text-center py-3"><i class="fas fa-spinner fa-spin" style="color:#3b82f6"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <div class="section-card">
+      <div class="section-title"><i class="fas fa-mobile-screen me-2" style="color:#22c55e"></i>{{ _('App installieren') }}</div>
+      <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:1rem;">{{ _('Installiere Reading Diary als App auf deinem Gerät für schnellen Zugriff.') }}</p>
+      <button id="pwa-install-btn" class="btn btn-primary btn-sm" style="display:none;" onclick="installPWA()">
+        <i class="fas fa-download me-2"></i>{{ _('App installieren') }}
+      </button>
+      <div id="pwa-installed-msg" style="display:none;color:#22c55e;font-size:.85rem;">
+        <i class="fas fa-circle-check me-1"></i>{{ _('App ist bereits installiert!') }}
+      </div>
+    </div>
+  </div>
+
   <div class="col-12 col-lg-6">
     <div class="section-card">
       <div class="section-title"><i class="fas fa-download"></i>{{ _('Data Export') }}</div>
@@ -260,29 +282,167 @@
     </div>
   </div>
 
-  <!-- ── Sprache ── -->
-  <div class="col-12 col-lg-4">
+  <!-- ══ Reihe 5: Autoren | Verlage ══ -->
+  <div class="col-12 col-lg-6">
     <div class="section-card">
-      <div class="section-title"><i class="fas fa-language"></i>{{ _('Language') }}</div>
-      <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-        <div>
-          <div style="font-weight:600;font-size:.9rem">{{ _('Interface language') }}</div>
-          <small style="color:var(--text-muted)">{{ _('Choose the display language for the app') }}</small>
+      <div class="section-title"><i class="fas fa-users"></i>{{ _('Manage Authors') }}</div>
+      {% if authors %}
+      <div style="max-height:220px;overflow-y:auto">
+        {% for a in authors %}
+        <div class="d-flex align-items-center justify-content-between py-1"
+             style="{{ 'border-top:1px solid var(--border)' if not loop.first else '' }}">
+          <span style="font-size:.875rem">{{ a.name }}</span>
+          <button class="btn btn-sm" style="background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.3);padding:2px 6px;font-size:.75rem"
+                  onclick="deleteAuthor({{ a.id }}, '{{ a.name | e }}')">
+            <i class="fas fa-trash"></i>
+          </button>
         </div>
-        <select class="form-select" style="width:auto;min-width:170px" onchange="setLanguage(this.value)">
-          <option value="de" {{ 'selected' if current_language == 'de' else '' }}>🇩🇪  Deutsch</option>
-          <option value="en" {{ 'selected' if current_language == 'en' else '' }}>🇬🇧  English</option>
-        </select>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p style="color:var(--text-muted);font-size:.85rem">{{ _('No authors available') }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <div class="section-card">
+      <div class="section-title"><i class="fas fa-building"></i>{{ _('Manage Publishers') }}</div>
+      {% if publishers %}
+      <div style="max-height:220px;overflow-y:auto">
+        {% for p in publishers %}
+        <div class="d-flex align-items-center justify-content-between py-1"
+             style="{{ 'border-top:1px solid var(--border)' if not loop.first else '' }}">
+          <span style="font-size:.875rem">{{ p.name }}</span>
+          <button class="btn btn-sm" style="background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.3);padding:2px 6px;font-size:.75rem"
+                  onclick="deletePublisher({{ p.id }}, '{{ p.name | e }}')">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p style="color:var(--text-muted);font-size:.85rem">{{ _('No publishers available') }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ══ Hilfe & Kontakt ══ -->
+  <div class="col-12 col-lg-6">
+    <div class="section-card">
+      <div class="section-title"><i class="fas fa-headset me-2" style="color:#3b82f6;"></i>{{ _('Hilfe & Kontakt') }}</div>
+      <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:1rem;">{{ _('Hast du ein Problem oder eine Frage? Öffne ein Support-Ticket oder schau dir deine bisherigen Unterhaltungen an.') }}</p>
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+        <a href="{{ url_for('support') }}"
+           style="display:inline-flex;align-items:center;gap:.5rem;background:#3b82f6;color:#fff;border:none;border-radius:9px;padding:.55rem 1.15rem;font-weight:700;font-size:.88rem;text-decoration:none;">
+          <i class="fas fa-ticket"></i>{{ _('Support-Tickets') }}
+          {% if support_unread %}
+          <span style="background:#ef4444;color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .4rem;border-radius:999px;">{{ support_unread }}</span>
+          {% endif %}
+        </a>
       </div>
     </div>
   </div>
 
-</div>
+  <!-- ══ Meine Unterhaltungen ══ -->
+  {% if mutual_chats %}
+  <div class="col-12 col-lg-6">
+    <div class="section-card">
+      <div class="section-title"><i class="fas fa-comments me-2" style="color:#22c55e;"></i>{{ _('Meine Unterhaltungen') }}</div>
+      {% for chat in mutual_chats %}
+      <a href="/chat/{{ chat.username }}"
+         style="display:flex;align-items:center;gap:.75rem;padding:.55rem 0;text-decoration:none;
+                {{ 'border-top:1px solid var(--border);' if not loop.first else '' }}">
+        <div style="width:32px;height:32px;border-radius:50%;background:rgba(59,130,246,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="fas fa-user" style="font-size:.75rem;color:#60a5fa;"></i>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="color:#f1f5f9;font-weight:600;font-size:.88rem;">{{ chat.username }}</div>
+          {% if chat.last_message %}
+          <div style="color:#64748b;font-size:.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">
+            {{ chat.last_message[:60] }}
+          </div>
+          {% endif %}
+        </div>
+        {% if chat.unread_count %}
+        <span style="background:#ef4444;color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .45rem;border-radius:999px;flex-shrink:0;">
+          {{ chat.unread_count }}
+        </span>
+        {% endif %}
+      </a>
+      {% endfor %}
+      <a href="{{ url_for('chat_overview') }}"
+         style="display:block;text-align:center;color:#60a5fa;font-size:.8rem;margin-top:.75rem;text-decoration:none;padding:.4rem;border-radius:7px;background:rgba(59,130,246,.07);">
+        {{ _('Alle Chats anzeigen') }} <i class="fas fa-arrow-right ms-1"></i>
+      </a>
+    </div>
+  </div>
+  {% endif %}
 
+  <!-- ══ Reihe 6: Werbung (nur wenn aktiviert) ══ -->
+  {% if ad_enabled %}
+  <div class="col-12">
+    <div class="section-card">
+      <div class="section-title"><i class="fas fa-rectangle-ad" style="color:#a78bfa"></i>{{ _('My Advertisement') }}</div>
+      <p style="color:var(--text-muted);font-size:.87rem;">{{ _('This banner is shown to all users at the bottom of the settings page.') }}</p>
+
+      <div class="row g-3">
+        <div class="col-12 col-md-4">
+          <label class="form-label" style="font-size:.85rem;">{{ _('Logo / Image') }}</label>
+          {% if my_ad and my_ad.logo_url %}
+          <div style="margin-bottom:.5rem;">
+            <img src="{{ my_ad.logo_url }}" alt="Logo" style="height:56px;border-radius:8px;background:var(--bg);padding:4px;border:1px solid var(--border);">
+          </div>
+          {% endif %}
+          <input type="file" id="ad-logo-file" accept="image/*" class="form-control"
+                 onchange="uploadAdLogo(this)">
+          <input type="hidden" id="ad-logo-url" value="{{ my_ad.logo_url if my_ad else '' }}">
+        </div>
+        <div class="col-12 col-md-4">
+          <label class="form-label" style="font-size:.85rem;">{{ _('Headline') }}</label>
+          <input type="text" id="ad-title" class="form-control" maxlength="100"
+                 placeholder="{{ _('e.g. Book Club') }}" value="{{ my_ad.title if my_ad else '' }}">
+        </div>
+        <div class="col-12 col-md-4">
+          <label class="form-label" style="font-size:.85rem;">{{ _('Text') }}</label>
+          <textarea id="ad-text" class="form-control" rows="2" maxlength="300"
+                    placeholder="{{ _('Short description text...') }}">{{ my_ad.body_text if my_ad else '' }}</textarea>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mt-3 flex-wrap align-items-center">
+        <button class="btn btn-primary btn-sm" onclick="saveAd()">
+          <i class="fas fa-save me-1"></i>{{ _('Save Advertisement') }}
+        </button>
+        {% if my_ad %}
+        <button class="btn btn-sm" onclick="toggleAd()"
+                style="{{ 'background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.3)' if my_ad.is_active else 'background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.3)' }}">
+          <i class="fas {{ 'fa-eye-slash' if my_ad.is_active else 'fa-eye' }} me-1"></i>
+          {{ _('Hide Advertisement') if my_ad.is_active else _('Show Advertisement') }}
+        </button>
+        {% endif %}
+      </div>
+
+      {% if my_ad and my_ad.is_active %}
+      <div style="margin-top:1.5rem;border-top:1px solid var(--border);padding-top:1rem;">
+        <p style="font-size:.78rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">{{ _('Preview') }}</p>
+        <div style="background:linear-gradient(135deg,var(--bg-card),var(--bg));border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;display:flex;align-items:center;gap:1rem;">
+          {% if my_ad.logo_url %}<img src="{{ my_ad.logo_url }}" style="width:56px;height:56px;object-fit:contain;border-radius:8px;background:var(--bg);padding:4px;flex-shrink:0;">{% endif %}
+          <div>
+            {% if my_ad.title %}<div style="font-weight:700;color:var(--text);">{{ my_ad.title }}</div>{% endif %}
+            {% if my_ad.body_text %}<div style="color:var(--text-muted);font-size:.87rem;margin-top:.2rem;">{{ my_ad.body_text }}</div>{% endif %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
 {% endblock %}
 
 {% block scripts %}
-
 <script>
 async function saveSetting(key, value, reload) {
   try {
@@ -303,10 +463,10 @@ async function saveGoal() {
   const goalType = document.getElementById('goalType').value;
   const period   = document.getElementById('goalPeriod').value;
   const target   = parseInt(document.getElementById('goalTarget').value);
-  if (!target || target < 1) { showToast('Bitte Ziel eingeben','warning'); return; }
+  if (!target || target < 1) { showToast('{{ _('Please enter a goal') }}','warning'); return; }
   try {
     await apiFetch('/api/reading-goals', { method:'POST', body: JSON.stringify({goal_type:goalType,period,target}) });
-    showToast('Leseziel gesetzt!','success');
+    showToast('{{ _('Reading goal set!') }}','success');
     setTimeout(()=>location.reload(),800);
   } catch(_) {}
 }
@@ -319,38 +479,160 @@ async function toggleGoal(id) {
 }
 
 async function deleteAuthor(id, name) {
-  if (!await showConfirm(`Autor „${name}" wirklich löschen?`)) return;
+  if (!await showConfirm(`{{ _('Really delete author') }} „${name}"?`)) return;
   try {
     await apiFetch(`/api/authors/${id}`, { method:'DELETE' });
-    showToast('Autor gelöscht!','success');
+    showToast('{{ _('Author deleted!') }}','success');
     setTimeout(()=>location.reload(),800);
   } catch(_) {}
 }
 
 async function deletePublisher(id, name) {
-  if (!await showConfirm(`Verlag „${name}" wirklich löschen?`)) return;
+  if (!await showConfirm(`{{ _('Really delete publisher') }} „${name}"?`)) return;
   try {
     await apiFetch(`/api/publishers/${id}`, { method:'DELETE' });
-    showToast('Verlag gelöscht!','success');
+    showToast('{{ _('Publisher deleted!') }}','success');
     setTimeout(()=>location.reload(),800);
   } catch(_) {}
 }
 
+/* ── Passwort ── */
 async function changePassword() {
+  const current = document.getElementById('pwCurrent').value;
   const newPw   = document.getElementById('pwNew').value;
-  const confirm = document.getElementById('pwConfirm').value;
-  if (!newPw) { showToast('Bitte neues Passwort eingeben', 'warning'); return; }
-  if (newPw !== confirm)  { showToast('Passwörter stimmen nicht überein', 'warning'); return; }
-  if (newPw.length < 4)   { showToast('Passwort muss mindestens 4 Zeichen haben', 'warning'); return; }
+  const newPw2  = document.getElementById('pwNew2').value;
+  if (!current) { showToast('{{ _('Please enter current password') }}', 'warning'); return; }
+  if (!newPw)   { showToast('{{ _('Please enter new password') }}', 'warning'); return; }
+  if (newPw !== newPw2) { showToast('{{ _('Passwords do not match') }}', 'warning'); return; }
+  if (newPw.length < 10) { showToast('{{ _('Password must be at least 10 characters') }}', 'warning'); return; }
+  if (!/[A-Z]/.test(newPw)) { showToast('{{ _('Password needs at least one uppercase letter') }}', 'warning'); return; }
+  if (!/[a-z]/.test(newPw)) { showToast('{{ _('Password needs at least one lowercase letter') }}', 'warning'); return; }
+  if (!/[^A-Za-z0-9]/.test(newPw)) { showToast('{{ _('Password needs at least one special character') }}', 'warning'); return; }
   try {
     await apiFetch('/api/settings/password', {
       method: 'POST',
-      body: JSON.stringify({ new: newPw })
+      body: JSON.stringify({ current, new: newPw })
     });
-    showToast('Passwort geändert!', 'success');
+    showToast('{{ _('Password changed successfully!') }}', 'success');
+    document.getElementById('pwCurrent').value = '';
     document.getElementById('pwNew').value = '';
-    document.getElementById('pwConfirm').value = '';
-  } catch(_) {}
+    document.getElementById('pwNew2').value = '';
+  } catch(e) { showToast(e.message || '{{ _('Error changing password') }}', 'danger'); }
+}
+
+/* ── 2FA ── */
+async function setup2FA() {
+  try {
+    const data = await apiFetch('/api/2fa/setup', { method: 'POST', body: '{}' });
+    document.getElementById('qr-img').src = data.qr;
+    document.getElementById('qr-container').style.display = 'block';
+  } catch(e) { showToast(e.message || '{{ _('Error setting up 2FA') }}', 'danger'); }
+}
+
+async function confirm2FA() {
+  const code = document.getElementById('totp-code').value.trim();
+  if (!code || code.length !== 6) { showToast('{{ _('Please enter 6-digit code') }}', 'warning'); return; }
+  try {
+    await apiFetch('/api/2fa/confirm', { method: 'POST', body: JSON.stringify({ code }) });
+    showToast('{{ _('2FA activated successfully!') }}', 'success');
+    setTimeout(() => location.reload(), 800);
+  } catch(e) { showToast(e.message || '{{ _('Invalid code') }}', 'danger'); }
+}
+
+async function disable2FA() {
+  if (!confirm('{{ _('Really disable 2FA? Your account will be less secure.') }}')) return;
+  try {
+    await apiFetch('/api/2fa/disable', { method: 'POST', body: '{}' });
+    showToast('{{ _('2FA disabled') }}', 'success');
+    setTimeout(() => location.reload(), 800);
+  } catch(e) { showToast(e.message || '{{ _('Error') }}', 'danger'); }
+}
+
+/* ── Werbung ── */
+async function uploadAdLogo(input) {
+  if (!input.files || !input.files[0]) return;
+  const formData = new FormData();
+  formData.append('logo', input.files[0]);
+  try {
+    const res = await fetch('/api/advertisement/logo', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '{{ _('Upload failed') }}');
+    document.getElementById('ad-logo-url').value = data.url;
+    showToast('{{ _('Logo uploaded!') }}', 'success');
+  } catch(e) { showToast(e.message || '{{ _('Upload failed') }}', 'danger'); }
+}
+
+async function saveAd() {
+  const logo_url  = document.getElementById('ad-logo-url').value;
+  const title     = document.getElementById('ad-title').value.trim();
+  const body_text = document.getElementById('ad-text').value.trim();
+  if (!title && !body_text) { showToast('{{ _('Please enter at least a headline or text') }}', 'warning'); return; }
+  try {
+    await apiFetch('/api/advertisement', {
+      method: 'POST',
+      body: JSON.stringify({ logo_url, title, body_text })
+    });
+    showToast('{{ _('Advertisement saved!') }}', 'success');
+    setTimeout(() => location.reload(), 800);
+  } catch(e) { showToast(e.message || '{{ _('Error saving') }}', 'danger'); }
+}
+
+async function toggleAd() {
+  try {
+    await apiFetch('/api/advertisement/toggle', { method: 'POST', body: '{}' });
+    location.reload();
+  } catch(e) { showToast(e.message || '{{ _('Error') }}', 'danger'); }
+}
+
+// ── Notification Prefs ──
+(async function loadNotifPrefs() {
+  const keys = {
+    'buddy_request': 'Buddy-Anfragen',
+    'buddy_milestone': 'Buddy-Meilensteine',
+    'password_reset': 'Passwort-Reset-Mails',
+    'email_verify': 'E-Mail-Bestätigung',
+  };
+  try {
+    const res = await fetch('/api/notification-prefs');
+    const prefs = await res.json();
+    const container = document.getElementById('notif-prefs-container');
+    if (!container) return;
+    container.innerHTML = Object.entries(keys).map(([k,label]) => `
+      <div class="d-flex align-items-center justify-content-between py-2" style="border-bottom:1px solid var(--border);">
+        <span style="color:var(--text-main);font-size:.88rem;">${label}</span>
+        <label class="form-check form-switch mb-0">
+          <input class="form-check-input" type="checkbox" onchange="saveNotifPref('${k}', this.checked)"
+                 ${prefs[k] ? 'checked' : ''}>
+        </label>
+      </div>`).join('');
+  } catch(e) {}
+})();
+
+async function saveNotifPref(key, val) {
+  await fetch('/api/notification-prefs', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json', 'X-CSRFToken': document.querySelector('[name=csrf_token]')?.value || ''},
+    body: JSON.stringify({[key]: val})
+  });
+}
+
+// ── PWA Install ──
+let _pwaPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _pwaPrompt = e;
+  document.getElementById('pwa-install-btn').style.display = '';
+});
+if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+  document.addEventListener('DOMContentLoaded', () => {
+    const msg = document.getElementById('pwa-installed-msg');
+    if (msg) msg.style.display = '';
+  });
+}
+function installPWA() {
+  if (!_pwaPrompt) return;
+  _pwaPrompt.prompt();
+  _pwaPrompt.userChoice.then(() => { _pwaPrompt = null; location.reload(); });
 }
 </script>
 {% endblock %}

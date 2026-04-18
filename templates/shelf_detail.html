@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="d-flex align-items-center gap-2 mb-3">
-  <a href="/shelves" class="btn btn-sm" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted)">
+  <a href="{{ url_for('shelves') }}" class="btn btn-sm" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted)">
     <i class="fas fa-arrow-left me-1"></i>{{ _('All Shelves') }}
   </a>
   <button class="btn btn-sm btn-primary ms-auto" onclick="openAddBook()">

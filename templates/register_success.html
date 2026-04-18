@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registrierung erfolgreich – Reading Diary</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    body { background: linear-gradient(135deg,#0f172a,#1e3a5f); min-height:100vh; display:flex; align-items:center; justify-content:center; font-family:'Segoe UI',sans-serif; }
+    .card { background:#1e293b; border-radius:20px; padding:2.5rem; max-width:480px; width:100%; box-shadow:0 24px 48px rgba(0,0,0,.5); text-align:center; }
+    .icon  { font-size:3.5rem; color:#22c55e; margin-bottom:1rem; }
+    h2     { color:#f1f5f9; font-weight:700; margin-bottom:.5rem; }
+    p      { color:#94a3b8; font-size:.95rem; }
+    .email { color:#3b82f6; font-weight:600; }
+    .steps { background:#0f172a; border-radius:10px; padding:1.25rem; margin:1.5rem 0; text-align:left; }
+    .steps li { color:#cbd5e1; font-size:.88rem; padding:.3rem 0; }
+    .steps li i { color:#3b82f6; margin-right:.5rem; width:16px; }
+    a.btn { background:#3b82f6; color:#fff; border-radius:8px; padding:.7rem 2rem; text-decoration:none; font-weight:600; display:inline-block; }
+    a.btn:hover { background:#2563eb; color:#fff; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon"><i class="fas fa-envelope-circle-check"></i></div>
+    <h2>Fast geschafft!</h2>
+    <p>Wir haben eine Bestätigungs-E-Mail an<br><span class="email">{{ email }}</span><br>gesendet.</p>
+    <div class="steps">
+      <ul class="list-unstyled mb-0">
+        <li><i class="fas fa-check-circle"></i>Account erfolgreich erstellt</li>
+        <li><i class="fas fa-envelope"></i>E-Mail-Bestätigung angefordert</li>
+        <li><i class="fas fa-clock"></i>Auf Admin-Freigabe warten</li>
+        <li><i class="fas fa-unlock"></i>Nach Freigabe einloggen</li>
+      </ul>
+    </div>
+    <p style="font-size:.82rem;color:#64748b;">Kein E-Mail erhalten? Prüfe deinen Spam-Ordner. Der Link ist 24 Stunden gültig.</p>
+    <a href="{{ url_for('login') }}" class="btn">Zum Login</a>
+    <div style="display:flex;justify-content:center;gap:6px;margin-top:1.25rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.06);">
+      {%- set _lang = session.get('language', 'de') %}
+      <a href="/set-lang/de" style="font-size:.78rem;font-weight:600;text-decoration:none;padding:4px 10px;border-radius:7px;border:1px solid {{ 'rgba(59,130,246,.55)' if _lang=='de' else 'rgba(255,255,255,.08)' }};background:{{ 'rgba(59,130,246,.18)' if _lang=='de' else 'transparent' }};color:{{ '#60a5fa' if _lang=='de' else '#64748b' }};">&#127465;&#127466; DE</a>
+      <a href="/set-lang/en" style="font-size:.78rem;font-weight:600;text-decoration:none;padding:4px 10px;border-radius:7px;border:1px solid {{ 'rgba(59,130,246,.55)' if _lang=='en' else 'rgba(255,255,255,.08)' }};background:{{ 'rgba(59,130,246,.18)' if _lang=='en' else 'transparent' }};color:{{ '#60a5fa' if _lang=='en' else '#64748b' }};">&#127468;&#127463; EN</a>
+    </div>
+  </div>
+</body>
+</html>

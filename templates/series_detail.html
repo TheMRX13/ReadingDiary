@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="d-flex align-items-center gap-2 mb-3">
-  <a href="/series" class="btn btn-sm" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted)">
+  <a href="{{ url_for('series_list') }}" class="btn btn-sm" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted)">
     <i class="fas fa-arrow-left me-1"></i>{{ _('All Series') }}
   </a>
   <button class="btn btn-sm btn-primary ms-auto" onclick="openAddBook()">
@@ -35,7 +35,7 @@
   {% for b in books %}
   <div class="col-6 col-sm-4 col-md-3 col-lg-2">
     <div style="position:relative">
-      <a href="/books/{{ b.id }}" class="text-decoration-none">
+      <a href="/books/{{ b.id }}?from_series={{ series.id }}" class="text-decoration-none">
         <div class="book-card">
           {% if b.cover_url %}
             <img src="{{ b.cover_url }}" alt="{{ b.title }}" class="book-cover" loading="lazy">
@@ -88,17 +88,19 @@
       <div class="modal-body">
         <input type="text" id="seriesBookSearch" class="form-control mb-2"
                placeholder="{{ _('Search book…') }}" oninput="filterSeriesBooks()">
-        <div class="mb-3">
-          <input type="number" id="seriesAddOrder" class="form-control form-control-sm"
-                 min="1" placeholder="{{ _('Vol. No. (optional)') }}" style="max-width:200px">
+        <div id="seriesSelectedCount" class="mb-2" style="display:none;font-size:.82rem;color:var(--accent);font-weight:500">
+          <i class="fas fa-check-circle me-1"></i><span id="seriesSelectedNum">0</span> {{ _('book(s) selected') }}
         </div>
         <div id="seriesBookList" style="max-height:320px;overflow-y:auto">
           {% for b in all_books %}
           <div class="series-book-item d-flex align-items-center gap-2 p-2 rounded mb-1"
-               style="cursor:pointer;border:1px solid var(--border)"
+               style="cursor:pointer;border:1px solid var(--border);transition:background .12s"
+               data-id="{{ b.id }}"
                data-title="{{ b.title|lower }}"
                data-author="{{ b.author_name|lower if b.author_name else '' }}"
-               onclick="addBookToSeries({{ b.id }}, '{{ b.title|e }}')">
+               onclick="toggleSeriesBook(this, {{ b.id }}, '{{ b.title|e }}')">
+            <div class="series-book-check me-1" style="width:18px;height:18px;border:2px solid var(--border);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .12s">
+            </div>
             {% if b.cover_url %}
               <img src="{{ b.cover_url }}" style="width:32px;height:45px;object-fit:cover;border-radius:3px;flex-shrink:0">
             {% else %}
@@ -112,6 +114,12 @@
           {% endfor %}
         </div>
       </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">{{ _('Cancel') }}</button>
+        <button class="btn btn-primary" id="seriesAddBtn" onclick="addSelectedBooksToSeries()" disabled>
+          <i class="fas fa-plus me-1"></i>{{ _('Add') }} (<span id="seriesAddCount">0</span>)
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -121,11 +129,19 @@
 <script>
 const SERIES_ID = {{ series.id }};
 const addBookModal = new bootstrap.Modal(document.getElementById('addBookSeriesModal'));
+let selectedBookIds = new Set();
 
 function openAddBook() {
   document.getElementById('seriesBookSearch').value = '';
-  document.getElementById('seriesAddOrder').value = '';
-  document.querySelectorAll('.series-book-item').forEach(el => el.classList.remove('d-none'));
+  selectedBookIds.clear();
+  document.querySelectorAll('.series-book-item').forEach(el => {
+    el.classList.remove('d-none');
+    el.classList.remove('series-book-selected');
+    el.style.background = '';
+    const check = el.querySelector('.series-book-check');
+    if (check) { check.innerHTML = ''; check.style.background = ''; check.style.borderColor = 'var(--border)'; }
+  });
+  updateSelectionUI();
   addBookModal.show();
 }
 
@@ -137,15 +153,54 @@ function filterSeriesBooks() {
   });
 }
 
-async function addBookToSeries(bookId, title) {
-  const order = document.getElementById('seriesAddOrder').value;
+function toggleSeriesBook(el, bookId, title) {
+  if (selectedBookIds.has(bookId)) {
+    selectedBookIds.delete(bookId);
+    el.classList.remove('series-book-selected');
+    el.style.background = '';
+    const check = el.querySelector('.series-book-check');
+    if (check) { check.innerHTML = ''; check.style.background = ''; check.style.borderColor = 'var(--border)'; }
+  } else {
+    selectedBookIds.add(bookId);
+    el.classList.add('series-book-selected');
+    el.style.background = 'rgba(var(--accent-rgb,99,102,241),0.08)';
+    el.style.borderColor = 'var(--accent)';
+    const check = el.querySelector('.series-book-check');
+    if (check) {
+      check.innerHTML = '<i class="fas fa-check" style="font-size:.65rem;color:#fff"></i>';
+      check.style.background = 'var(--accent)';
+      check.style.borderColor = 'var(--accent)';
+    }
+  }
+  // fix border color on deselect
+  if (!selectedBookIds.has(bookId)) el.style.borderColor = '';
+  updateSelectionUI();
+}
+
+function updateSelectionUI() {
+  const count = selectedBookIds.size;
+  const countEl = document.getElementById('seriesSelectedCount');
+  const numEl = document.getElementById('seriesSelectedNum');
+  const addBtn = document.getElementById('seriesAddBtn');
+  const addCount = document.getElementById('seriesAddCount');
+  if (numEl) numEl.textContent = count;
+  if (addCount) addCount.textContent = count;
+  if (countEl) countEl.style.display = count > 0 ? 'block' : 'none';
+  if (addBtn) addBtn.disabled = count === 0;
+}
+
+async function addSelectedBooksToSeries() {
+  if (selectedBookIds.size === 0) return;
+  const ids = [...selectedBookIds];
   try {
-    await apiFetch(`/api/books/${bookId}/series`, {
-      method: 'PUT',
-      body: JSON.stringify({ series_id: SERIES_ID, series_order: order ? parseInt(order) : null })
-    });
+    await Promise.all(ids.map(bookId =>
+      apiFetch(`/api/books/${bookId}/series`, {
+        method: 'PUT',
+        body: JSON.stringify({ series_id: SERIES_ID, series_order: null })
+      })
+    ));
     addBookModal.hide();
-    showToast(`„${title}" zur Serie hinzugefügt!`, 'success');
+    showToast(`${ids.length} Buch/Bücher zur Serie hinzugefügt!`, 'success');
     setTimeout(() => location.reload(), 700);
   } catch (_) {}
 }

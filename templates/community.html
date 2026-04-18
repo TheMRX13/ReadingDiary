@@ -1,0 +1,336 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+  .post-card{background:#1e293b;border-radius:12px;padding:1.25rem;margin-bottom:.75rem;}
+  .post-card:hover{background:#1e3a5f;transition:background .15s;}
+  .like-btn{background:none;border:none;cursor:pointer;color:#64748b;font-size:.88rem;padding:.25rem .6rem;border-radius:6px;transition:all .15s;}
+  .like-btn.liked{color:#ef4444;}
+  .like-btn:hover{background:rgba(239,68,68,.1);color:#ef4444;}
+  .report-btn-sm{background:none;border:none;cursor:pointer;color:#334155;font-size:.75rem;padding:.2rem .4rem;border-radius:4px;}
+  .report-btn-sm:hover{color:#ef4444;}
+  .stat-card{background:#1e293b;border-radius:12px;padding:1.25rem;text-align:center;}
+  .suggestion-chip{background:#0f172a;border-radius:10px;padding:.75rem 1rem;display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem;}
+  .search-wrap{position:relative;}
+  #user-dropdown{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:200;background:#1e293b;border:1px solid #334155;border-radius:10px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.4);}
+  .drop-item{display:flex;align-items:center;gap:.65rem;padding:.6rem .9rem;text-decoration:none;color:#f1f5f9;font-size:.88rem;transition:background .12s;}
+  .drop-item:hover{background:#1e3a5f;color:#f1f5f9;}
+  .drop-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#818cf8);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:#fff;flex-shrink:0;}
+  .drop-empty{padding:.75rem 1rem;color:#64748b;font-size:.85rem;text-align:center;}
+</style>
+
+{# JS-Übersetzungsstrings als Variablen #}
+<script>
+const T = {
+  noUser:       "{{ _('Kein User gefunden') }}",
+  confirmDel:   "{{ _('Beitrag löschen?') }}",
+  needContent:  "{{ _('Bitte Inhalt eingeben') }}",
+  needReason:   "{{ _('Bitte Grund wählen') }}",
+  reported:     "{{ _('Meldung eingereicht. Danke!') }}",
+  followed:     "{{ _('Gefolgt') }}",
+  newMember:    "{{ _('Neues Mitglied') }}",
+  error:        "{{ _('Fehler') }}",
+};
+</script>
+
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div>
+    <h1 class="page-title"><i class="fas fa-globe me-2" style="color:#3b82f6"></i>Community</h1>
+    <p style="color:#94a3b8;margin-top:.25rem;">{{ _('Lesercommunity und Aktivitäten') }}</p>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-12 col-lg-8">
+
+    <!-- User-Suche -->
+    <div class="card mb-3" style="background:#1e293b;border:none;border-radius:12px;padding:1rem;">
+      <div style="font-size:.78rem;color:#64748b;margin-bottom:.5rem;font-weight:600;letter-spacing:.03em;">
+        <i class="fas fa-search me-1"></i>{{ _('USER SUCHEN') }}
+      </div>
+      <div class="search-wrap">
+        <input type="text" id="user-search" class="form-control" autocomplete="off"
+          placeholder="{{ _('Benutzername eingeben…') }}"
+          style="background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:8px;"
+          oninput="liveSearch(this.value)" onblur="hideDropdown()" onfocus="if(this.value.length>=2)liveSearch(this.value)">
+        <div id="user-dropdown"></div>
+      </div>
+    </div>
+
+    <!-- Neuer Beitrag -->
+    <div class="card mb-3" style="background:#1e293b;border:none;border-radius:12px;padding:1.25rem;">
+      <h6 style="color:#f1f5f9;margin-bottom:.75rem;"><i class="fas fa-pen me-2" style="color:#3b82f6;"></i>{{ _('Neuer Beitrag') }}</h6>
+      <input type="text" id="post-book" placeholder="{{ _('Buchtitel (optional)') }}"
+        style="width:100%;background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:8px;padding:.5rem .8rem;font-size:.88rem;margin-bottom:.5rem;">
+      <textarea id="post-content" placeholder="{{ _('Rezension, Gedanke oder Empfehlung…') }}" rows="3"
+        style="width:100%;background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:8px;padding:.6rem .8rem;font-size:.9rem;resize:none;margin-bottom:.5rem;"></textarea>
+      <div class="d-flex align-items-center justify-content-between">
+        <select id="post-type" style="background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:.4rem .7rem;font-size:.82rem;">
+          <option value="review">{{ _('Rezension') }}</option>
+          <option value="quote">{{ _('Zitat') }}</option>
+          <option value="recommendation">{{ _('Empfehlung') }}</option>
+          <option value="progress">{{ _('Fortschritt') }}</option>
+        </select>
+        <button onclick="submitPost()"
+          style="background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:.5rem 1.2rem;font-weight:600;cursor:pointer;">
+          <i class="fas fa-paper-plane me-1"></i>{{ _('Posten') }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Feed -->
+    <div id="feed">
+      {% for p in feed %}
+      <div class="post-card" id="post-{{ p.id }}">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <div style="width:32px;height:32px;background:linear-gradient(135deg,#3b82f6,#818cf8);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.82rem;flex-shrink:0;">
+            {{ p.username[0].upper() }}
+          </div>
+          <div style="flex:1;">
+            <a href="/profile/{{ p.username }}" style="color:#f1f5f9;font-weight:600;text-decoration:none;font-size:.9rem;">{{ p.username }}</a>
+            <span style="color:#4b5563;font-size:.75rem;margin-left:.4rem;">{{ p.created_at[:16] }}</span>
+          </div>
+          <button onclick="openReport('post', {{ p.id }})" class="report-btn-sm" title="{{ _('Melden') }}"><i class="fas fa-flag"></i></button>
+          {% if p.author_id == uid %}
+          <button onclick="deletePost({{ p.id }})" class="report-btn-sm" title="{{ _('Löschen') }}"><i class="fas fa-trash"></i></button>
+          {% endif %}
+        </div>
+        {% if p.book_title %}
+        <div style="color:#3b82f6;font-size:.82rem;margin-bottom:.4rem;"><i class="fas fa-book me-1"></i>{{ p.book_title }}</div>
+        {% endif %}
+        <p style="color:#cbd5e1;font-size:.9rem;margin:0 0 .75rem 0;line-height:1.5;">{{ p.content }}</p>
+        <button class="like-btn {{ 'liked' if p.liked else '' }}" id="like-{{ p.id }}" onclick="toggleLike({{ p.id }})">
+          <i class="fas fa-heart me-1"></i><span id="like-count-{{ p.id }}">{{ p.like_count }}</span>
+        </button>
+      </div>
+      {% else %}
+      <div style="text-align:center;padding:2rem;color:#4b5563;">
+        <i class="fas fa-rss" style="font-size:2rem;display:block;margin-bottom:.75rem;"></i>
+        {{ _('Noch keine Beiträge. Sei der Erste!') }}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Rechte Spalte -->
+  <div class="col-12 col-lg-4">
+
+    <!-- Stats -->
+    <div class="row g-2 mb-3">
+      <div class="col-6">
+        <div class="stat-card">
+          <div style="color:#3b82f6;font-size:1.6rem;font-weight:700;">{{ stats.total_books }}</div>
+          <div style="color:#64748b;font-size:.75rem;">{{ _('Bücher gesamt') }}</div>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="stat-card">
+          <div style="color:#22c55e;font-size:1.6rem;font-weight:700;">{{ stats.total_users }}</div>
+          <div style="color:#64748b;font-size:.75rem;">{{ _('Aktive Leser') }}</div>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="stat-card">
+          <div style="color:#f59e0b;font-size:1.6rem;font-weight:700;">{{ stats.books_this_month }}</div>
+          <div style="color:#64748b;font-size:.75rem;">{{ _('Bücher d. Monat') }}</div>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="stat-card">
+          <div style="color:#a78bfa;font-size:1.6rem;font-weight:700;">{{ "{:,}".format(stats.pages_this_month) }}</div>
+          <div style="color:#64748b;font-size:.75rem;">{{ _('Seiten d. Monat') }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Buddy-Vorschläge -->
+    <div class="card mb-3" style="background:#1e293b;border:1px solid rgba(59,130,246,.15);border-radius:12px;padding:1.25rem;">
+      <h6 style="color:#f1f5f9;margin-bottom:.75rem;">
+        <i class="fas fa-lightbulb me-2" style="color:#f59e0b;"></i>{{ _('Vorgeschlagene Buddies') }}
+      </h6>
+      {% if buddy_suggestions %}
+        {% for s in buddy_suggestions %}
+        <div class="suggestion-chip" id="suggest-{{ s.id }}">
+          <a href="/profile/{{ s.username }}" style="text-decoration:none;flex-shrink:0;">
+            <div style="width:36px;height:36px;background:linear-gradient(135deg,#6366f1,#a78bfa);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.85rem;">
+              {{ s.username[0].upper() }}
+            </div>
+          </a>
+          <div style="flex:1;min-width:0;">
+            <a href="/profile/{{ s.username }}" style="color:#f1f5f9;font-weight:600;text-decoration:none;font-size:.88rem;display:block;">{{ s.username }}</a>
+            {% if s.common_genres %}
+            <div style="color:#64748b;font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ s.common_genres }}">
+              <i class="fas fa-book-open" style="font-size:.65rem;"></i> {{ s.common_genres }}
+            </div>
+            {% else %}
+            <div style="color:#475569;font-size:.72rem;">{{ _('Neues Mitglied') }}</div>
+            {% endif %}
+          </div>
+          <button onclick="followUser({{ s.id }}, this)"
+            style="background:#1e3a5f;color:#60a5fa;border:none;border-radius:6px;padding:.3rem .75rem;font-size:.75rem;cursor:pointer;font-weight:600;white-space:nowrap;flex-shrink:0;">
+            <i class="fas fa-user-plus me-1"></i>{{ _('Folgen') }}
+          </button>
+        </div>
+        {% endfor %}
+      {% else %}
+      <div style="color:#475569;font-size:.85rem;text-align:center;padding:.5rem 0;">
+        <i class="fas fa-users-slash" style="display:block;font-size:1.5rem;margin-bottom:.4rem;color:#334155;"></i>
+        {{ _('Du folgst schon allen Lesern!') }}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Beliebteste Genres -->
+    {% if genres %}
+    <div class="card" style="background:#1e293b;border:none;border-radius:12px;padding:1.25rem;">
+      <h6 style="color:#f1f5f9;margin-bottom:.75rem;">
+        <i class="fas fa-chart-bar me-2" style="color:#3b82f6;"></i>{{ _('Beliebteste Genres') }}
+      </h6>
+      {% for g in genres %}
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <div style="color:#94a3b8;font-size:.8rem;width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ g.genre }}</div>
+        <div style="flex:1;background:#0f172a;border-radius:4px;height:6px;">
+          <div style="background:linear-gradient(90deg,#3b82f6,#818cf8);height:6px;border-radius:4px;width:{{ [g.cnt * 100 // (genres[0].cnt or 1), 100]|min }}%;"></div>
+        </div>
+        <div style="color:#64748b;font-size:.75rem;width:24px;text-align:right;">{{ g.cnt }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Report Modal -->
+<div id="report-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#1e293b;border-radius:16px;padding:1.5rem;width:100%;max-width:380px;margin:1rem;">
+    <h5 style="color:#f1f5f9;margin-bottom:1rem;"><i class="fas fa-flag me-2" style="color:#ef4444;"></i>{{ _('Melden') }}</h5>
+    <input type="hidden" id="r-type"><input type="hidden" id="r-target">
+    <select id="r-reason" style="width:100%;background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:8px;padding:.6rem;margin-bottom:.75rem;">
+      <option value="">{{ _('Grund wählen...') }}</option>
+      <option>{{ _('Spam') }}</option>
+      <option>{{ _('Beleidigung / Hassrede') }}</option>
+      <option>{{ _('Unangemessene Bilder') }}</option>
+      <option>{{ _('Betrug / Fake') }}</option>
+      <option>{{ _('Urheberrechtsverletzung') }}</option>
+      <option>{{ _('Anderes') }}</option>
+    </select>
+    <div class="d-flex gap-2 justify-content-end">
+      <button onclick="document.getElementById('report-modal').style.display='none'"
+        style="background:#334155;color:#94a3b8;border:none;border-radius:8px;padding:.5rem 1rem;cursor:pointer;">{{ _('Abbrechen') }}</button>
+      <button onclick="submitReport()"
+        style="background:#ef4444;color:#fff;border:none;border-radius:8px;padding:.5rem 1rem;font-weight:600;cursor:pointer;">{{ _('Melden') }}</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── Übersetzungsstrings für JS ── */
+const T = {
+  noUser:      "{{ _('Kein User gefunden') }}",
+  confirmDel:  "{{ _('Beitrag löschen?') }}",
+  needContent: "{{ _('Bitte Inhalt eingeben') }}",
+  needReason:  "{{ _('Bitte Grund wählen') }}",
+  reported:    "{{ _('Meldung eingereicht. Danke!') }}",
+  error:       "{{ _('Fehler') }}",
+};
+
+/* ── Live User-Suche ── */
+let _st = null;
+function liveSearch(val) {
+  clearTimeout(_st);
+  const dd = document.getElementById('user-dropdown');
+  if (val.length < 2) { dd.style.display='none'; return; }
+  _st = setTimeout(async () => {
+    const res = await fetch(`/api/community/search-users?q=${encodeURIComponent(val)}`);
+    const users = await res.json();
+    if (!users.length) {
+      dd.innerHTML = `<div class="drop-empty"><i class="fas fa-user-slash me-1"></i>${T.noUser}</div>`;
+    } else {
+      dd.innerHTML = users.map(u => `
+        <a href="/profile/${u.username}" class="drop-item">
+          <div class="drop-avatar">${u.username[0].toUpperCase()}</div>
+          <span>${u.username}</span>
+          <span style="margin-left:auto;color:#3b82f6;font-size:.75rem;">{{ _('Profil') }} →</span>
+        </a>`).join('');
+    }
+    dd.style.display = 'block';
+  }, 200);
+}
+function hideDropdown() {
+  setTimeout(() => { document.getElementById('user-dropdown').style.display='none'; }, 180);
+}
+
+/* ── Likes ── */
+async function toggleLike(postId) {
+  const res = await fetch(`/api/community/like/${postId}`, {method:'POST'});
+  const d = await res.json();
+  if (d.success) {
+    document.getElementById(`like-${postId}`).classList.toggle('liked', d.liked);
+    document.getElementById(`like-count-${postId}`).textContent = d.count;
+  }
+}
+
+/* ── Neuer Beitrag ── */
+async function submitPost() {
+  const content    = document.getElementById('post-content').value.trim();
+  const book_title = document.getElementById('post-book').value.trim();
+  const post_type  = document.getElementById('post-type').value;
+  if (!content) { alert(T.needContent); return; }
+  const res = await fetch('/api/community/post', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({content, book_title, post_type})
+  });
+  const d = await res.json();
+  if (d.success) {
+    document.getElementById('post-content').value = '';
+    document.getElementById('post-book').value = '';
+    location.reload();
+  } else alert(d.error || T.error);
+}
+
+/* ── Post löschen ── */
+async function deletePost(postId) {
+  if (!confirm(T.confirmDel)) return;
+  const res = await fetch(`/api/community/post/${postId}`, {method:'DELETE'});
+  const d = await res.json();
+  if (d.success) { const el = document.getElementById(`post-${postId}`); if (el) el.remove(); }
+}
+
+/* ── Folgen ── */
+async function followUser(uid, btn) {
+  const res = await fetch(`/api/buddies/follow/${uid}`, {method:'POST'});
+  const d = await res.json();
+  if (d.success && d.following) {
+    btn.innerHTML = '<i class="fas fa-check me-1"></i>{{ _("Gefolgt") }}';
+    btn.style.background = '#14532d';
+    btn.style.color = '#4ade80';
+    btn.disabled = true;
+    setTimeout(() => {
+      const chip = document.getElementById(`suggest-${uid}`);
+      if (chip) { chip.style.transition='opacity .4s'; chip.style.opacity='0'; setTimeout(()=>chip.remove(),400); }
+    }, 800);
+  }
+}
+
+/* ── Melden ── */
+function openReport(type, targetId) {
+  document.getElementById('r-type').value = type;
+  document.getElementById('r-target').value = targetId;
+  document.getElementById('r-reason').value = '';
+  document.getElementById('report-modal').style.display = 'flex';
+}
+async function submitReport() {
+  const type   = document.getElementById('r-type').value;
+  const target = parseInt(document.getElementById('r-target').value);
+  const reason = document.getElementById('r-reason').value;
+  if (!reason) { alert(T.needReason); return; }
+  const res = await fetch('/api/report', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({target_type:type, target_id:target, reason})
+  });
+  const d = await res.json();
+  document.getElementById('report-modal').style.display = 'none';
+  if (d.success) alert(T.reported);
+  else alert(d.error || T.error);
+}
+</script>
+{% endblock %}

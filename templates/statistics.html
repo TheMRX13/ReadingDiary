@@ -7,75 +7,271 @@
 
 {% block content %}
 
+{# ─────────────────────────────────────────────────────────────────
+   1. HERO – Bücher  &  Aktivität
+   ───────────────────────────────────────────────────────────────── #}
 {% if stats.show_stats_total %}
-<!-- ── Overview Cards ── -->
-<div class="row g-3 mb-4">
-  <div class="col-6 col-md-4 col-xl-2">
-    <div class="stat-card">
-      <div class="stat-icon blue"><i class="fas fa-book"></i></div>
-      <div><div class="stat-label">{{ _('Total') }}</div><div class="stat-value">{{ total_books }}</div></div>
+<div class="row g-4 mb-4">
+
+  {# ── Bücher-Karte ── #}
+  <div class="col-12 col-md-6">
+    <div class="card h-100">
+      <div class="card-body p-4">
+
+        <div class="section-title"><i class="fas fa-book"></i>{{ _('Books') }}</div>
+
+        {# Große Zahl + Fortschrittsbalken #}
+        <div class="d-flex align-items-end gap-3 mb-4">
+          <div>
+            <div class="hero-number" style="color:var(--accent)">{{ read_books }}</div>
+            <div class="stat-label mt-1">{{ _('Books read') }}</div>
+          </div>
+          {% if total_books > 0 %}
+          <div class="flex-grow-1 pb-2">
+            <div class="progress-bar-book mb-1">
+              <div class="progress-bar-book-fill"
+                   style="width:{{ ((read_books / total_books) * 100)|round|int }}%"></div>
+            </div>
+            <small style="font-size:.72rem;color:var(--text-muted)">
+              {{ ((read_books / total_books) * 100)|round|int }}% {{ _('of') }} {{ total_books }}
+            </small>
+          </div>
+          {% endif %}
+        </div>
+
+        {# Drei Mini-Stats #}
+        <div class="row g-2 mb-3">
+          <div class="col-4">
+            <div class="mini-stat">
+              <div class="mini-stat-value">{{ reading_books }}</div>
+              <div class="mini-stat-label">
+                <i class="fas fa-book-open" style="color:#3b82f6"></i> {{ _('Reading') }}
+              </div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="mini-stat">
+              <div class="mini-stat-value">{{ unread_books }}</div>
+              <div class="mini-stat-label">
+                <i class="fas fa-bookmark" style="color:#94a3b8"></i> {{ _('Unread') }}
+              </div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="mini-stat">
+              <div class="mini-stat-value">{{ total_books }}</div>
+              <div class="mini-stat-label">
+                <i class="fas fa-layer-group" style="color:#22c55e"></i> {{ _('Total') }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {# Seiten & Zitate #}
+        <div class="rd-divider"></div>
+        <div class="d-flex justify-content-around text-center">
+          <div>
+            <div class="fw-bold" style="font-size:1.15rem">{{ total_pages }}</div>
+            <div class="stat-label">
+              <i class="fas fa-file-alt" style="color:#a855f7"></i> {{ _('Pages read') }}
+            </div>
+          </div>
+          <div style="width:1px;background:var(--border)"></div>
+          <div>
+            <div class="fw-bold" style="font-size:1.15rem">{{ total_quotes }}</div>
+            <div class="stat-label">
+              <i class="fas fa-quote-left" style="color:#ec4899"></i> {{ _('Quotes') }}
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
   </div>
-  <div class="col-6 col-md-4 col-xl-2">
-    <div class="stat-card">
-      <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
-      <div><div class="stat-label">{{ _('Read') }}</div><div class="stat-value">{{ read_books }}</div></div>
+
+  {# ── Aktivitäts-Karte ── #}
+  <div class="col-12 col-md-6">
+    <div class="card h-100">
+      <div class="card-body p-4">
+
+        <div class="section-title"><i class="fas fa-chart-line"></i>{{ _('Activity') }}</div>
+
+        {# Streak Hero #}
+        <div class="d-flex align-items-end gap-3 mb-4">
+          <div>
+            <div class="hero-number" style="color:#f59e0b">{{ current_streak }}</div>
+            <div class="stat-label mt-1">
+              <i class="fas fa-fire" style="color:#f59e0b"></i> {{ _('Reading Streak') }}
+            </div>
+          </div>
+          <div class="pb-1">
+            <div style="font-size:.82rem;font-weight:600;color:var(--text-muted)">
+              <i class="fas fa-trophy" style="color:#ef4444"></i>
+              {{ _('Best Streak') }}: <span style="color:var(--text)">{{ best_streak }} {{ _('Days') }}</span>
+            </div>
+          </div>
+        </div>
+
+        {# Vier Mini-Stats #}
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <div class="mini-stat">
+              <div class="mini-stat-value">
+                <i class="fas fa-star" style="color:#eab308;font-size:.9rem"></i> {{ avg_rating }}
+              </div>
+              <div class="mini-stat-label">{{ _('Avg. Rating') }}</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="mini-stat">
+              <div class="mini-stat-value">{{ books_this_year }}</div>
+              <div class="mini-stat-label">{{ _('Books this year') }}</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="mini-stat">
+              <div class="mini-stat-value">{{ avg_books_per_month }}</div>
+              <div class="mini-stat-label">{{ _('Avg. Books / Month') }}</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="mini-stat" style="overflow:hidden">
+              <div class="mini-stat-value" style="font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                {{ fav_genre }}
+              </div>
+              <div class="mini-stat-label">{{ _('Favorite Genre') }}</div>
+            </div>
+          </div>
+        </div>
+
+        {# Aktive Tage #}
+        <div class="rd-divider"></div>
+        <div class="d-flex justify-content-around text-center">
+          <div>
+            <div class="fw-bold" style="font-size:1.15rem">{{ reading_days }}</div>
+            <div class="stat-label">
+              <i class="fas fa-book-reader" style="color:#3b82f6"></i> {{ _('Active Reading Days') }}
+            </div>
+          </div>
+          <div style="width:1px;background:var(--border)"></div>
+          <div>
+            <div class="fw-bold" style="font-size:1.15rem">{{ total_active_days }}</div>
+            <div class="stat-label">
+              <i class="fas fa-calendar-check" style="color:#22c55e"></i> {{ _('Total Active Days') }}
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
   </div>
-  <div class="col-6 col-md-4 col-xl-2">
-    <div class="stat-card">
-      <div class="stat-icon amber"><i class="fas fa-book-open"></i></div>
-      <div><div class="stat-label">{{ _('Reading') }}</div><div class="stat-value">{{ reading_books }}</div></div>
-    </div>
-  </div>
-  <div class="col-6 col-md-4 col-xl-2">
-    <div class="stat-card">
-      <div class="stat-icon" style="background:rgba(148,163,184,.15);color:#94a3b8"><i class="fas fa-bookmark"></i></div>
-      <div><div class="stat-label">{{ _('Unread') }}</div><div class="stat-value">{{ unread_books }}</div></div>
-    </div>
-  </div>
-  <div class="col-6 col-md-4 col-xl-2">
-    <div class="stat-card">
-      <div class="stat-icon purple"><i class="fas fa-file-alt"></i></div>
-      <div><div class="stat-label">{{ _('Pages read') }}</div><div class="stat-value">{{ total_pages }}</div></div>
-    </div>
-  </div>
-  <div class="col-6 col-md-4 col-xl-2">
-    <div class="stat-card">
-      <div class="stat-icon" style="background:rgba(236,72,153,.15);color:#ec4899"><i class="fas fa-quote-left"></i></div>
-      <div><div class="stat-label">{{ _('Quotes') }}</div><div class="stat-value">{{ total_quotes }}</div></div>
-    </div>
-  </div>
-  <div class="col-6 col-md-4 col-xl-2">
-    <div class="stat-card">
-      <div class="stat-icon" style="background:rgba(245,158,11,.15);color:#f59e0b"><i class="fas fa-fire"></i></div>
-      <div><div class="stat-label">{{ _('Reading Streak') }}</div><div class="stat-value">{{ current_streak }} <small style="font-size:.8rem;font-weight:400">{{ _('Days') }}</small></div></div>
-    </div>
-  </div>
-  <div class="col-6 col-md-4 col-xl-2">
-    <div class="stat-card">
-      <div class="stat-icon" style="background:rgba(239,68,68,.15);color:#ef4444"><i class="fas fa-trophy"></i></div>
-      <div><div class="stat-label">{{ _('Best Streak') }}</div><div class="stat-value">{{ best_streak }} <small style="font-size:.8rem;font-weight:400">{{ _('Days') }}</small></div></div>
-    </div>
-  </div>
+
 </div>
 {% endif %}
 
-<!-- ── Reading Goals ── -->
+
+{# ─────────────────────────────────────────────────────────────────
+   2. HÖRBUCH-STATISTIKEN
+   ───────────────────────────────────────────────────────────────── #}
+<div class="card mb-4">
+  <div class="card-body p-4">
+    <div class="section-title"><i class="fas fa-headphones"></i>{{ _('Audiobook Statistics') }}</div>
+
+    {# Drei große Hauptzahlen #}
+    <div class="row g-0 text-center mb-4">
+      <div class="col-4" style="border-right:1px solid var(--border)">
+        <div class="py-2">
+          <div class="hero-number" style="font-size:2.5rem;color:#06b6d4">{{ audio_total }}</div>
+          <div class="stat-label">{{ _('Total Audiobooks') }}</div>
+        </div>
+      </div>
+      <div class="col-4" style="border-right:1px solid var(--border)">
+        <div class="py-2">
+          <div class="hero-number" style="font-size:2.5rem;color:#22c55e">{{ audio_read }}</div>
+          <div class="stat-label">{{ _('Listened') }}</div>
+        </div>
+      </div>
+      <div class="col-4">
+        <div class="py-2">
+          <div class="hero-number" style="font-size:2.5rem;color:#f59e0b">{{ audio_reading }}</div>
+          <div class="stat-label">{{ _('Currently Listening') }}</div>
+        </div>
+      </div>
+    </div>
+
+    {# Detail-Zeilen (kompakt) #}
+    <div class="row g-2">
+      <div class="col-6 col-md-4">
+        <div class="detail-metric">
+          <i class="fas fa-pause-circle" style="color:#94a3b8"></i>
+          <span class="detail-label">{{ _('Not yet listened') }}</span>
+          <span class="detail-value">{{ audio_unread }}</span>
+        </div>
+      </div>
+      <div class="col-6 col-md-4">
+        <div class="detail-metric">
+          <i class="fas fa-calendar-check" style="color:#a855f7"></i>
+          <span class="detail-label">{{ _('Audiobooks this year') }}</span>
+          <span class="detail-value">{{ audio_this_year }}</span>
+        </div>
+      </div>
+      <div class="col-6 col-md-4">
+        <div class="detail-metric">
+          <i class="fas fa-calendar-day" style="color:#06b6d4"></i>
+          <span class="detail-label">{{ _('Listening Days') }}</span>
+          <span class="detail-value">{{ listening_days }}</span>
+        </div>
+      </div>
+      <div class="col-6 col-md-4">
+        <div class="detail-metric">
+          <i class="fas fa-tachometer-alt" style="color:#10b981"></i>
+          <span class="detail-label">{{ _('Avg. Progress / Listening Day') }}</span>
+          <span class="detail-value">{{ avg_pct_per_listen_day }} %</span>
+        </div>
+      </div>
+      <div class="col-6 col-md-4">
+        <div class="detail-metric">
+          <i class="fas fa-list-ol" style="color:#f97316"></i>
+          <span class="detail-label">{{ _('Progress Entries') }}</span>
+          <span class="detail-value">{{ audio_sessions }}</span>
+        </div>
+      </div>
+      {% if avg_pages_per_day > 0 %}
+      <div class="col-6 col-md-4">
+        <div class="detail-metric">
+          <i class="fas fa-file-alt" style="color:#8b5cf6"></i>
+          <span class="detail-label">{{ _('Avg. Pages / Reading Day') }}</span>
+          <span class="detail-value">{{ avg_pages_per_day }}</span>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if avg_pages_per_day == 0 %}
+    <p class="text-muted mt-3 mb-0" style="font-size:.82rem">
+      <i class="fas fa-info-circle me-1"></i>
+      {{ _('Log reading progress in the book detail to see speed stats.') }}
+    </p>
+    {% endif %}
+
+  </div>
+</div>
+
+
+{# ─────────────────────────────────────────────────────────────────
+   3. LESEZIELE
+   ───────────────────────────────────────────────────────────────── #}
 {% if goals %}
 <div class="card mb-4">
-  <div class="card-body">
-      <div class="section-title"><i class="fas fa-bullseye"></i>{{ _('Reading Goals') }}</div>
+  <div class="card-body p-4">
+    <div class="section-title"><i class="fas fa-bullseye"></i>{{ _('Reading Goals') }}</div>
     <div class="row g-3">
       {% for g in goals %}
       <div class="col-12 col-md-6">
         <div class="p-3 rounded-3" style="background:var(--bg);border:1px solid var(--border)">
           <div class="d-flex align-items-center justify-content-between mb-1">
             <span style="font-weight:600;font-size:.875rem">
-              {{ g.target }}
-              {{ g.goal_type | trgoaltype }}
-              {{ _('per') }}
-              {{ g.period | trperiod }}
+              {{ g.target }} {{ g.goal_type | trgoaltype }} {{ _('per') }} {{ g.period | trperiod }}
             </span>
             <span class="status-badge {{ 'badge-status-am-lesen' if g.enabled else 'badge-status-ungelesen' }}">
               {{ _('Active') if g.enabled else _('Inactive') }}
@@ -90,10 +286,13 @@
 </div>
 {% endif %}
 
-<!-- ── Charts ── -->
+
+{# ─────────────────────────────────────────────────────────────────
+   4. AKTIVITÄTSGRAPHEN
+   ───────────────────────────────────────────────────────────────── #}
 {% if stats.show_stats_graphs %}
 <div class="card mb-4">
-  <div class="card-body">
+  <div class="card-body p-4">
     <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
       <div class="section-title mb-0"><i class="fas fa-chart-line"></i>{{ _('Reading Activity') }}</div>
       <div class="d-flex gap-2">
@@ -102,29 +301,76 @@
         <button class="btn btn-sm period-btn" data-period="yearly">{{ _('Yearly') }}</button>
       </div>
     </div>
-    <div class="chart-wrapper mb-4">
-      <canvas id="pagesChart"></canvas>
-    </div>
-    <div class="chart-wrapper">
-      <canvas id="booksChart"></canvas>
-    </div>
+    <div class="chart-wrapper mb-4"><canvas id="pagesChart"></canvas></div>
+    <div class="chart-wrapper"><canvas id="booksChart"></canvas></div>
   </div>
 </div>
 {% endif %}
 
-<div class="row g-4">
+
+{# ─────────────────────────────────────────────────────────────────
+   5. GENRE & FORMAT
+   ───────────────────────────────────────────────────────────────── #}
+<div class="row g-4 mb-4">
+  {% if genres_stats %}
+  <div class="col-12 col-md-6">
+    <div class="card h-100">
+      <div class="card-body p-4">
+        <div class="section-title"><i class="fas fa-tags"></i>{{ _('Books by Genre') }}</div>
+        <div class="chart-wrapper" style="height:200px"><canvas id="genreChart"></canvas></div>
+        <div class="mt-3 stat-list">
+          {% for g in genres_stats %}
+          <div class="stat-list-row">
+            <span>{{ g.name }}</span>
+            <span class="fw-bold" style="color:var(--accent)">{{ g.cnt }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if formats_stats %}
+  <div class="col-12 col-md-6">
+    <div class="card h-100">
+      <div class="card-body p-4">
+        <div class="section-title"><i class="fas fa-layer-group"></i>{{ _('Books by Format') }}</div>
+        <div class="chart-wrapper" style="height:200px"><canvas id="formatChart"></canvas></div>
+        <div class="mt-3 stat-list">
+          {% for f in formats_stats %}
+          <div class="stat-list-row">
+            <span>
+              {% if f.name == 'Hörbuch' %}<i class="fas fa-headphones me-1" style="color:#06b6d4"></i>
+              {% elif f.name == 'eBook' %}<i class="fas fa-tablet-alt me-1" style="color:#6366f1"></i>
+              {% elif f.name == 'Hardcover' %}<i class="fas fa-book me-1" style="color:#f59e0b"></i>
+              {% else %}<i class="fas fa-book-open me-1" style="color:#22c55e"></i>{% endif %}
+              {{ f.name }}
+            </span>
+            <span class="fw-bold" style="color:var(--accent)">{{ f.cnt }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+
+{# ─────────────────────────────────────────────────────────────────
+   6. VERLAGE & AUTOREN
+   ───────────────────────────────────────────────────────────────── #}
+<div class="row g-4 mb-4">
   {% if stats.show_stats_publishers and publishers_stats %}
   <div class="col-12 col-md-6">
     <div class="card h-100">
-      <div class="card-body">
+      <div class="card-body p-4">
         <div class="section-title"><i class="fas fa-building"></i>{{ _('Books by Publisher') }}</div>
-        <div class="chart-wrapper" style="height:240px">
-          <canvas id="publishersChart"></canvas>
-        </div>
-        <div class="mt-3" style="max-height:260px;overflow-y:auto">
+        <div class="chart-wrapper" style="height:200px"><canvas id="publishersChart"></canvas></div>
+        <div class="mt-3 stat-list">
           {% for p in publishers_stats %}
-          <div class="d-flex justify-content-between align-items-center py-1"
-               style="border-bottom:1px solid var(--border);font-size:.82rem">
+          <div class="stat-list-row">
             <span>{{ p.name }}</span>
             <span class="fw-bold" style="color:var(--accent)">{{ p.cnt }}</span>
           </div>
@@ -138,15 +384,12 @@
   {% if stats.show_stats_authors and authors_stats %}
   <div class="col-12 col-md-6">
     <div class="card h-100">
-      <div class="card-body">
+      <div class="card-body p-4">
         <div class="section-title"><i class="fas fa-user-pen"></i>{{ _('Books by Author (Top 20)') }}</div>
-        <div class="chart-wrapper" style="height:240px">
-          <canvas id="authorsChart"></canvas>
-        </div>
-        <div class="mt-3" style="max-height:260px;overflow-y:auto">
+        <div class="chart-wrapper" style="height:200px"><canvas id="authorsChart"></canvas></div>
+        <div class="mt-3 stat-list">
           {% for a in authors_stats %}
-          <div class="d-flex justify-content-between align-items-center py-1"
-               style="border-bottom:1px solid var(--border);font-size:.82rem">
+          <div class="stat-list-row">
             <span>{{ a.name }}</span>
             <span class="fw-bold" style="color:var(--accent)">{{ a.cnt }}</span>
           </div>
@@ -158,8 +401,11 @@
   {% endif %}
 </div>
 
-<!-- ── Jahresrückblick ── -->
-<div class="section-card mt-4">
+
+{# ─────────────────────────────────────────────────────────────────
+   7. JAHRESRÜCKBLICK
+   ───────────────────────────────────────────────────────────────── #}
+<div class="section-card">
   <div class="section-title"><i class="fas fa-calendar-alt"></i>{{ _('Year in Review') }}</div>
   <p style="color:var(--text-muted);font-size:.88rem" class="mb-3">
     {{ _('Choose a year to see your personal review.') }}
@@ -172,40 +418,31 @@
     {% endfor %}
   </div>
 </div>
+
 {% endblock %}
+
 
 {% block scripts %}
 <script>
-const isDark = document.documentElement.dataset.bsTheme === 'dark';
+const isDark  = document.documentElement.dataset.bsTheme === 'dark';
 const gridColor = isDark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.07)';
 const textColor = isDark ? '#94a3b8' : '#64748b';
-const PALETTE = [
+const PALETTE  = [
   '#3b82f6','#22c55e','#f59e0b','#a855f7','#ec4899','#06b6d4',
   '#84cc16','#f97316','#8b5cf6','#10b981','#ef4444','#6366f1'
 ];
-
 Chart.defaults.color = textColor;
 Chart.defaults.borderColor = gridColor;
 
-function buildLineChart(id, label, data, labels, color) {
+function buildBarChart(id, datasets, labels) {
   const ctx = document.getElementById(id);
   if (!ctx) return null;
   return new Chart(ctx, {
     type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label,
-        data,
-        backgroundColor: color + '33',
-        borderColor: color,
-        borderWidth: 2,
-        borderRadius: 6,
-      }]
-    },
+    data: { labels, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: true } },
+      plugins: { legend: { display: datasets.length > 1 } },
       scales: {
         x: { grid: { display: false } },
         y: { grid: { color: gridColor }, beginAtZero: true, ticks: { stepSize: 1 } }
@@ -219,10 +456,7 @@ function buildDoughnut(id, labels, data) {
   if (!ctx) return null;
   return new Chart(ctx, {
     type: 'doughnut',
-    data: {
-      labels,
-      datasets: [{ data, backgroundColor: PALETTE, borderWidth: 0 }]
-    },
+    data: { labels, datasets: [{ data, backgroundColor: PALETTE, borderWidth: 0 }] },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } }
@@ -235,15 +469,29 @@ let pagesChart, booksChart;
 async function loadCharts(period) {
   const resp = await fetch(`/api/statistics/charts?period=${period}`);
   const d = await resp.json();
-
   if (pagesChart) pagesChart.destroy();
-  if (booksChart) booksChart.destroy();
+  if (booksChart)  booksChart.destroy();
 
-  pagesChart = buildLineChart('pagesChart', 'Gelesene Seiten', d.pages, d.labels, '#3b82f6');
-  booksChart  = buildLineChart('booksChart', 'Gelesene Bücher',  d.books, d.labels, '#22c55e');
+  pagesChart = buildBarChart('pagesChart', [{
+    label: '{{ _("Read pages") }}',
+    data: d.pages,
+    backgroundColor: '#3b82f633', borderColor: '#3b82f6', borderWidth: 2, borderRadius: 6,
+  }], d.labels);
+
+  booksChart = buildBarChart('booksChart', [
+    {
+      label: '{{ _("Read books") }}',
+      data: d.books,
+      backgroundColor: '#22c55e33', borderColor: '#22c55e', borderWidth: 2, borderRadius: 6,
+    },
+    {
+      label: '{{ _("Listened audiobooks") }}',
+      data: d.audio_books,
+      backgroundColor: '#06b6d433', borderColor: '#06b6d4', borderWidth: 2, borderRadius: 6,
+    }
+  ], d.labels);
 }
 
-// Period buttons
 document.querySelectorAll('.period-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active-period'));
@@ -252,28 +500,37 @@ document.querySelectorAll('.period-btn').forEach(btn => {
   });
 });
 
-// Publisher & author charts
+{% if genres_stats %}
+buildDoughnut('genreChart',
+  {{ genres_stats | map(attribute='name') | list | tojson }},
+  {{ genres_stats | map(attribute='cnt')  | list | tojson }}
+);
+{% endif %}
+{% if formats_stats %}
+buildDoughnut('formatChart',
+  {{ formats_stats | map(attribute='name') | list | tojson }},
+  {{ formats_stats | map(attribute='cnt')  | list | tojson }}
+);
+{% endif %}
 {% if stats.show_stats_publishers and publishers_stats %}
 buildDoughnut('publishersChart',
   {{ publishers_stats | map(attribute='name') | list | tojson }},
-  {{ publishers_stats | map(attribute='cnt') | list | tojson }}
+  {{ publishers_stats | map(attribute='cnt')  | list | tojson }}
 );
 {% endif %}
-
 {% if stats.show_stats_authors and authors_stats %}
 buildDoughnut('authorsChart',
   {{ authors_stats | map(attribute='name') | list | tojson }},
-  {{ authors_stats | map(attribute='cnt') | list | tojson }}
+  {{ authors_stats | map(attribute='cnt')  | list | tojson }}
 );
 {% endif %}
-
-// Load initial charts
 {% if stats.show_stats_graphs %}
 loadCharts('monthly');
 {% endif %}
 </script>
 
 <style>
+/* ── Period-Buttons ── */
 .period-btn {
   background: var(--bg);
   border: 1px solid var(--border);
@@ -282,11 +539,77 @@ loadCharts('monthly');
   font-size: .8rem;
   font-weight: 600;
   padding: 5px 12px;
+  transition: all .15s;
 }
 .period-btn.active-period {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
 }
+
+/* ── Hero-Zahl (große Hauptzahl in Karten) ── */
+.hero-number {
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* ── Mini-Stat (kleine Kacheln innerhalb einer Karte) ── */
+.mini-stat {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 10px 8px;
+  text-align: center;
+  height: 100%;
+}
+.mini-stat-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.1;
+}
+.mini-stat-label {
+  font-size: .7rem;
+  color: var(--text-muted);
+  margin-top: 3px;
+  font-weight: 500;
+}
+
+/* ── Detail-Metrik (kompakte Zeile mit Icon, Label, Wert) ── */
+.detail-metric {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: .5rem .75rem;
+  height: 100%;
+}
+.detail-label {
+  flex: 1;
+  font-size: .76rem;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+.detail-value {
+  font-weight: 700;
+  font-size: .95rem;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+/* ── Listen unter Charts ── */
+.stat-list { max-height: 220px; overflow-y: auto; margin-top: 4px; }
+.stat-list-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: .3rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: .82rem;
+}
+.stat-list-row:last-child { border-bottom: none; }
 </style>
 {% endblock %}

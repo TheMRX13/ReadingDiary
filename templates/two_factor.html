@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zwei-Faktor-Authentifizierung – Reading Diary</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    body { background:linear-gradient(135deg,#0f172a,#1e3a5f); min-height:100vh; display:flex; align-items:center; justify-content:center; font-family:'Segoe UI',sans-serif; }
+    .card { background:#1e293b; border-radius:20px; padding:2.5rem; max-width:400px; width:100%; box-shadow:0 24px 48px rgba(0,0,0,.5); }
+    h1 { color:#f1f5f9; font-size:1.5rem; font-weight:700; text-align:center; margin-bottom:.5rem; }
+    p.sub { color:#94a3b8; font-size:.9rem; text-align:center; margin-bottom:1.5rem; }
+    .form-label { color:#cbd5e1; font-size:.85rem; font-weight:600; }
+    .form-control { background:#0f172a; border:1px solid #334155; color:#f1f5f9; border-radius:8px; padding:.65rem 1rem; font-size:1.25rem; letter-spacing:.25rem; text-align:center; }
+    .form-control:focus { background:#0f172a; border-color:#3b82f6; color:#f1f5f9; box-shadow:0 0 0 3px rgba(59,130,246,.2); }
+    .btn-verify { background:#3b82f6; color:#fff; border:none; width:100%; padding:.75rem; border-radius:8px; font-weight:600; font-size:1rem; margin-top:1rem; }
+    .btn-verify:hover { background:#2563eb; }
+    .back-link { color:#64748b; font-size:.85rem; text-align:center; margin-top:1rem; }
+    .back-link a { color:#3b82f6; text-decoration:none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1><i class="fas fa-shield-halved me-2" style="color:#3b82f6"></i>{{ _('2-Faktor-Auth') }}</h1>
+    <p class="sub">{{ _('Gib den 6-stelligen Code aus deiner Authenticator-App ein.') }}</p>
+
+    {% if error %}
+      <div class="alert" style="background:#7f1d1d;border:1px solid #ef4444;color:#fca5a5;border-radius:8px;font-size:.9rem;padding:.75rem 1rem;margin-bottom:1rem;">
+        <i class="fas fa-triangle-exclamation me-2"></i>{{ error }}
+      </div>
+    {% endif %}
+
+    <form method="POST" action="/2fa">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="mb-3">
+        <label class="form-label">{{ _('Authenticator-Code') }}</label>
+        <input type="text" name="code" class="form-control" placeholder="000000"
+               maxlength="6" pattern="[0-9]{6}" inputmode="numeric"
+               autocomplete="one-time-code" autofocus required>
+      </div>
+      <button type="submit" class="btn-verify">
+        <i class="fas fa-check me-2"></i>{{ _('Bestätigen') }}
+      </button>
+    </form>
+    <div class="back-link"><a href="{{ url_for('logout') }}"><i class="fas fa-arrow-left me-1"></i>{{ _('Zurück zum Login') }}</a></div>
+
+    <!-- Sprachumschalter -->
+    <div style="display:flex;justify-content:center;gap:8px;margin-top:20px;">
+      <a href="/set-lang/de"
+         style="display:flex;align-items:center;gap:5px;font-size:.8rem;text-decoration:none;padding:5px 12px;border-radius:8px;border:1px solid {{ 'rgba(59,130,246,.5)' if session.get('language','de')=='de' else 'rgba(255,255,255,.1)' }};background:{{ 'rgba(59,130,246,.15)' if session.get('language','de')=='de' else 'transparent' }};color:#94a3b8;">
+        🇩🇪 DE
+      </a>
+      <a href="/set-lang/en"
+         style="display:flex;align-items:center;gap:5px;font-size:.8rem;text-decoration:none;padding:5px 12px;border-radius:8px;border:1px solid {{ 'rgba(59,130,246,.5)' if session.get('language')=='en' else 'rgba(255,255,255,.1)' }};background:{{ 'rgba(59,130,246,.15)' if session.get('language')=='en' else 'transparent' }};color:#94a3b8;">
+        🇬🇧 EN
+      </a>
+    </div>
+  </div>
+</body>
+</html>

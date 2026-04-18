@@ -9,7 +9,7 @@
 {% block content %}
 <!-- Year navigation -->
 <div class="d-flex align-items-center gap-2 mb-4 flex-wrap">
-  <a href="/statistics" class="btn btn-sm" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted)">
+  <a href="{{ url_for('statistics') }}" class="btn btn-sm" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted)">
     <i class="fas fa-arrow-left me-1"></i>{{ _('Statistics') }}
   </a>
   <div class="ms-auto d-flex gap-2 flex-wrap">

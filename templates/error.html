@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fehler {{ code }} – Reading Diary</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <style>
+    body { background: #0f172a; color: #f1f5f9; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: 'Segoe UI', sans-serif; }
+    .error-card { background: #1e293b; border-radius: 16px; padding: 3rem; text-align: center; max-width: 480px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,.4); }
+    .error-code { font-size: 5rem; font-weight: 800; color: #3b82f6; line-height: 1; }
+    .error-msg  { color: #94a3b8; margin: 1rem 0 2rem; font-size: 1.1rem; }
+    .btn-home   { background: #3b82f6; color: #fff; border: none; padding: .75rem 2rem; border-radius: 8px; text-decoration: none; font-weight: 600; }
+    .btn-home:hover { background: #2563eb; color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="error-card">
+    <div class="error-code">{{ code }}</div>
+    <div class="error-msg">{{ message }}</div>
+    <a href="{{ url_for('index') }}" class="btn-home">Zur Startseite</a>
+    <div style="display:flex;justify-content:center;gap:6px;margin-top:1.5rem;">
+      {%- set _lang = session.get('language', 'de') %}
+      <a href="/set-lang/de" style="font-size:.78rem;font-weight:600;text-decoration:none;padding:4px 10px;border-radius:7px;border:1px solid {{ 'rgba(59,130,246,.55)' if _lang=='de' else 'rgba(255,255,255,.08)' }};background:{{ 'rgba(59,130,246,.18)' if _lang=='de' else 'transparent' }};color:{{ '#60a5fa' if _lang=='de' else '#64748b' }};">&#127465;&#127466; DE</a>
+      <a href="/set-lang/en" style="font-size:.78rem;font-weight:600;text-decoration:none;padding:4px 10px;border-radius:7px;border:1px solid {{ 'rgba(59,130,246,.55)' if _lang=='en' else 'rgba(255,255,255,.08)' }};background:{{ 'rgba(59,130,246,.18)' if _lang=='en' else 'transparent' }};color:{{ '#60a5fa' if _lang=='en' else '#64748b' }};">&#127468;&#127463; EN</a>
+    </div>
+  </div>
+</body>
+</html>

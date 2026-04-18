@@ -11,7 +11,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Reading Diary">
-  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="icon" href="/static/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/icon-32x32.png">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 
   <!-- Bootstrap 5 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
@@ -23,6 +25,15 @@
   {% block head %}{% endblock %}
 </head>
 <body>
+
+{% if session.get('impersonated_by') %}
+<div style="background:#dc2626;color:#fff;padding:.5rem 1rem;text-align:center;font-size:.85rem;font-weight:600;position:sticky;top:0;z-index:9999;">
+  <i class="fas fa-user-secret me-2"></i>Du siehst die App als <strong>{{ session.username }}</strong> (Impersonation-Modus)
+  <a href="{{ url_for('stop_impersonation') }}" style="color:#fde68a;margin-left:1rem;text-decoration:none;border:1px solid rgba(255,255,255,.4);padding:.2rem .6rem;border-radius:4px;">
+    <i class="fas fa-x me-1"></i>Beenden
+  </a>
+</div>
+{% endif %}
 
 <!-- Sidebar overlay -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
@@ -38,46 +49,76 @@
   </div>
 
   <ul class="sidebar-nav">
-    <li>
-      <a href="/dashboard" class="{{ 'active' if request.path == '/dashboard' else '' }}">
-        <i class="fas fa-home"></i><span>{{ _('Dashboard') }}</span>
-      </a>
-    </li>
-    <li>
-      <a href="/books" class="{{ 'active' if request.path.startswith('/books') else '' }}">
-        <i class="fas fa-book"></i><span>{{ _('My Books') }}</span>
-      </a>
-    </li>
-    <li>
-      <a href="/wishlist" class="{{ 'active' if request.path == '/wishlist' else '' }}">
-        <i class="fas fa-heart"></i><span>{{ _('Wishlist') }}</span>
-      </a>
-    </li>
-    <li>
-      <a href="/quotes" class="{{ 'active' if request.path == '/quotes' else '' }}">
-        <i class="fas fa-quote-left"></i><span>{{ _('Favorite Quotes') }}</span>
-      </a>
-    </li>
-    <li>
-      <a href="/series" class="{{ 'active' if request.path.startswith('/series') else '' }}">
-        <i class="fas fa-layer-group"></i><span>{{ _('Series') }}</span>
-      </a>
-    </li>
-    <li>
-      <a href="/shelves" class="{{ 'active' if request.path.startswith('/shelves') else '' }}">
-        <i class="fas fa-bookmark"></i><span>{{ _('My Shelves') }}</span>
-      </a>
-    </li>
-    <li>
-      <a href="/statistics" class="{{ 'active' if request.path == '/statistics' else '' }}">
-        <i class="fas fa-chart-bar"></i><span>{{ _('Statistics') }}</span>
-      </a>
-    </li>
-    <li>
-      <a href="/settings" class="{{ 'active' if request.path == '/settings' else '' }}">
-        <i class="fas fa-cog"></i><span>{{ _('Settings') }}</span>
-      </a>
-    </li>
+      <li>
+        <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.path == '/dashboard' else '' }}">
+          <i class="fas fa-home"></i><span>{{ _('Dashboard') }}</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('books') }}" class="{{ 'active' if request.path.startswith('/books') else '' }}">
+          <i class="fas fa-book"></i><span>{{ _('Meine Bücher') }}</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('wishlist') }}" class="{{ 'active' if request.path == '/wishlist' else '' }}">
+          <i class="fas fa-heart"></i><span>{{ _('Wunschliste') }}</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('statistics') }}" class="{{ 'active' if request.path == '/statistics' else '' }}">
+          <i class="fas fa-chart-bar"></i><span>{{ _('Statistiken') }}</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('shelves') }}" class="{{ 'active' if request.path.startswith('/shelves') else '' }}">
+          <i class="fas fa-bookmark"></i><span>{{ _('Meine Regale') }}</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('series_list') }}" class="{{ 'active' if request.path.startswith('/series') else '' }}">
+          <i class="fas fa-layer-group"></i><span>{{ _('Serien') }}</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('quotes') }}" class="{{ 'active' if request.path == '/quotes' else '' }}">
+          <i class="fas fa-quote-left"></i><span>{{ _('Lieblingszitate') }}</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('community') }}" class="{{ 'active' if request.path == '/community' else '' }}">
+          <i class="fas fa-globe"></i><span>{{ _('Community') }}</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('buddies') }}" class="{{ 'active' if request.path.startswith('/buddies') else '' }}">
+          <i class="fas fa-people-group"></i><span>{{ _('Buddies') }}</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('chat_overview') }}" class="{{ 'active' if request.path.startswith('/chat') else '' }}">
+          <i class="fas fa-comments"></i><span>{{ _('Chat') }}</span>
+        </a>
+      </li>
+      {% if current_username %}
+      <li>
+        <a href="/profile/{{ current_username }}" class="{{ 'active' if request.path == '/profile/' + current_username else '' }}">
+          <i class="fas fa-user-circle"></i><span>{{ _('Mein Profil') }}</span>
+        </a>
+      </li>
+      {% endif %}
+      <li>
+        <a href="{{ url_for('settings') }}" class="{{ 'active' if request.path == '/settings' else '' }}">
+          <i class="fas fa-cog"></i><span>{{ _('Einstellungen') }}</span>
+        </a>
+      </li>
+      {% if is_admin %}
+      <li>
+        <a href="{{ url_for('admin_panel') }}" class="{{ 'active' if request.path.startswith('/admin') else '' }}"
+           style="color:#ef4444 !important;">
+          <i class="fas fa-shield-halved"></i><span>{{ _('Admin') }}</span>
+        </a>
+      </li>
+      {% endif %}
   </ul>
 
   {% if show_streak and streak and streak > 0 %}
@@ -111,8 +152,17 @@
   {% endif %}
 
   <div class="sidebar-footer">
-    <a href="/logout" class="logout-btn">
-      <i class="fas fa-sign-out-alt"></i><span>{{ _('Log out') }}</span>
+    {% if current_username %}
+    <a href="/profile/{{ current_username }}"
+       style="padding:6px 8px;color:var(--text-muted);font-size:.78rem;display:flex;align-items:center;gap:6px;text-decoration:none;border-radius:8px;transition:background .15s;"
+       onmouseover="this.style.background='rgba(59,130,246,.1)'" onmouseout="this.style.background='transparent'">
+      <i class="fas fa-circle-user" style="color:#3b82f6"></i>
+      <span style="color:#94a3b8;">{{ current_username }}</span>
+      <i class="fas fa-arrow-up-right-from-square" style="font-size:.6rem;color:#475569;margin-left:auto;"></i>
+    </a>
+    {% endif %}
+    <a href="{{ url_for('logout') }}" class="logout-btn">
+      <i class="fas fa-right-from-bracket"></i><span>{{ _('Log out') }}</span>
     </a>
     <a href="https://github.com/TheMRX13/ReadingDiary" target="_blank" rel="noopener"
        style="display:flex;align-items:center;gap:6px;font-size:.75rem;color:var(--text-muted);text-decoration:none;padding:6px 8px;margin-top:4px;border-radius:8px;opacity:.7" 
@@ -129,7 +179,8 @@
       <i class="fas fa-bars"></i>
     </button>
     <h1 class="topbar-title">{% block page_title %}{% endblock %}</h1>
-    <div class="topbar-actions">
+    <div class="topbar-actions" style="display:flex;align-items:center;gap:.5rem;">
+      {% include '_lang_switch.html' %}
       <button class="theme-toggle btn btn-sm" onclick="toggleTheme()" title="{{ _('Toggle theme') }}">
         <i class="fas {{ 'fa-sun' if dark_mode else 'fa-moon' }}"></i>
       </button>
@@ -138,6 +189,27 @@
 
   <main class="content">
     {% block content %}{% endblock %}
+
+    <!-- ── Werbe-Banner (nur in Einstellungen oder global in Sidebar-Footer-Bereich) ── -->
+    {% if active_ads and request.path == '/settings' %}
+    <div style="margin-top:2rem;">
+      {% for ad in active_ads %}
+      <div style="background:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid #334155;border-radius:12px;padding:1rem 1.25rem;display:flex;align-items:center;gap:1rem;margin-bottom:.75rem;">
+        {% if ad.logo_url %}
+        <img src="{{ ad.logo_url }}" alt="Logo" style="width:56px;height:56px;object-fit:contain;border-radius:8px;background:#0f172a;padding:4px;flex-shrink:0;">
+        {% endif %}
+        <div style="flex:1;min-width:0;">
+          {% if ad.title %}
+          <div style="font-weight:700;color:#f1f5f9;font-size:1rem;line-height:1.2;">{{ ad.title }}</div>
+          {% endif %}
+          {% if ad.body_text %}
+          <div style="color:#94a3b8;font-size:.87rem;margin-top:.2rem;">{{ ad.body_text }}</div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
   </main>
 </div>
 

@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block title %}Support-Tickets – Admin{% endblock %}
+{% block page_title %}Support{% endblock %}
+{% block content %}
+
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+  <div>
+    <h5 style="color:#f1f5f9;margin:0;font-weight:700;"><i class="fas fa-headset me-2" style="color:#3b82f6;"></i>Support-Tickets</h5>
+    <p style="color:#64748b;font-size:.82rem;margin:.2rem 0 0;">Alle eingehenden Nutzer-Tickets</p>
+  </div>
+  <a href="{{ url_for('admin_panel') }}"
+     style="background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:8px;padding:.4rem .9rem;text-decoration:none;font-size:.82rem;">
+    <i class="fas fa-chevron-left me-1"></i>Admin-Panel
+  </a>
+</div>
+
+<!-- Filter-Tabs -->
+<div style="display:flex;gap:.4rem;margin-bottom:1rem;flex-wrap:wrap;">
+  {% for status_key, label, color in [('all','Alle','#94a3b8'),('open','Offen','#60a5fa'),('answered','Beantwortet','#4ade80'),('closed','Geschlossen','#64748b')] %}
+  <button onclick="filterTickets('{{ status_key }}')" id="tab-{{ status_key }}"
+    style="background:{{ 'rgba(59,130,246,.15)' if status_key=='all' else '#0f172a' }};
+           color:{{ color }};border:1px solid {{ 'rgba(59,130,246,.35)' if status_key=='all' else '#1e293b' }};
+           border-radius:7px;padding:.3rem .8rem;font-size:.8rem;font-weight:600;cursor:pointer;"
+    class="filter-tab">
+    {{ label }}
+  </button>
+  {% endfor %}
+</div>
+
+{% if tickets %}
+<div id="tickets-list">
+  {% for t in tickets %}
+  <a href="/admin/support/{{ t.id }}" class="ticket-row" data-status="{{ t.status }}"
+     style="background:#1e293b;border-radius:11px;padding:.9rem 1.1rem;margin-bottom:.5rem;display:flex;
+            align-items:center;gap:1rem;text-decoration:none;transition:background .15s;
+            border:1px solid {{ 'rgba(59,130,246,.25)' if t.status=='open' else 'rgba(34,197,94,.15)' if t.status=='answered' else 'rgba(100,116,139,.1)' }};">
+
+    <!-- Icon -->
+    <div style="flex-shrink:0;width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+         background:{{ 'rgba(59,130,246,.15)' if t.category=='bug' else 'rgba(245,158,11,.15)' if t.category=='feature' else 'rgba(168,85,247,.15)' if t.category=='question' else 'rgba(100,116,139,.15)' }};">
+      <i class="fas {{ 'fa-bug' if t.category=='bug' else 'fa-lightbulb' if t.category=='feature' else 'fa-circle-question' if t.category=='question' else 'fa-comments' }}"
+         style="color:{{ '#60a5fa' if t.category=='bug' else '#f59e0b' if t.category=='feature' else '#a855f7' if t.category=='question' else '#94a3b8' }};font-size:.9rem;"></i>
+    </div>
+
+    <!-- Content -->
+    <div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.15rem;">
+        <span style="color:#f1f5f9;font-weight:600;font-size:.9rem;">{{ t.subject }}</span>
+        {% if t.unread_user %}
+        <span style="background:#ef4444;color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .45rem;border-radius:999px;">
+          {{ t.unread_user }} neu
+        </span>
+        {% endif %}
+      </div>
+      <div style="color:#64748b;font-size:.76rem;">
+        <i class="fas fa-user me-1" style="color:#475569;"></i>{{ t.username }}
+        &middot; {{ t.created_at[:16] }}
+        &middot; {{ t.reply_count }} Antworten
+      </div>
+    </div>
+
+    <!-- Status Badge -->
+    <div style="flex-shrink:0;">
+      <span style="font-size:.7rem;font-weight:700;padding:.15rem .55rem;border-radius:5px;
+            background:{{ 'rgba(59,130,246,.15)' if t.status=='open' else 'rgba(34,197,94,.15)' if t.status=='answered' else 'rgba(100,116,139,.15)' }};
+            color:{{ '#60a5fa' if t.status=='open' else '#4ade80' if t.status=='answered' else '#94a3b8' }};">
+        {{ 'Offen' if t.status=='open' else 'Beantwortet' if t.status=='answered' else 'Geschlossen' }}
+      </span>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div style="text-align:center;padding:3rem;color:#4b5563;">
+  <i class="fas fa-inbox" style="font-size:2.5rem;display:block;margin-bottom:.75rem;opacity:.5;"></i>
+  Keine Tickets vorhanden.
+</div>
+{% endif %}
+
+<script>
+let activeFilter = 'all';
+function filterTickets(status) {
+  activeFilter = status;
+  document.querySelectorAll('.filter-tab').forEach(b => {
+    const isActive = b.id === 'tab-' + status;
+    b.style.background = isActive ? 'rgba(59,130,246,.15)' : '#0f172a';
+    b.style.borderColor = isActive ? 'rgba(59,130,246,.35)' : '#1e293b';
+  });
+  document.querySelectorAll('.ticket-row').forEach(row => {
+    row.style.display = (status === 'all' || row.dataset.status === status) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

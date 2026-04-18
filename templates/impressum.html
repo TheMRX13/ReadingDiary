@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="de" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ _('Impressum') }} – Reading Diary</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    body {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .legal-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: rgba(30,41,59,.95);
+      border: 1px solid rgba(59,130,246,.2);
+      border-radius: 15px;
+      padding: 40px;
+      box-shadow: 0 20px 50px rgba(0,0,0,.3);
+    }
+    .legal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+    .legal-header h1 {
+      color: #fff;
+      font-weight: 700;
+      font-size: 2rem;
+      margin: 0;
+    }
+    .legal-content h2 {
+      color: #60a5fa;
+      font-size: 1.2rem;
+      margin-top: 25px;
+      margin-bottom: 15px;
+      font-weight: 600;
+    }
+    .legal-content h3 {
+      color: #94a3b8;
+      font-size: 1rem;
+      margin-top: 15px;
+      margin-bottom: 10px;
+    }
+    .legal-content {
+      color: #cbd5e1;
+      line-height: 1.8;
+      font-size: .95rem;
+    }
+    .legal-content p {
+      margin-bottom: 12px;
+    }
+    .legal-content ul, .legal-content ol {
+      margin-left: 20px;
+      margin-bottom: 12px;
+    }
+    .legal-content li {
+      margin-bottom: 8px;
+    }
+    .legal-content a {
+      color: #3b82f6;
+      text-decoration: none;
+    }
+    .legal-content a:hover {
+      text-decoration: underline;
+    }
+    .lang-buttons {
+      display: flex;
+      gap: 10px;
+    }
+    .lang-btn {
+      background: rgba(59,130,246,.2);
+      border: 1px solid rgba(59,130,246,.5);
+      color: #94a3b8;
+      padding: 8px 16px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: .85rem;
+      transition: all .2s;
+    }
+    .lang-btn:hover {
+      background: rgba(59,130,246,.3);
+      color: #e2e8f0;
+    }
+    .back-link {
+      margin-top: 30px;
+      text-align: center;
+    }
+    .back-link a {
+      color: #3b82f6;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .footer-link {
+      text-align: center;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(59,130,246,.2);
+    }
+    .footer-link a {
+      color: #94a3b8;
+      text-decoration: none;
+      margin: 0 15px;
+      font-size: .9rem;
+    }
+  </style>
+</head>
+<body>
+<div class="legal-container">
+  <div class="legal-header">
+    <h1><i class="fas fa-balance-scale me-2" style="color:#3b82f6"></i>{{ _('Impressum') }}</h1>
+    <div class="lang-buttons">
+      <a href="/set-lang/de" class="lang-btn">🇩🇪 DE</a>
+      <a href="/set-lang/en" class="lang-btn">🇬🇧 EN</a>
+    </div>
+  </div>
+
+  <div class="legal-content">
+    <h2>{{ _('Verantwortlicher') }}</h2>
+    <p><strong>{{ _('Name:') }}</strong> Pascal Keller</p>
+    <p><strong>{{ _('E-Mail:') }}</strong> <a href="mailto:support@softarchiv.com">support@softarchiv.com</a></p>
+
+    <h2>{{ _('Über diese Website') }}</h2>
+    <p>{{ _('Reading Diary ist eine private Website für persönliche Leseverwaltung. Sie ist nicht öffentlich verfügbar und nur für registrierte Benutzer zugänglich.') }}</p>
+
+    <h2>{{ _('Rechtliche Grundlagen') }}</h2>
+    <p>{{ _('Da diese Website nur einem geschlossenen Benutzerkreis zugänglich ist und keine gewerbliche Tätigkeit ausgeübt wird, gelten vereinfachte gesetzliche Bestimmungen.') }}</p>
+
+    <h3>{{ _('Anwendbare Gesetze:') }}</h3>
+    <ul>
+      <li>{{ _('DSGVO (Datenschutz-Grundverordnung)') }}</li>
+      <li>{{ _('Österreichisches Datenschutzgesetz (DSG)') }}</li>
+      <li>{{ _('Urheberrechtsgesetz (UrhG)') }}</li>
+    </ul>
+
+    <h2>{{ _('Haftung für Inhalte') }}</h2>
+    <p>{{ _('Wir bemühen uns, aktuelle und korrekte Inhalte bereitzustellen. Wir können jedoch keine Haftung für die Korrektheit oder Vollständigkeit aller Inhalte übernehmen.') }}</p>
+
+    <h2>{{ _('Datenschutz') }}</h2>
+    <p><a href="{{ url_for('datenschutz') }}">{{ _('Unsere Datenschutzerklärung') }}</a> {{ _('gibt weitere Informationen zur Verarbeitung personenbezogener Daten.') }}</p>
+
+    <h2>{{ _('Kontakt & Support') }}</h2>
+    <p>{{ _('Für Fragen, Anliegen oder Feedback erreichst du uns unter:') }}</p>
+    <p><a href="mailto:support@softarchiv.com">support@softarchiv.com</a></p>
+
+    <div class="back-link">
+      <a href="{{ url_for('login') }}"><i class="fas fa-arrow-left me-2"></i>{{ _('Zurück zum Login') }}</a>
+    </div>
+
+    <div class="footer-link">
+      <a href="{{ url_for('impressum') }}">{{ _('Impressum') }}</a>
+      <span style="color:#4b5563;">·</span>
+      <a href="{{ url_for('datenschutz') }}">{{ _('Datenschutz') }}</a>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

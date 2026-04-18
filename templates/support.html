@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% block title %}{{ _('Support') }} – Reading Diary{% endblock %}
+{% block page_title %}{{ _('Support') }}{% endblock %}
+{% block content %}
+<style>
+  .ticket-card{background:#1e293b;border-radius:12px;padding:1.1rem 1.25rem;margin-bottom:.6rem;display:flex;align-items:center;gap:1rem;text-decoration:none;transition:background .15s;border:1px solid transparent;}
+  .ticket-card:hover{background:#1e3a5f;border-color:rgba(59,130,246,.2);}
+  .ticket-badge{font-size:.7rem;font-weight:700;padding:.15rem .55rem;border-radius:5px;}
+  .status-open{background:rgba(59,130,246,.15);color:#60a5fa;}
+  .status-answered{background:rgba(34,197,94,.15);color:#4ade80;}
+  .status-closed{background:rgba(100,116,139,.15);color:#94a3b8;}
+  .cat-badge{font-size:.68rem;padding:.1rem .5rem;border-radius:4px;background:#0f172a;color:#64748b;}
+</style>
+
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+  <p style="color:#94a3b8;margin:0;">{{ _('Hier kannst du Bugs melden oder Fragen stellen.') }}</p>
+  <button onclick="document.getElementById('new-ticket-modal').style.display='flex'"
+    style="background:#3b82f6;color:#fff;border:none;border-radius:9px;padding:.55rem 1.2rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:.4rem;">
+    <i class="fas fa-bug"></i> {{ _('Neues Ticket') }}
+  </button>
+</div>
+
+{% if tickets %}
+  {% for t in tickets %}
+  <a href="/support/{{ t.id }}" class="ticket-card" style="color:inherit;">
+    <div style="flex-shrink:0;width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+      background:{{ 'rgba(59,130,246,.15)' if t.category=='bug' else 'rgba(245,158,11,.15)' if t.category=='feature' else 'rgba(168,85,247,.15)' }};">
+      <i class="fas {{ 'fa-bug' if t.category=='bug' else 'fa-lightbulb' if t.category=='feature' else 'fa-circle-question' }}"
+         style="color:{{ '#60a5fa' if t.category=='bug' else '#f59e0b' if t.category=='feature' else '#a855f7' }};font-size:.95rem;"></i>
+    </div>
+    <div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+        <span style="color:#f1f5f9;font-weight:600;font-size:.92rem;">{{ t.subject }}</span>
+        {% if t.unread_replies %}
+        <span style="background:#ef4444;color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .45rem;border-radius:999px;">
+          {{ t.unread_replies }} {{ _('neu') }}
+        </span>
+        {% endif %}
+      </div>
+      <div style="color:#64748b;font-size:.78rem;margin-top:.15rem;">
+        {{ t.created_at[:16] }} &middot; {{ t.reply_count }} {{ _('Antworten') }}
+      </div>
+    </div>
+    <div>
+      <span class="ticket-badge status-{{ t.status }}">
+        {{ _('Offen') if t.status=='open' else _('Beantwortet') if t.status=='answered' else _('Geschlossen') }}
+      </span>
+    </div>
+  </a>
+  {% endfor %}
+{% else %}
+  <div style="text-align:center;padding:3rem;color:#4b5563;">
+    <i class="fas fa-ticket" style="font-size:2.5rem;display:block;margin-bottom:.75rem;"></i>
+    {{ _('Noch keine Tickets. Erstelle dein erstes!') }}
+  </div>
+{% endif %}
+
+<!-- Neues Ticket Modal -->
+<div id="new-ticket-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;padding:1rem;">
+  <div style="background:#1e293b;border-radius:16px;padding:1.75rem;width:100%;max-width:520px;box-shadow:0 16px 48px rgba(0,0,0,.5);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+      <h5 style="color:#f1f5f9;margin:0;"><i class="fas fa-bug me-2" style="color:#3b82f6;"></i>{{ _('Neues Ticket') }}</h5>
+      <button onclick="document.getElementById('new-ticket-modal').style.display='none'"
+        style="background:none;border:none;color:#64748b;font-size:1.2rem;cursor:pointer;">&times;</button>
+    </div>
+    <div style="margin-bottom:.75rem;">
+      <label style="color:#94a3b8;font-size:.8rem;font-weight:600;display:block;margin-bottom:.3rem;">{{ _('Kategorie') }}</label>
+      <select id="t-category" style="width:100%;background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:8px;padding:.5rem .75rem;">
+        <option value="bug">🐛 {{ _('Bug / Fehler') }}</option>
+        <option value="question">❓ {{ _('Frage') }}</option>
+        <option value="feature">💡 {{ _('Funktionswunsch') }}</option>
+        <option value="general">💬 {{ _('Allgemein') }}</option>
+      </select>
+    </div>
+    <div style="margin-bottom:.75rem;">
+      <label style="color:#94a3b8;font-size:.8rem;font-weight:600;display:block;margin-bottom:.3rem;">{{ _('Betreff') }}</label>
+      <input type="text" id="t-subject" maxlength="120"
+        placeholder="{{ _('Kurze Beschreibung…') }}"
+        style="width:100%;background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:8px;padding:.5rem .75rem;">
+    </div>
+    <div style="margin-bottom:1rem;">
+      <label style="color:#94a3b8;font-size:.8rem;font-weight:600;display:block;margin-bottom:.3rem;">{{ _('Nachricht') }}</label>
+      <textarea id="t-message" rows="5" maxlength="2000"
+        placeholder="{{ _('Beschreibe das Problem oder deine Frage so genau wie möglich…') }}"
+        style="width:100%;background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:8px;padding:.6rem .75rem;resize:vertical;"></textarea>
+      <div style="text-align:right;color:#475569;font-size:.72rem;margin-top:.2rem;">
+        <span id="t-chars">0</span>/2000
+      </div>
+    </div>
+    <div style="display:flex;gap:.6rem;justify-content:flex-end;">
+      <button onclick="document.getElementById('new-ticket-modal').style.display='none'"
+        style="background:#334155;color:#94a3b8;border:none;border-radius:8px;padding:.55rem 1.1rem;cursor:pointer;">{{ _('Abbrechen') }}</button>
+      <button onclick="submitTicket()"
+        style="background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:.55rem 1.3rem;font-weight:700;cursor:pointer;">
+        <i class="fas fa-paper-plane me-1"></i>{{ _('Senden') }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('t-message').addEventListener('input', function(){
+  document.getElementById('t-chars').textContent = this.value.length;
+});
+async function submitTicket() {
+  const subject  = document.getElementById('t-subject').value.trim();
+  const message  = document.getElementById('t-message').value.trim();
+  const category = document.getElementById('t-category').value;
+  if (!subject) { alert('{{ _("Bitte Betreff eingeben") }}'); return; }
+  if (!message)  { alert('{{ _("Bitte Nachricht eingeben") }}'); return; }
+  const res = await fetch('/api/support/ticket', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({subject, message, category})
+  });
+  const d = await res.json();
+  if (d.success) window.location.href = '/support/' + d.ticket_id;
+  else alert(d.error || '{{ _("Fehler") }}');
+}
+</script>
+{% endblock %}

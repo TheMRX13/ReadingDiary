@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div>
+    <h1 class="page-title"><i class="fas fa-people-group me-2" style="color:#3b82f6"></i>Reading Buddies</h1>
+    <p style="color:#94a3b8;margin-top:.25rem;">Gemeinsam lesen macht mehr Spass</p>
+  </div>
+  <button class="btn-save" onclick="document.getElementById('invite-modal').style.display='flex'">
+    <i class="fas fa-plus me-2"></i>Buddy-Read starten
+  </button>
+</div>
+
+<!-- Ausstehende Einladungen -->
+{% if pending_in %}
+<div class="card mb-4" style="background:#1e293b;border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:1.25rem;">
+  <h6 style="color:#f59e0b;margin-bottom:1rem;"><i class="fas fa-envelope me-2"></i>Einladungen ({{ pending_in|length }})</h6>
+  {% for inv in pending_in %}
+  <div class="d-flex align-items-center justify-content-between gap-2 mb-2 p-2" style="background:#0f172a;border-radius:8px;">
+    <div>
+      <span style="color:#f1f5f9;font-weight:600;">{{ inv.initiator_name }}</span>
+      <span style="color:#94a3b8;"> ladet dich ein fuer </span>
+      <span style="color:#3b82f6;">{{ inv.book_title }}</span>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm" style="background:#14532d;color:#4ade80;border:none;" onclick="respondBuddy({{ inv.id }},'accept')"><i class="fas fa-check"></i> Annehmen</button>
+      <button class="btn btn-sm" style="background:#7f1d1d;color:#f87171;border:none;" onclick="respondBuddy({{ inv.id }},'decline')"><i class="fas fa-x"></i> Ablehnen</button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <!-- Aktive Buddy-Reads -->
+  <div class="col-12 col-lg-8">
+    <div class="card" style="background:#1e293b;border:none;border-radius:12px;padding:1.25rem;">
+      <h6 style="color:#f1f5f9;margin-bottom:1rem;"><i class="fas fa-book-open me-2" style="color:#3b82f6"></i>Aktive Buddy-Reads</h6>
+      {% if active_reads %}
+        {% for br in active_reads %}
+        <a href="/buddies/read/{{ br.id }}" style="text-decoration:none;">
+          <div class="d-flex align-items-center gap-3 p-3 mb-2" style="background:#0f172a;border-radius:10px;transition:background .2s;" onmouseover="this.style.background='#1e3a5f'" onmouseout="this.style.background='#0f172a'">
+            {% if br.book_cover %}<img src="{{ br.book_cover }}" style="width:40px;height:56px;object-fit:cover;border-radius:4px;" alt="">{% endif %}
+            <div style="flex:1;">
+              <div style="color:#f1f5f9;font-weight:600;">{{ br.book_title }}</div>
+              <div style="color:#64748b;font-size:.8rem;">mit {{ br.partner_name }}</div>
+              {% if br.total_pages %}
+              <div class="mt-1" style="background:#1e293b;border-radius:4px;height:6px;">
+                <div style="background:#3b82f6;height:6px;border-radius:4px;width:{{ [br.initiator_page*100//br.total_pages,100]|min if br.initiator_page else 0 }}%;"></div>
+              </div>
+              {% endif %}
+            </div>
+            <i class="fas fa-chevron-right" style="color:#334155;"></i>
+          </div>
+        </a>
+        {% endfor %}
+      {% else %}
+        <p style="color:#4b5563;text-align:center;padding:1.5rem 0;">Noch keine aktiven Buddy-Reads. Lade jemanden ein!</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Ausstehende Einladungen die ich gesendet habe -->
+  {% if pending_out %}
+  <div class="col-12">
+    <div class="card mb-0" style="background:#1e293b;border:1px solid rgba(99,102,241,.3);border-radius:12px;padding:1.25rem;">
+      <h6 style="color:#818cf8;margin-bottom:1rem;"><i class="fas fa-paper-plane me-2"></i>Gesendete Einladungen ({{ pending_out|length }})</h6>
+      {% for inv in pending_out %}
+      <div class="d-flex align-items-center justify-content-between gap-2 mb-2 p-2" style="background:#0f172a;border-radius:8px;">
+        <div>
+          <span style="color:#94a3b8;font-size:.85rem;">An </span>
+          <span style="color:#f1f5f9;font-weight:600;">{{ inv.partner_name }}</span>
+          <span style="color:#94a3b8;"> – </span>
+          <span style="color:#3b82f6;">{{ inv.book_title }}</span>
+        </div>
+        <button class="btn btn-sm" style="background:#7f1d1d;color:#f87171;border:none;font-size:.75rem;" onclick="cancelInvite({{ inv.id }})"><i class="fas fa-times me-1"></i>Zurückziehen</button>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Folge-Beziehungen -->
+  <div class="col-12 col-lg-4">
+    <div class="card mb-3" style="background:#1e293b;border:none;border-radius:12px;padding:1.25rem;">
+      <h6 style="color:#f1f5f9;margin-bottom:1rem;"><i class="fas fa-user-check me-2" style="color:#22c55e"></i>Ich folge ({{ following|length }})</h6>
+      {% for u in following %}
+      <div class="d-flex align-items-center justify-content-between mb-1">
+        <a href="/profile/{{ u.username }}" style="color:#94a3b8;text-decoration:none;font-size:.88rem;">{{ u.username }}</a>
+        <button class="btn btn-sm" style="background:#7f1d1d;color:#f87171;border:none;font-size:.72rem;" onclick="toggleFollow({{ u.id }}, this)">Entfolgen</button>
+      </div>
+      {% else %}<p style="color:#4b5563;font-size:.82rem;">Noch niemandem gefolgt.</p>{% endfor %}
+    </div>
+    <div class="card" style="background:#1e293b;border:none;border-radius:12px;padding:1.25rem;">
+      <h6 style="color:#f1f5f9;margin-bottom:1rem;"><i class="fas fa-users me-2" style="color:#a78bfa"></i>Follower ({{ followers|length }})</h6>
+      {% for u in followers %}
+      <div style="color:#94a3b8;font-size:.88rem;margin-bottom:.3rem;">{{ u.username }}</div>
+      {% else %}<p style="color:#4b5563;font-size:.82rem;">Noch keine Follower.</p>{% endfor %}
+    </div>
+  </div>
+
+  <!-- Abgeschlossene Buddy-Reads -->
+  {% if finished_reads %}
+  <div class="col-12">
+    <div class="card" style="background:#1e293b;border:none;border-radius:12px;padding:1.25rem;">
+      <h6 style="color:#f1f5f9;margin-bottom:1rem;"><i class="fas fa-flag-checkered me-2" style="color:#22c55e"></i>Abgeschlossene Reads</h6>
+      <div class="d-flex flex-column gap-2">
+        {% for br in finished_reads %}
+        <div class="d-flex align-items-center gap-3 p-2" style="background:#0f172a;border-radius:8px;opacity:{{ '1' if br.status=='finished' else '0.6' }};">
+          {% if br.book_cover %}<img src="{{ br.book_cover }}" style="width:32px;height:46px;object-fit:cover;border-radius:4px;" alt="">{% endif %}
+          <div style="flex:1;">
+            <div style="color:#f1f5f9;font-weight:600;font-size:.88rem;">{{ br.book_title }}</div>
+            <div style="color:#64748b;font-size:.78rem;">mit {{ br.partner_name }}</div>
+          </div>
+          {% if br.status == 'finished' %}
+          <span style="background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);border-radius:6px;padding:.15rem .5rem;font-size:.72rem;font-weight:700;">✓ Fertig</span>
+          <a href="/buddies/read/{{ br.id }}" style="color:#64748b;font-size:.78rem;text-decoration:none;"><i class="fas fa-eye"></i></a>
+          {% else %}
+          <span style="background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2);border-radius:6px;padding:.15rem .5rem;font-size:.72rem;font-weight:700;">Abgebrochen</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Buddy-Vorschläge -->
+  {% if suggestions %}
+  <div class="col-12">
+    <div class="card" style="background:#1e293b;border:1px solid rgba(59,130,246,.2);border-radius:12px;padding:1.25rem;">
+      <h6 style="color:#f1f5f9;margin-bottom:1rem;"><i class="fas fa-lightbulb me-2" style="color:#f59e0b"></i>Buddy-Vorschlaege</h6>
+      <div class="d-flex gap-2 flex-wrap">
+        {% for s in suggestions %}
+        <div style="background:#0f172a;border-radius:10px;padding:.75rem 1rem;">
+          <div style="color:#f1f5f9;font-weight:600;font-size:.88rem;">{{ s.username }}</div>
+          <div style="color:#64748b;font-size:.75rem;">moechte auch: {{ s.common_book[:30] }}</div>
+          <button class="btn btn-sm mt-1" style="background:#1e3a5f;color:#60a5fa;border:none;font-size:.72rem;" onclick="toggleFollow({{ s.id }}, this)">
+            <i class="fas fa-user-plus me-1"></i>Folgen
+          </button>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Invite Modal -->
+<div id="invite-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1050;align-items:center;justify-content:center;">
+  <div style="background:#1e293b;border-radius:16px;padding:2rem;max-width:460px;width:90%;box-shadow:0 24px 48px rgba(0,0,0,.5);">
+    <h5 style="color:#f1f5f9;margin-bottom:1.25rem;"><i class="fas fa-book-open me-2" style="color:#3b82f6"></i>Buddy-Read starten</h5>
+    <div class="mb-3">
+      <label style="color:#cbd5e1;font-size:.82rem;font-weight:600;">BUDDY (USERNAME SUCHEN)</label>
+      <input type="text" id="buddy-search" placeholder="Username eingeben..." oninput="searchBuddies(this.value)"
+             style="width:100%;background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:8px;padding:.6rem 1rem;font-size:.9rem;margin-top:.3rem;">
+      <div id="buddy-results" style="background:#0f172a;border:1px solid #334155;border-radius:8px;margin-top:.25rem;display:none;"></div>
+      <input type="hidden" id="selected-partner-id">
+      <div id="selected-partner-name" style="color:#3b82f6;font-size:.82rem;margin-top:.3rem;"></div>
+    </div>
+    <div class="mb-3">
+      <label style="color:#cbd5e1;font-size:.82rem;font-weight:600;">BUCH</label>
+      <input type="text" id="invite-book" placeholder="Buchtitel..."
+             style="width:100%;background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:8px;padding:.6rem 1rem;font-size:.9rem;margin-top:.3rem;">
+    </div>
+    <div class="mb-3">
+      <label style="color:#cbd5e1;font-size:.82rem;font-weight:600;">SEITENANZAHL (OPTIONAL)</label>
+      <input type="number" id="invite-pages" placeholder="z.B. 420" min="0"
+             style="width:100%;background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:8px;padding:.6rem 1rem;font-size:.9rem;margin-top:.3rem;">
+    </div>
+    <div class="d-flex gap-2 justify-content-end">
+      <button onclick="document.getElementById('invite-modal').style.display='none'" style="background:#334155;color:#94a3b8;border:none;border-radius:8px;padding:.6rem 1.2rem;cursor:pointer;">Abbrechen</button>
+      <button onclick="sendInvite()" style="background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:.6rem 1.2rem;font-weight:600;cursor:pointer;"><i class="fas fa-paper-plane me-1"></i>Einladen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+async function toggleFollow(uid, btn) {
+  const res = await fetch(`/api/buddies/follow/${uid}`, { method: 'POST' });
+  const d = await res.json();
+  if (d.success) location.reload();
+}
+
+async function respondBuddy(readId, action) {
+  const res = await fetch(`/api/buddies/respond/${readId}`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ action })
+  });
+  const d = await res.json();
+  if (d.success) location.reload();
+  else alert('Fehler: ' + d.error);
+}
+
+let _searchTimeout;
+function searchBuddies(q) {
+  clearTimeout(_searchTimeout);
+  if (q.length < 2) { document.getElementById('buddy-results').style.display='none'; return; }
+  _searchTimeout = setTimeout(async () => {
+    const res = await fetch(`/api/buddies/search-users?q=${encodeURIComponent(q)}`);
+    const users = await res.json();
+    const el = document.getElementById('buddy-results');
+    if (!users.length) { el.style.display='none'; return; }
+    el.innerHTML = users.map(u => `<div onclick="selectPartner(${u.id},'${u.username}')" style="padding:.5rem 1rem;color:#f1f5f9;cursor:pointer;font-size:.9rem;" onmouseover="this.style.background='#1e3a5f'" onmouseout="this.style.background=''">${u.username}</div>`).join('');
+    el.style.display='';
+  }, 300);
+}
+
+function selectPartner(id, name) {
+  document.getElementById('selected-partner-id').value = id;
+  document.getElementById('selected-partner-name').textContent = '✓ ' + name + ' ausgewaehlt';
+  document.getElementById('buddy-search').value = name;
+  document.getElementById('buddy-results').style.display = 'none';
+}
+
+async function cancelInvite(readId) {
+  if (!confirm('Einladung zurückziehen?')) return;
+  const res = await fetch(`/api/buddies/read/${readId}/cancel`, { method: 'POST' });
+  const d = await res.json();
+  if (d.success) location.reload();
+  else alert('Fehler: ' + d.error);
+}
+
+async function abandonRead(readId) {
+  if (!confirm('Buddy-Read wirklich abbrechen? Dies kann nicht rückgängig gemacht werden.')) return;
+  const res = await fetch(`/api/buddies/read/${readId}/abandon`, { method: 'POST' });
+  const d = await res.json();
+  if (d.success) location.reload();
+  else alert('Fehler: ' + d.error);
+}
+
+async function sendInvite() {
+  const partner_id = parseInt(document.getElementById('selected-partner-id').value);
+  const book_title = document.getElementById('invite-book').value.trim();
+  const total_pages = parseInt(document.getElementById('invite-pages').value) || 0;
+  if (!partner_id || !book_title) { alert('Bitte Buddy und Buch auswaehlen'); return; }
+  const res = await fetch('/api/buddies/invite', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ partner_id, book_title, total_pages })
+  });
+  const d = await res.json();
+  if (d.success) { alert('Einladung gesendet!'); location.reload(); }
+  else alert('Fehler: ' + d.error);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registrieren – Reading Diary</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    body {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .register-card {
+      background: #1e293b; border-radius: 20px; padding: 2.5rem;
+      width: 100%; max-width: 460px; box-shadow: 0 24px 48px rgba(0,0,0,.5);
+    }
+    .register-card h1 { color: #f1f5f9; font-size: 1.7rem; font-weight: 700; margin-bottom: .25rem; }
+    .register-card p.subtitle { color: #94a3b8; font-size: .9rem; margin-bottom: 1.5rem; }
+    .form-label { color: #cbd5e1; font-size: .85rem; font-weight: 600; }
+    .form-control {
+      background: #0f172a; border: 1px solid #334155; color: #f1f5f9;
+      border-radius: 8px; padding: .65rem 1rem; font-size: .95rem;
+    }
+    .form-control:focus { background: #0f172a; border-color: #3b82f6; color: #f1f5f9; box-shadow: 0 0 0 3px rgba(59,130,246,.2); }
+    .btn-register {
+      background: #3b82f6; color: #fff; border: none; width: 100%;
+      padding: .75rem; border-radius: 8px; font-weight: 600; font-size: 1rem;
+      transition: background .2s;
+    }
+    .btn-register:hover { background: #2563eb; color: #fff; }
+    .pw-requirements { background: #0f172a; border-radius: 8px; padding: 1rem; margin-top: .5rem; }
+    .pw-requirements li { color: #64748b; font-size: .82rem; list-style: none; padding: .1rem 0; }
+    .pw-requirements li.ok { color: #22c55e; }
+    .pw-requirements li i { margin-right: .4rem; width: 14px; }
+    .privacy-check { background-color: #0f172a; border-color: #334155; }
+    .privacy-check:checked { background-color: #3b82f6 !important; border-color: #3b82f6 !important; }
+    .login-link { color: #94a3b8; font-size: .88rem; text-align: center; margin-top: 1.25rem; }
+    .login-link a { color: #3b82f6; text-decoration: none; font-weight: 600; }
+    /* Honeypot – NIEMALS sichtbar für echte User */
+    .hp-field { opacity: 0; position: absolute; top: -9999px; left: -9999px; height: 0; width: 0; }
+  </style>
+</head>
+<body>
+  <div class="register-card">
+    <h1><i class="fas fa-book-open me-2" style="color:#3b82f6"></i>Reading Diary</h1>
+    <p class="subtitle">{{ _('Erstelle deinen Account') }}</p>
+
+    {% if errors %}
+      <div class="alert alert-danger" style="background:#7f1d1d;border:1px solid #ef4444;color:#fca5a5;border-radius:8px;font-size:.9rem;">
+        <ul class="mb-0 ps-3">
+          {% for e in errors %}<li>{{ e }}</li>{% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <form method="POST" action="/register">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <!-- Honeypot -->
+      <div class="hp-field">
+        <input type="text" name="website" tabindex="-1" autocomplete="off">
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">{{ _('Benutzername') }}</label>
+        <input type="text" name="username" class="form-control" placeholder="z.B. leseratte42"
+               pattern="[a-zA-Z0-9_]{3,50}" maxlength="50" required autocomplete="username">
+        <div style="color:#64748b;font-size:.78rem;margin-top:.3rem;">{{ _('3–50 Zeichen, nur Buchstaben, Zahlen und _') }}</div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">{{ _('E-Mail-Adresse') }}</label>
+        <input type="email" name="email" class="form-control" placeholder="deine@email.de"
+               maxlength="255" required autocomplete="email">
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">{{ _('Passwort') }}</label>
+        <input type="password" name="password" id="pw" class="form-control"
+               placeholder="{{ _('Mindestens 10 Zeichen') }}" maxlength="128" required
+               autocomplete="new-password" oninput="checkPw(this.value)">
+        <div class="pw-requirements">
+          <ul id="pw-rules">
+            <li id="r-len"><i class="fas fa-circle-xmark"></i>{{ _('Mindestens 10 Zeichen') }}</li>
+            <li id="r-upper"><i class="fas fa-circle-xmark"></i>{{ _('Mindestens 1 Großbuchstabe') }}</li>
+            <li id="r-lower"><i class="fas fa-circle-xmark"></i>{{ _('Mindestens 1 Kleinbuchstabe') }}</li>
+            <li id="r-special"><i class="fas fa-circle-xmark"></i>{{ _('Mindestens 1 Sonderzeichen (!@#$%% ...)') }}</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">{{ _('Passwort wiederholen') }}</label>
+        <input type="password" name="password2" class="form-control"
+               placeholder="{{ _('Passwort bestätigen') }}" maxlength="128" required
+               autocomplete="new-password">
+      </div>
+
+      <div class="mb-3">
+        <div class="form-check">
+          <input class="form-check-input privacy-check" type="checkbox" name="accept_privacy" id="accept_privacy" required>
+          <label class="form-check-label" for="accept_privacy" style="color:#94a3b8;font-size:.88rem;">
+            {{ _('Ich habe die') }}
+            <a href="{{ url_for('datenschutz') }}" target="_blank" onclick="event.stopPropagation()" style="color:#3b82f6;text-decoration:none;font-weight:600;">{{ _('Datenschutzerklärung') }}</a>
+            {{ _('gelesen und akzeptiere sie.') }}
+          </label>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-register">
+        <i class="fas fa-user-plus me-2"></i>{{ _('Account erstellen') }}
+      </button>
+    </form>
+
+    <div class="login-link">
+      {{ _('Bereits einen Account?') }} <a href="{{ url_for('login') }}">{{ _('Jetzt anmelden') }}</a>
+    </div>
+
+    <!-- Rechtliche Links -->
+    <div style="text-align:center;margin-top:16px;padding-top:12px;border-top:1px solid #334155;font-size:.8rem;">
+      <a href="{{ url_for('impressum') }}" style="color:#94a3b8;text-decoration:none;margin:0 8px;">{{ _('Impressum') }}</a>
+      <span style="color:#4b5563;">·</span>
+      <a href="{{ url_for('datenschutz') }}" style="color:#94a3b8;text-decoration:none;margin:0 8px;">{{ _('Datenschutz') }}</a>
+    </div>
+
+    <!-- Sprachumschalter -->
+    <div style="display:flex;justify-content:center;gap:8px;margin-top:16px;">
+      <a href="/set-lang/de"
+         style="display:flex;align-items:center;gap:5px;font-size:.8rem;text-decoration:none;padding:5px 12px;border-radius:8px;border:1px solid {{ 'rgba(59,130,246,.5)' if session.get('language','de')=='de' else 'rgba(255,255,255,.1)' }};background:{{ 'rgba(59,130,246,.15)' if session.get('language','de')=='de' else 'transparent' }};color:#94a3b8;">
+        🇩🇪 DE
+      </a>
+      <a href="/set-lang/en"
+         style="display:flex;align-items:center;gap:5px;font-size:.8rem;text-decoration:none;padding:5px 12px;border-radius:8px;border:1px solid {{ 'rgba(59,130,246,.5)' if session.get('language')=='en' else 'rgba(255,255,255,.1)' }};background:{{ 'rgba(59,130,246,.15)' if session.get('language')=='en' else 'transparent' }};color:#94a3b8;">
+        🇬🇧 EN
+      </a>
+    </div>
+  </div>
+
+  <script>
+    function checkPw(pw) {
+      const rules = [
+        ['r-len',     pw.length >= 10],
+        ['r-upper',   /[A-Z]/.test(pw)],
+        ['r-lower',   /[a-z]/.test(pw)],
+        ['r-special', /[!@#$%^&*()\-_=+\[\]{}|;:'",.<>?\/~`\\]/.test(pw)],
+      ];
+      rules.forEach(([id, ok]) => {
+        const el = document.getElementById(id);
+        if (ok) {
+          el.classList.add('ok');
+          el.querySelector('i').className = 'fas fa-circle-check';
+        } else {
+          el.classList.remove('ok');
+          el.querySelector('i').className = 'fas fa-circle-xmark';
+        }
+      });
+    }
+  </script>
+</body>
+</html>

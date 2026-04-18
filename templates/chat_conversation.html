@@ -1,0 +1,243 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+  .chat-wrap { display:flex; flex-direction:column; height:calc(100vh - 180px); max-height:700px; }
+  .chat-messages { flex:1; overflow-y:auto; padding:1rem; display:flex; flex-direction:column; gap:.5rem; }
+  .msg-bubble { max-width:72%; padding:.6rem .9rem; border-radius:14px; font-size:.9rem; line-height:1.4; word-break:break-word; }
+  .msg-mine { background:#2563eb; color:#fff; border-radius:14px 14px 4px 14px; align-self:flex-end; }
+  .msg-theirs { background:#1e293b; color:#f1f5f9; border-radius:14px 14px 14px 4px; align-self:flex-start; }
+  .msg-time { font-size:.68rem; opacity:.6; margin-top:.2rem; }
+  .chat-input-bar { background:#1e293b; border-top:1px solid #334155; padding:.75rem; display:flex; gap:.5rem; align-items:flex-end; }
+  .chat-input { flex:1; background:#0f172a; border:1px solid #334155; border-radius:10px; color:#f1f5f9; padding:.6rem 1rem; font-size:.9rem; resize:none; max-height:120px; min-height:40px; outline:none; }
+  .chat-input:focus { border-color:#3b82f6; }
+  .btn-send { background:#3b82f6; color:#fff; border:none; border-radius:10px; padding:.6rem 1rem; cursor:pointer; transition:background .2s; }
+  .btn-send:hover { background:#2563eb; }
+  .emoji-bar { background:#1e293b; border-top:1px solid #0f172a; padding:.4rem .75rem; display:flex; gap:.5rem; flex-wrap:wrap; }
+  .emoji-btn { background:none; border:none; cursor:pointer; font-size:1.2rem; padding:.1rem .2rem; border-radius:4px; transition:background .1s; }
+  .emoji-btn:hover { background:#334155; }
+  .chat-img { max-width:200px; max-height:200px; border-radius:8px; margin-top:.3rem; cursor:pointer; }
+  .report-btn { background:none; border:none; color:#475569; font-size:.7rem; cursor:pointer; padding:.1rem .3rem; border-radius:4px; }
+  .report-btn:hover { color:#ef4444; background:rgba(239,68,68,.1); }
+  #load-more { text-align:center; margin-bottom:.5rem; }
+</style>
+
+<div class="page-header d-flex align-items-center gap-3" style="padding-bottom:.75rem;">
+  <a href="{{ url_for('chat_overview') }}" style="color:#64748b;text-decoration:none;"><i class="fas fa-arrow-left"></i></a>
+  <div style="width:36px;height:36px;background:linear-gradient(135deg,#3b82f6,#818cf8);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.9rem;color:#fff;font-weight:700;">{{ partner.username[0].upper() }}</div>
+  <div>
+    <a href="/profile/{{ partner.username }}" style="color:#f1f5f9;font-weight:700;text-decoration:none;">{{ partner.username }}</a>
+  </div>
+  <div class="ms-auto">
+    <button onclick="openReport('profile', {{ partner.id }})" class="report-btn" title="Melden"><i class="fas fa-flag"></i> Melden</button>
+  </div>
+</div>
+
+<div class="chat-wrap card" style="background:#0f172a;border:none;border-radius:12px;overflow:hidden;">
+  <!-- Ältere laden -->
+  <div id="load-more" style="padding:.5rem;">
+    <button id="load-more-btn" onclick="loadOlder()" style="background:#1e293b;color:#64748b;border:none;border-radius:8px;padding:.35rem .9rem;font-size:.78rem;cursor:pointer;">Ältere Nachrichten laden</button>
+  </div>
+
+  <div class="chat-messages" id="chat-messages">
+    {% for m in msgs %}
+    <div class="d-flex flex-column {{ 'align-items-end' if m.sender_id == uid else 'align-items-start' }}" data-msgid="{{ m.id }}">
+      <div class="msg-bubble {{ 'msg-mine' if m.sender_id == uid else 'msg-theirs' }}">
+        {% if m.image_url %}
+        <img src="{{ m.image_url }}" class="chat-img" onclick="window.open(this.src)" alt="Bild">
+        {% endif %}
+        {% if m.content %}<div>{{ m.content }}</div>{% endif %}
+        <div class="d-flex align-items-center gap-2">
+          <span class="msg-time">{{ m.created_at[:16] }}</span>
+          {% if m.sender_id != uid %}
+          <button onclick="openReport('message', {{ m.id }})" class="report-btn"><i class="fas fa-flag"></i></button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Emoji-Bar -->
+  <div class="emoji-bar">
+    {% for e in ['😄','😂','❤️','👍','👎','😮','😢','🔥','📚','✨','🎉','👏','😅','🙏','💯'] %}
+    <button class="emoji-btn" onclick="insertEmoji('{{ e }}')">{{ e }}</button>
+    {% endfor %}
+  </div>
+
+  <!-- Input-Bar -->
+  <div class="chat-input-bar">
+    <label style="color:#64748b;cursor:pointer;margin:0;" title="Bild senden">
+      <i class="fas fa-image" style="font-size:1.1rem;"></i>
+      <input type="file" id="img-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none;" onchange="sendImage(this)">
+    </label>
+    <textarea class="chat-input" id="msg-input" rows="1" placeholder="Nachricht…"
+              onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendMsg()}"
+              oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+    <button class="btn-send" onclick="sendMsg()"><i class="fas fa-paper-plane"></i></button>
+  </div>
+</div>
+
+<!-- Report Modal -->
+<div id="report-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#1e293b;border-radius:16px;padding:1.5rem;width:100%;max-width:400px;margin:1rem;">
+    <h5 style="color:#f1f5f9;margin-bottom:1rem;"><i class="fas fa-flag me-2" style="color:#ef4444;"></i>Melden</h5>
+    <input type="hidden" id="report-type">
+    <input type="hidden" id="report-target">
+    <select id="report-reason" style="width:100%;background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:8px;padding:.6rem;margin-bottom:.75rem;">
+      <option value="">Grund wählen…</option>
+      <option>Spam</option>
+      <option>Beleidigung / Hassrede</option>
+      <option>Unangemessene Bilder</option>
+      <option>Betrug / Fake</option>
+      <option>Urheberrechtsverletzung</option>
+      <option>Anderes</option>
+    </select>
+    <textarea id="report-detail" placeholder="Optionale Details (max. 500 Zeichen)" style="width:100%;background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:8px;padding:.6rem;resize:none;height:80px;margin-bottom:.75rem;"></textarea>
+    <div class="d-flex gap-2 justify-content-end">
+      <button onclick="document.getElementById('report-modal').style.display='none'" style="background:#334155;color:#94a3b8;border:none;border-radius:8px;padding:.5rem 1rem;cursor:pointer;">Abbrechen</button>
+      <button onclick="submitReport()" style="background:#ef4444;color:#fff;border:none;border-radius:8px;padding:.5rem 1rem;font-weight:600;cursor:pointer;"><i class="fas fa-flag me-1"></i>Melden</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PARTNER_ID = {{ partner.id }};
+const MY_ID      = {{ uid }};
+let lastMsgId    = {{ msgs[-1].id if msgs else 0 }};
+let firstMsgId   = {{ msgs[0].id if msgs else 0 }};
+let polling      = true;
+
+// Scroll to bottom on load
+window.addEventListener('load', () => {
+  const box = document.getElementById('chat-messages');
+  box.scrollTop = box.scrollHeight;
+});
+
+function msgHTML(m) {
+  const mine = m.sender_id === MY_ID;
+  const imgPart = m.image_url ? `<img src="${m.image_url}" class="chat-img" onclick="window.open(this.src)" alt="Bild">` : '';
+  const txtPart = m.content ? `<div>${escapeHtml(m.content)}</div>` : '';
+  const reportBtn = !mine ? `<button onclick="openReport('message',${m.id})" class="report-btn"><i class="fas fa-flag"></i></button>` : '';
+  return `<div class="d-flex flex-column ${mine ? 'align-items-end' : 'align-items-start'}" data-msgid="${m.id}">
+    <div class="msg-bubble ${mine ? 'msg-mine' : 'msg-theirs'}">
+      ${imgPart}${txtPart}
+      <div class="d-flex align-items-center gap-2">
+        <span class="msg-time">${m.created_at.substring(0,16)}</span>
+        ${reportBtn}
+      </div>
+    </div>
+  </div>`;
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// Polling alle 3 Sekunden
+async function pollMessages() {
+  if (!polling) return;
+  try {
+    const res = await fetch(`/api/chat/${PARTNER_ID}/poll?after=${lastMsgId}`);
+    const msgs = await res.json();
+    if (msgs.length) {
+      const box = document.getElementById('chat-messages');
+      const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+      msgs.forEach(m => {
+        box.insertAdjacentHTML('beforeend', msgHTML(m));
+        lastMsgId = Math.max(lastMsgId, m.id);
+      });
+      if (atBottom) box.scrollTop = box.scrollHeight;
+    }
+  } catch(e) {}
+  setTimeout(pollMessages, 3000);
+}
+pollMessages();
+
+async function sendMsg() {
+  const input = document.getElementById('msg-input');
+  const content = input.value.trim();
+  if (!content) return;
+  input.value = ''; input.style.height = '40px';
+  try {
+    const res = await fetch(`/api/chat/${PARTNER_ID}/send`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ content })
+    });
+    const d = await res.json();
+    if (d.success) {
+      const box = document.getElementById('chat-messages');
+      box.insertAdjacentHTML('beforeend', msgHTML(d.msg));
+      lastMsgId = Math.max(lastMsgId, d.msg.id);
+      box.scrollTop = box.scrollHeight;
+    }
+  } catch(e) {}
+}
+
+async function sendImage(input) {
+  if (!input.files[0]) return;
+  const form = new FormData();
+  form.append('image', input.files[0]);
+  input.value = '';
+  try {
+    const res = await fetch(`/api/chat/${PARTNER_ID}/send`, { method:'POST', body: form });
+    const d = await res.json();
+    if (d.success) {
+      const box = document.getElementById('chat-messages');
+      box.insertAdjacentHTML('beforeend', msgHTML(d.msg));
+      lastMsgId = Math.max(lastMsgId, d.msg.id);
+      box.scrollTop = box.scrollHeight;
+    } else { alert(d.error); }
+  } catch(e) {}
+}
+
+async function loadOlder() {
+  if (!firstMsgId) return;
+  const box = document.getElementById('chat-messages');
+  const oldH = box.scrollHeight;
+  const res = await fetch(`/api/chat/${PARTNER_ID}/messages?before=${firstMsgId}`);
+  const msgs = await res.json();
+  if (!msgs.length) {
+    document.getElementById('load-more-btn').textContent = 'Keine älteren Nachrichten';
+    document.getElementById('load-more-btn').disabled = true;
+    return;
+  }
+  msgs.reverse().forEach(m => {
+    box.insertAdjacentHTML('afterbegin', msgHTML(m));
+    firstMsgId = Math.min(firstMsgId, m.id);
+  });
+  box.scrollTop = box.scrollHeight - oldH;
+}
+
+function insertEmoji(e) {
+  const input = document.getElementById('msg-input');
+  const pos = input.selectionStart;
+  input.value = input.value.slice(0, pos) + e + input.value.slice(pos);
+  input.selectionStart = input.selectionEnd = pos + e.length;
+  input.focus();
+}
+
+function openReport(type, targetId) {
+  document.getElementById('report-type').value = type;
+  document.getElementById('report-target').value = targetId;
+  document.getElementById('report-reason').value = '';
+  document.getElementById('report-detail').value = '';
+  document.getElementById('report-modal').style.display = 'flex';
+}
+
+async function submitReport() {
+  const type   = document.getElementById('report-type').value;
+  const target = parseInt(document.getElementById('report-target').value);
+  const reason = document.getElementById('report-reason').value;
+  const detail = document.getElementById('report-detail').value;
+  if (!reason) { alert('Bitte Grund wählen'); return; }
+  const res = await fetch('/api/report', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ target_type: type, target_id: target, reason, detail })
+  });
+  const d = await res.json();
+  document.getElementById('report-modal').style.display = 'none';
+  if (d.success) alert('Meldung eingereicht. Danke!');
+  else alert(d.error || 'Fehler');
+}
+</script>
+{% endblock %}

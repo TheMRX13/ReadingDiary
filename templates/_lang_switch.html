@@ -1,0 +1,20 @@
+{# Wiederverwendbarer Sprachumschalter – per {% include '_lang_switch.html' %} einbinden #}
+{% set _lang = session.get('language', 'de') %}
+<div class="lang-switcher" style="display:flex;gap:4px;align-items:center;">
+  <a href="/set-lang/de"
+     title="Deutsch"
+     style="display:flex;align-items:center;gap:4px;font-size:.78rem;font-weight:600;text-decoration:none;padding:4px 10px;border-radius:7px;transition:all .15s;
+            border:1px solid {{ 'rgba(59,130,246,.55)' if _lang=='de' else 'rgba(255,255,255,.08)' }};
+            background:{{ 'rgba(59,130,246,.18)' if _lang=='de' else 'transparent' }};
+            color:{{ '#60a5fa' if _lang=='de' else '#64748b' }};">
+    🇩🇪 DE
+  </a>
+  <a href="/set-lang/en"
+     title="English"
+     style="display:flex;align-items:center;gap:4px;font-size:.78rem;font-weight:600;text-decoration:none;padding:4px 10px;border-radius:7px;transition:all .15s;
+            border:1px solid {{ 'rgba(59,130,246,.55)' if _lang=='en' else 'rgba(255,255,255,.08)' }};
+            background:{{ 'rgba(59,130,246,.18)' if _lang=='en' else 'transparent' }};
+            color:{{ '#60a5fa' if _lang=='en' else '#64748b' }};">
+    🇬🇧 EN
+  </a>
+</div>

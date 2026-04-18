@@ -1,0 +1,415 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<!-- ── Live Status Bar ── -->
+<div id="admin-statusbar" style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:.5rem 1rem;margin-bottom:.75rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;font-size:.78rem;">
+
+  <!-- System Online -->
+  <div class="d-flex align-items-center gap-1" style="flex-shrink:0;">
+    <span id="sb-dot" style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;box-shadow:0 0 6px #22c55e;"></span>
+    <span style="color:#22c55e;font-weight:600;">System Online</span>
+  </div>
+
+  <div style="width:1px;height:16px;background:#1e293b;flex-shrink:0;"></div>
+
+  <!-- User Stats -->
+  <div class="d-flex align-items-center gap-3" style="flex-shrink:0;">
+    <div style="color:#94a3b8;">
+      <i class="fas fa-users me-1" style="color:#3b82f6;"></i>
+      Gesamt: <strong id="sb-total" style="color:#f1f5f9;">–</strong>
+    </div>
+    <div style="color:#94a3b8;">
+      <i class="fas fa-circle-dot me-1" style="color:#22c55e;"></i>
+      Aktiv (15 min): <strong id="sb-active" style="color:#22c55e;">–</strong>
+    </div>
+  </div>
+
+  <div style="width:1px;height:16px;background:#1e293b;flex-shrink:0;"></div>
+
+  <!-- Open Reports Badge -->
+  <div style="flex-shrink:0;">
+    <a href="{{ url_for('admin_reports') }}" id="sb-reports-link" style="text-decoration:none;display:flex;align-items:center;gap:.4rem;">
+      <i class="fas fa-flag" style="color:#ef4444;"></i>
+      <span style="color:#94a3b8;">Offene Meldungen:</span>
+      <span id="sb-reports" style="background:#ef4444;color:#fff;border-radius:10px;padding:.05rem .45rem;font-weight:700;font-size:.75rem;min-width:18px;text-align:center;">–</span>
+    </a>
+  </div>
+
+  <div style="width:1px;height:16px;background:#1e293b;flex-shrink:0;"></div>
+
+  <!-- Last Backup -->
+  <div style="color:#94a3b8;flex-shrink:0;">
+    <i class="fas fa-clock me-1" style="color:#f59e0b;"></i>
+    Letztes Backup: <strong id="sb-backup" style="color:#f1f5f9;">–</strong>
+  </div>
+
+  <!-- Spacer -->
+  <div style="flex:1;min-width:0;"></div>
+
+  <!-- Quick Actions -->
+  <div class="d-flex gap-1" style="flex-shrink:0;">
+    <a href="{{ url_for('admin_reports') }}" style="background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.25);border-radius:6px;padding:.2rem .65rem;text-decoration:none;font-weight:600;font-size:.75rem;">
+      <i class="fas fa-flag me-1"></i>Reports
+    </a>
+    <a href="#audit-log-section" style="background:rgba(99,102,241,.15);color:#a5b4fc;border:1px solid rgba(99,102,241,.25);border-radius:6px;padding:.2rem .65rem;text-decoration:none;font-weight:600;font-size:.75rem;">
+      <i class="fas fa-list-check me-1"></i>Audit-Log
+    </a>
+  </div>
+</div>
+
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div>
+    <h1 class="page-title"><i class="fas fa-shield-halved me-2" style="color:#ef4444"></i>Admin-Panel</h1>
+    <p style="color:#94a3b8;margin-top:.25rem;">Systemverwaltung</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <button class="btn btn-sm" style="background:#78350f;color:#fcd34d;border:none;"
+            onclick="toggleMaintenance()" id="btn-maintenance">
+      <i class="fas fa-tools me-1"></i> Wartungsmodus
+    </button>
+    <a href="{{ url_for('admin_backup') }}" class="btn btn-sm" style="background:#14532d;color:#4ade80;border:none;">
+      <i class="fas fa-download me-1"></i> Backup erstellen
+    </a>
+    <a href="{{ url_for('admin_reports') }}" class="btn btn-sm" style="background:#7f1d1d;color:#fca5a5;border:none;">
+      <i class="fas fa-flag me-1"></i> Meldungen
+    </a>
+  </div>
+</div>
+
+<!-- ── Benutzerverwaltung ── -->
+<div class="card mb-4">
+  <div class="card-header" style="background:#1e293b;border-bottom:1px solid #334155;padding:1rem 1.5rem;">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <h5 style="color:#f1f5f9;margin:0;"><i class="fas fa-users me-2" style="color:#3b82f6"></i>Registrierte Benutzer</h5>
+      <input type="text" id="user-search" placeholder="Username oder E-Mail suchen…"
+             oninput="filterUsers(this.value)"
+             style="background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:8px;padding:.4rem .8rem;font-size:.85rem;width:260px;">
+    </div>
+  </div>
+  <div style="overflow-x:auto;max-height:484px;overflow-y:auto;">
+    <table class="table table-dark mb-0" style="font-size:.85rem;">
+      <thead style="background:#0f172a;position:sticky;top:0;z-index:1;">
+        <tr>
+          <th style="color:#64748b;padding:.75rem 1rem;">ID</th>
+          <th style="color:#64748b;">Username</th>
+          <th style="color:#64748b;">Status</th>
+          <th style="color:#64748b;">Erstellt</th>
+          <th style="color:#64748b;">Aktionen</th>
+        </tr>
+      </thead>
+      <tbody id="user-table-body">
+        {% for u in users %}
+        <tr class="user-row" data-username="{{ u.username|lower }}" data-email="{{ u.email|lower }}"
+            style="border-bottom:1px solid #1e293b;">
+          <td style="padding:.75rem 1rem;color:#64748b;">{{ u.id }}</td>
+          <td>
+            <span style="color:#f1f5f9;font-weight:600;">{{ u.username }}</span>
+            <div style="color:#64748b;font-size:.75rem;">{{ u.email }}</div>
+          </td>
+          <td>
+            <div class="d-flex gap-1 flex-wrap align-items-center">
+              {% if u.is_banned %}
+                <span class="badge" style="background:#7f1d1d;color:#f87171;"><i class="fas fa-ban me-1"></i>Gesperrt</span>
+              {% elif u.is_active and u.email_verified %}
+                <span class="badge" style="background:#14532d;color:#4ade80;"><i class="fas fa-check me-1"></i>Aktiv</span>
+              {% else %}
+                <span class="badge" style="background:#78350f;color:#fcd34d;"><i class="fas fa-clock me-1"></i>Ausstehend</span>
+              {% endif %}
+              {% if u.is_admin %}<span class="badge" style="background:#1e3a5f;color:#60a5fa;"><i class="fas fa-shield-halved"></i></span>{% endif %}
+              {% if u.email_verified %}<span class="badge" style="background:#064e3b;color:#34d399;" title="E-Mail verifiziert"><i class="fas fa-envelope-circle-check"></i></span>{% endif %}
+              {% if u.ad_enabled %}<span class="badge" style="background:#2d1b69;color:#a78bfa;"><i class="fas fa-rectangle-ad"></i></span>{% endif %}
+            </div>
+          </td>
+          <td style="color:#64748b;">{{ u.created_at[:10] if u.created_at else '–' }}</td>
+          <td>
+            {% if not u.is_admin %}
+            <button class="btn btn-sm" style="background:#334155;color:#94a3b8;border:none;font-size:.75rem;"
+                    onclick="openUserModal({{ u.id }}, '{{ u.username|e }}')">
+              <i class="fas fa-ellipsis"></i> Details
+            </button>
+            {% else %}
+            <span style="color:#4b5563;font-size:.8rem;"><i class="fas fa-shield-halved"></i> Geschützt</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Audit-Log ── -->
+<div class="card mb-4" id="audit-log-section">
+  <div class="card-header" style="background:#1e293b;border-bottom:1px solid #334155;padding:1rem 1.5rem;">
+    <h5 style="color:#f1f5f9;margin:0;">
+      <i class="fas fa-clipboard-list me-2" style="color:#3b82f6"></i>Audit-Log
+      <span style="font-size:.78rem;color:#64748b;margin-left:.5rem;">(letzte 200 Admin-Aktionen)</span>
+    </h5>
+  </div>
+  <div style="overflow-x:auto;max-height:484px;overflow-y:auto;">
+    <table class="table table-dark mb-0" style="font-size:.82rem;">
+      <thead style="background:#0f172a;position:sticky;top:0;z-index:1;">
+        <tr>
+          <th style="color:#64748b;padding:.75rem 1rem;">Zeit</th>
+          <th style="color:#64748b;">Admin</th>
+          <th style="color:#64748b;">Aktion</th>
+          <th style="color:#64748b;">Ziel-User</th>
+          <th style="color:#64748b;">Detail</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for al in audit_logs %}
+        <tr style="border-bottom:1px solid #1e293b;">
+          <td style="padding:.6rem 1rem;color:#64748b;white-space:nowrap;">{{ al.timestamp[:16] if al.timestamp else '–' }}</td>
+          <td style="color:#60a5fa;">{{ al.admin_username or '–' }}</td>
+          <td>
+            <span style="background:#1e3a5f;color:#60a5fa;padding:.2rem .5rem;border-radius:4px;font-size:.78rem;">{{ al.action }}</span>
+          </td>
+          <td style="color:#94a3b8;">{{ al.target_username or '–' }}</td>
+          <td style="color:#64748b;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ al.detail or '–' }}</td>
+        </tr>
+        {% endfor %}
+        {% if not audit_logs %}
+        <tr><td colspan="5" style="text-align:center;color:#4b5563;padding:2rem;">Keine Einträge vorhanden</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Hacker-Log ── -->
+<div class="card">
+  <div class="card-header" style="background:#1e293b;border-bottom:1px solid #334155;padding:1rem 1.5rem;">
+    <h5 style="color:#f1f5f9;margin:0;">
+      <i class="fas fa-bug me-2" style="color:#ef4444"></i>Sicherheits-Log
+      <span style="font-size:.78rem;color:#64748b;margin-left:.5rem;">(letzte 300 Einträge)</span>
+    </h5>
+  </div>
+  <div style="overflow-x:auto;max-height:484px;overflow-y:auto;">
+    <table class="table table-dark mb-0" style="font-size:.82rem;">
+      <thead style="background:#0f172a;position:sticky;top:0;z-index:1;">
+        <tr>
+          <th style="color:#64748b;padding:.75rem 1rem;">Zeit</th>
+          <th style="color:#64748b;">IP</th>
+          <th style="color:#64748b;">Pfad</th>
+          <th style="color:#64748b;">Grund</th>
+          <th style="color:#64748b;">User-Agent</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr style="border-bottom:1px solid #1e293b;">
+          <td style="padding:.6rem 1rem;color:#64748b;white-space:nowrap;">{{ log.timestamp[:16] if log.timestamp else '–' }}</td>
+          <td>
+            <a href="https://www.whois.com/whois/{{ log.ip }}" target="_blank" rel="noopener"
+               style="color:#3b82f6;text-decoration:none;font-family:monospace;">
+              {{ log.ip or '–' }} <i class="fas fa-external-link fa-xs"></i>
+            </a>
+          </td>
+          <td style="color:#94a3b8;font-family:monospace;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ log.path or '–' }}</td>
+          <td><span style="background:#7f1d1d;color:#f87171;padding:.2rem .5rem;border-radius:4px;font-size:.78rem;">{{ log.reason or '–' }}</span></td>
+          <td style="color:#64748b;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ log.user_agent }}">{{ (log.user_agent or '')[:60] }}{% if log.user_agent and log.user_agent|length > 60 %}…{% endif %}</td>
+        </tr>
+        {% endfor %}
+        {% if not logs %}
+        <tr><td colspan="5" style="text-align:center;color:#4b5563;padding:2rem;">Keine Einträge vorhanden</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── User-Detail-Modal ── -->
+<div class="modal fade" id="userModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content" style="background:#1e293b;border:1px solid #334155;border-radius:16px;">
+      <div class="modal-header" style="border-bottom:1px solid #334155;">
+        <h5 class="modal-title" style="color:#f1f5f9;"><i class="fas fa-user me-2" style="color:#3b82f6"></i><span id="modal-username"></span></h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="modal-body" style="color:#94a3b8;">
+        <div class="text-center py-4"><i class="fas fa-spinner fa-spin" style="color:#3b82f6;font-size:1.5rem;"></i></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ── User-Suche ──
+function filterUsers(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('.user-row').forEach(row => {
+    const match = row.dataset.username.includes(q) || row.dataset.email.includes(q);
+    row.style.display = match ? '' : 'none';
+  });
+}
+
+// ── User-Detail-Modal ──
+async function openUserModal(uid, username) {
+  document.getElementById('modal-username').textContent = username;
+  document.getElementById('modal-body').innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin" style="color:#3b82f6;font-size:1.5rem;"></i></div>';
+  new bootstrap.Modal(document.getElementById('userModal')).show();
+
+  const res = await fetch(`/admin/users/${uid}/details`);
+  const data = await res.json();
+  if (data.error) { document.getElementById('modal-body').innerHTML = `<p class="text-danger">${data.error}</p>`; return; }
+
+  const u = data.user;
+  const statusBadge = u.is_banned
+    ? '<span class="badge" style="background:#7f1d1d;color:#f87171;">Gesperrt</span>'
+    : (u.is_active && u.email_verified
+        ? '<span class="badge" style="background:#14532d;color:#4ade80;">Aktiv</span>'
+        : '<span class="badge" style="background:#78350f;color:#fcd34d;">Ausstehend</span>');
+
+  const ipsHtml = data.ips.length
+    ? data.ips.map(i => `<div style="font-family:monospace;font-size:.82rem;color:#94a3b8;">${i.ip} <span style="color:#4b5563;font-size:.75rem;">${i.timestamp?.slice(0,16)||''}</span></div>`).join('')
+    : '<span style="color:#4b5563;font-size:.82rem;">Keine IP-Daten</span>';
+
+  const auditHtml = data.audit.length
+    ? data.audit.map(a => `<div style="font-size:.78rem;border-bottom:1px solid #1e293b;padding:.3rem 0;"><span style="color:#60a5fa;">${a.action}</span> <span style="color:#4b5563;">${a.timestamp?.slice(0,16)||''}</span>${a.detail ? ` – <span style="color:#64748b;">${a.detail}</span>` : ''}</div>`).join('')
+    : '<span style="color:#4b5563;font-size:.82rem;">Keine Einträge</span>';
+
+  const actionBtn = u.is_banned
+    ? `<button class="btn btn-sm" style="background:#1e3a5f;color:#60a5fa;border:none;" onclick="adminAction(${uid},'unban')"><i class="fas fa-unlock"></i> Entsperren</button>`
+    : (!u.is_active && !u.email_verified
+        ? `<button class="btn btn-sm" style="background:#14532d;color:#4ade80;border:none;" onclick="adminAction(${uid},'activate')"><i class="fas fa-check"></i> Aktivieren</button>`
+        : `<button class="btn btn-sm" style="background:#7f1d1d;color:#f87171;border:none;" onclick="adminAction(${uid},'ban')"><i class="fas fa-ban"></i> Sperren</button>`);
+
+  document.getElementById('modal-body').innerHTML = `
+    <div class="row g-3">
+      <div class="col-12">
+        <div style="background:#0f172a;border-radius:8px;padding:1rem;">
+          <div style="margin-bottom:.5rem;"><span style="color:#64748b;font-size:.8rem;">E-MAIL</span><br><span style="color:#f1f5f9;">${u.email}</span></div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+            ${statusBadge}
+            ${u.email_verified ? '<span class="badge" style="background:#064e3b;color:#34d399;"><i class="fas fa-envelope-circle-check me-1"></i>Verifiziert</span>' : '<span class="badge" style="background:#78350f;color:#fcd34d;">Nicht verifiziert</span>'}
+            ${u.ad_enabled ? '<span class="badge" style="background:#2d1b69;color:#a78bfa;"><i class="fas fa-rectangle-ad me-1"></i>Werbung aktiv</span>' : ''}
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div style="background:#0f172a;border-radius:8px;padding:1rem;height:100%;">
+          <div style="color:#64748b;font-size:.78rem;margin-bottom:.5rem;font-weight:600;">LETZTE 5 IPs</div>
+          ${ipsHtml}
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div style="background:#0f172a;border-radius:8px;padding:1rem;height:100%;max-height:200px;overflow-y:auto;">
+          <div style="color:#64748b;font-size:.78rem;margin-bottom:.5rem;font-weight:600;">AUDIT-LOG (DIESER USER)</div>
+          ${auditHtml}
+        </div>
+      </div>
+      <div class="col-12">
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+          ${actionBtn}
+          <button class="btn btn-sm" style="background:#3b82f6;color:#fff;border:none;" onclick="sendPasswordReset(${uid},'${u.username}')"><i class="fas fa-key"></i> Passwort-Reset</button>
+          <button class="btn btn-sm" style="background:#2d1b69;color:#a78bfa;border:none;" onclick="toggleAd(${uid},${u.ad_enabled?'true':'false'})"><i class="fas fa-rectangle-ad"></i> Werbung</button>
+          <button class="btn btn-sm" style="background:#0f4c75;color:#90cdf4;border:none;" onclick="impersonate(${uid},'${u.username}')"><i class="fas fa-user-secret"></i> Als User einloggen</button>
+          <button class="btn btn-sm" style="background:#7f1d1d;color:#f87171;border:1px solid rgba(239,68,68,.4);" onclick="deleteUser(${uid},'${u.username}')"><i class="fas fa-trash-alt"></i> Löschen</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Admin-Aktionen ──
+async function adminAction(uid, action) {
+  const labels = { activate:'aktivieren', ban:'sperren', unban:'entsperren' };
+  if (!confirm(`Benutzer ${labels[action]}?`)) return;
+  const res = await fetch(`/admin/users/${uid}/${action}`, { method:'POST' });
+  const data = await res.json();
+  if (data.success) location.reload();
+  else alert('Fehler: ' + (data.error||'Unbekannt'));
+}
+
+async function toggleAd(uid, current) {
+  if (!confirm(`Werbefunktion ${current?'deaktivieren':'aktivieren'}?`)) return;
+  const res = await fetch(`/admin/users/${uid}/toggle-ad`, { method:'POST' });
+  const data = await res.json();
+  if (data.success) location.reload();
+  else alert('Fehler: ' + (data.error||'Unbekannt'));
+}
+
+async function sendPasswordReset(uid, username) {
+  if (!confirm(`Passwort-Reset E-Mail an „${username}" senden?`)) return;
+  const res = await fetch(`/admin/users/${uid}/send-reset`, { method:'POST' });
+  const data = await res.json();
+  if (data.success) alert(`Reset-E-Mail wurde an ${username} gesendet.`);
+  else alert('Fehler: ' + (data.error||'Unbekannt'));
+}
+
+async function deleteUser(uid, username) {
+  if (!confirm(`Benutzer „${username}" und ALLE seine Daten unwiderruflich löschen?`)) return;
+  if (!confirm(`Letzte Warnung: „${username}" wirklich dauerhaft löschen?`)) return;
+  const res = await fetch(`/admin/users/${uid}/delete`, { method:'POST' });
+  const data = await res.json();
+  if (data.success) { location.reload(); }
+  else alert('Fehler: ' + (data.error||'Unbekannt'));
+}
+
+async function impersonate(uid, username) {
+  if (!confirm(`Als „${username}" einloggen? Alle Aktionen werden im Audit-Log vermerkt.`)) return;
+  const res = await fetch(`/admin/impersonate/${uid}`, { method:'POST' });
+  const data = await res.json();
+  if (data.success) window.location.href = '/dashboard';
+  else alert('Fehler: ' + (data.error||'Unbekannt'));
+}
+
+async function toggleMaintenance() {
+  const res = await fetch('/admin/toggle-maintenance', { method:'POST' });
+  const data = await res.json();
+  if (data.success) {
+    alert(data.maintenance ? 'Wartungsmodus AKTIVIERT' : 'Wartungsmodus DEAKTIVIERT');
+    location.reload();
+  }
+}
+</script>
+<script>
+(function() {
+  let prevReports = -1;
+
+  async function refreshStatus() {
+    try {
+      const res = await fetch('/api/admin/status');
+      if (!res.ok) return;
+      const d = await res.json();
+
+      document.getElementById('sb-total').textContent  = d.total_users;
+      document.getElementById('sb-active').textContent = d.active_users;
+      document.getElementById('sb-backup').textContent = d.last_backup;
+
+      const rBadge = document.getElementById('sb-reports');
+      const count  = d.open_reports;
+      rBadge.textContent = count;
+
+      if (count > 0) {
+        rBadge.style.background = '#ef4444';
+        rBadge.style.animation  = count !== prevReports && prevReports !== -1
+          ? 'pulse-badge .4s ease 3' : '';
+      } else {
+        rBadge.style.background = '#334155';
+        rBadge.style.animation  = '';
+      }
+      prevReports = count;
+
+      // Dot blinkt bei erhöhter Aktivität
+      const dot = document.getElementById('sb-dot');
+      dot.style.background   = d.online ? '#22c55e' : '#ef4444';
+      dot.style.boxShadow    = d.online ? '0 0 6px #22c55e' : '0 0 6px #ef4444';
+
+    } catch(e) {
+      document.getElementById('sb-dot').style.background = '#ef4444';
+    }
+  }
+
+  refreshStatus();
+  setInterval(refreshStatus, 30000);  // alle 30 Sekunden
+})();
+</script>
+<style>
+@keyframes pulse-badge {
+  0%,100% { transform:scale(1); }
+  50%      { transform:scale(1.35); }
+}
+</style>
+{% endblock %}

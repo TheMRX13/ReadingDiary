@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div>
+    <h1 class="page-title"><i class="fas fa-comments me-2" style="color:#3b82f6"></i>Chat</h1>
+    <p style="color:#94a3b8;margin-top:.25rem;">Nur mit gegenseitigen Followern</p>
+  </div>
+</div>
+
+{% if mutuals %}
+<div class="card" style="background:#1e293b;border:none;border-radius:12px;overflow:hidden;">
+  {% for m in mutuals %}
+  <a href="/chat/{{ m.username }}" style="text-decoration:none;display:block;">
+    <div class="d-flex align-items-center gap-3 p-3" style="border-bottom:1px solid #0f172a;transition:background .15s;" onmouseover="this.style.background='#0f172a'" onmouseout="this.style.background=''">
+      <div style="width:44px;height:44px;background:linear-gradient(135deg,#3b82f6,#818cf8);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:#fff;font-weight:700;flex-shrink:0;position:relative;">
+        {{ m.username[0].upper() }}
+        {% if m.unread and m.unread > 0 %}
+        <span style="position:absolute;top:-3px;right:-3px;background:#ef4444;color:#fff;border-radius:50%;width:18px;height:18px;font-size:.65rem;display:flex;align-items:center;justify-content:center;font-weight:700;">{{ m.unread if m.unread <= 9 else '9+' }}</span>
+        {% endif %}
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="color:#f1f5f9;font-weight:{% if m.unread and m.unread > 0 %}700{% else %}600{% endif %};font-size:.95rem;">{{ m.username }}</div>
+        <div style="color:#64748b;font-size:.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+          {% if m.last_msg %}{{ m.last_msg[:60] }}{% else %}<em>Noch keine Nachrichten</em>{% endif %}
+        </div>
+      </div>
+      {% if m.last_time %}
+      <div style="color:#4b5563;font-size:.72rem;flex-shrink:0;">{{ m.last_time[:10] }}</div>
+      {% endif %}
+      <i class="fas fa-chevron-right" style="color:#334155;font-size:.8rem;"></i>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="background:#1e293b;border:none;border-radius:12px;padding:3rem;text-align:center;">
+  <i class="fas fa-comments" style="color:#334155;font-size:3rem;margin-bottom:1rem;display:block;"></i>
+  <div style="color:#64748b;">Noch keine gegenseitigen Follower.<br>Folge jemandem und warte darauf, dass er dir zurückfolgt.</div>
+  <a href="{{ url_for('buddies') }}" style="display:inline-block;margin-top:1rem;background:#3b82f6;color:#fff;text-decoration:none;padding:.5rem 1.2rem;border-radius:8px;font-weight:600;">Buddies finden</a>
+</div>
+{% endif %}
+{% endblock %}

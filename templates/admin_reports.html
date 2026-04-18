@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+  .report-card { background:#1e293b; border-radius:10px; padding:1rem 1.25rem; margin-bottom:.75rem; border-left:4px solid #334155; }
+  .report-card.open { border-left-color:#f59e0b; }
+  .report-card.actioned { border-left-color:#22c55e; }
+  .report-card.dismissed { border-left-color:#475569; }
+  .badge-type { display:inline-block; border-radius:5px; padding:.15rem .55rem; font-size:.72rem; font-weight:700; }
+  .btn-action { border:none; border-radius:6px; padding:.3rem .75rem; font-size:.78rem; cursor:pointer; font-weight:600; }
+</style>
+
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div>
+    <h1 class="page-title"><i class="fas fa-shield-halved me-2" style="color:#ef4444"></i>Moderation</h1>
+    <p style="color:#94a3b8;margin-top:.25rem;">Eingegangene Meldungen</p>
+  </div>
+  <a href="{{ url_for('admin_panel') }}" style="color:#64748b;text-decoration:none;font-size:.85rem;"><i class="fas fa-arrow-left me-1"></i>Zurück zum Admin-Panel</a>
+</div>
+
+<!-- Filter Tabs -->
+<div class="d-flex gap-2 mb-3">
+  <a href="/admin/reports?status=open"
+     style="padding:.4rem 1rem;border-radius:8px;text-decoration:none;font-size:.85rem;font-weight:600;
+            background:{{ 'rgba(245,158,11,.15)' if status_filter=='open' else '#1e293b' }};
+            color:{{ '#f59e0b' if status_filter=='open' else '#64748b' }};
+            border:1px solid {{ 'rgba(245,158,11,.3)' if status_filter=='open' else '#334155' }};">
+    Offen <span style="background:#ef4444;color:#fff;border-radius:10px;padding:.05rem .4rem;font-size:.7rem;">{{ open_count }}</span>
+  </a>
+  <a href="/admin/reports?status=actioned"
+     style="padding:.4rem 1rem;border-radius:8px;text-decoration:none;font-size:.85rem;font-weight:600;
+            background:{{ 'rgba(34,197,94,.1)' if status_filter=='actioned' else '#1e293b' }};
+            color:{{ '#22c55e' if status_filter=='actioned' else '#64748b' }};
+            border:1px solid {{ 'rgba(34,197,94,.2)' if status_filter=='actioned' else '#334155' }};">
+    Behandelt <span style="background:#334155;color:#94a3b8;border-radius:10px;padding:.05rem .4rem;font-size:.7rem;">{{ closed_count }}</span>
+  </a>
+  <a href="/admin/reports?status=dismissed"
+     style="padding:.4rem 1rem;border-radius:8px;text-decoration:none;font-size:.85rem;font-weight:600;
+            background:{{ 'rgba(71,85,105,.2)' if status_filter=='dismissed' else '#1e293b' }};
+            color:{{ '#94a3b8' if status_filter=='dismissed' else '#64748b' }};
+            border:1px solid #334155;">
+    Abgewiesen
+  </a>
+</div>
+
+{% if not reports %}
+<div style="text-align:center;padding:3rem;color:#4b5563;">
+  <i class="fas fa-shield-halved" style="font-size:2.5rem;margin-bottom:1rem;display:block;"></i>
+  Keine Meldungen in dieser Kategorie.
+</div>
+{% endif %}
+
+{% for r in reports %}
+<div class="report-card {{ r.status }}">
+  <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
+    <div style="flex:1;">
+      <!-- Type Badge -->
+      {% if r.target_type == 'profile' %}
+      <span class="badge-type" style="background:rgba(59,130,246,.15);color:#60a5fa;">👤 Profil</span>
+      {% elif r.target_type == 'chat' or r.target_type == 'message' %}
+      <span class="badge-type" style="background:rgba(168,85,247,.15);color:#c084fc;">💬 Chat</span>
+      {% elif r.target_type == 'post' %}
+      <span class="badge-type" style="background:rgba(34,197,94,.1);color:#4ade80;">📝 Beitrag</span>
+      {% else %}
+      <span class="badge-type" style="background:#1e293b;color:#64748b;">{{ r.target_type }}</span>
+      {% endif %}
+
+      <span style="color:#94a3b8;font-size:.8rem;margin-left:.5rem;">{{ r.created_at[:16] }}</span>
+
+      <div style="margin-top:.4rem;">
+        <span style="color:#f1f5f9;font-weight:600;">{{ r.reporter_name }}</span>
+        <span style="color:#64748b;"> meldet </span>
+        <span style="color:#f1f5f9;font-weight:600;">
+          {% if r.target_username %}{{ r.target_username }}{% elif r.target_id %}ID {{ r.target_id }}{% else %}–{% endif %}
+        </span>
+      </div>
+
+      <div style="margin-top:.3rem;">
+        <span style="color:#fbbf24;font-size:.85rem;font-weight:600;">{{ r.reason }}</span>
+      </div>
+
+      {% if r.detail %}
+      <div style="color:#94a3b8;font-size:.82rem;margin-top:.3rem;font-style:italic;">"{{ r.detail }}"</div>
+      {% endif %}
+    </div>
+
+    <!-- Aktionen -->
+    {% if r.status == 'open' %}
+    <div class="d-flex flex-wrap gap-1 align-items-start">
+      {% if r.target_type in ('profile',) and r.target_id %}
+      <button class="btn-action" style="background:rgba(59,130,246,.15);color:#60a5fa;"
+              onclick="window.open('/profile/{{ r.target_username }}','_blank')">
+        <i class="fas fa-eye me-1"></i>Ansehen
+      </button>
+      {% endif %}
+      {% if r.target_type in ('chat','message') and r.target_id %}
+      <button class="btn-action" style="background:rgba(168,85,247,.15);color:#c084fc;"
+              onclick="window.open('/admin/chat-view/{{ r.reporter_id }}/{{ r.target_id }}','_blank')">
+        <i class="fas fa-comments me-1"></i>Chat prüfen
+      </button>
+      {% endif %}
+      <button class="btn-action" style="background:rgba(239,68,68,.15);color:#f87171;"
+              onclick="doAction({{ r.id }},'delete_content')">
+        <i class="fas fa-trash me-1"></i>Inhalt löschen
+      </button>
+      <button class="btn-action" style="background:rgba(245,158,11,.15);color:#fbbf24;"
+              onclick="doAction({{ r.id }},'warn_user')">
+        <i class="fas fa-triangle-exclamation me-1"></i>Verwarnen
+      </button>
+      <button class="btn-action" style="background:rgba(239,68,68,.2);color:#ef4444;"
+              onclick="doAction({{ r.id }},'ban_user')">
+        <i class="fas fa-ban me-1"></i>Sperren
+      </button>
+      <button class="btn-action" style="background:#1e293b;color:#64748b;"
+              onclick="doAction({{ r.id }},'dismiss')">
+        Abweisen
+      </button>
+    </div>
+    {% else %}
+    <span style="color:#64748b;font-size:.8rem;">{{ 'Behandelt' if r.status=='actioned' else 'Abgewiesen' }}</span>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+
+<script>
+async function doAction(reportId, action) {
+  const labels = {
+    dismiss: 'Meldung abweisen?',
+    delete_content: 'Inhalt wirklich löschen?',
+    warn_user: 'Verwarnung senden?',
+    ban_user: 'User wirklich sperren?',
+  };
+  if (!confirm(labels[action] || 'Fortfahren?')) return;
+  const res = await fetch(`/api/admin/report/${reportId}/action`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ action })
+  });
+  const d = await res.json();
+  if (d.success) location.reload();
+  else alert('Fehler: ' + (d.error || 'Unbekannt'));
+}
+</script>
+{% endblock %}

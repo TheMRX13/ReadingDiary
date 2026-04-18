@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Mail Bestätigung – Reading Diary</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    body { background:linear-gradient(135deg,#0f172a,#1e3a5f); min-height:100vh; display:flex; align-items:center; justify-content:center; font-family:'Segoe UI',sans-serif; }
+    .card { background:#1e293b; border-radius:20px; padding:2.5rem; max-width:440px; width:100%; box-shadow:0 24px 48px rgba(0,0,0,.5); text-align:center; }
+    .icon { font-size:3.5rem; margin-bottom:1rem; }
+    h2   { color:#f1f5f9; font-weight:700; margin-bottom:.75rem; }
+    p    { color:#94a3b8; font-size:.95rem; }
+    a.btn { background:#3b82f6; color:#fff; border-radius:8px; padding:.7rem 2rem; text-decoration:none; font-weight:600; display:inline-block; margin-top:1rem; }
+    a.btn:hover { background:#2563eb; color:#fff; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    {% if success %}
+      <div class="icon" style="color:#22c55e"><i class="fas fa-circle-check"></i></div>
+      <h2>Bestätigt!</h2>
+    {% else %}
+      <div class="icon" style="color:#ef4444"><i class="fas fa-circle-xmark"></i></div>
+      <h2>Fehler</h2>
+    {% endif %}
+    <p>{{ message }}</p>
+    {% if success %}
+      <a href="{{ url_for('login') }}" class="btn"><i class="fas fa-right-to-bracket me-2"></i>Zum Login</a>
+    {% else %}
+      <a href="{{ url_for('register') }}" class="btn"><i class="fas fa-user-plus me-2"></i>Neu registrieren</a>
+    {% endif %}
+    <div style="display:flex;justify-content:center;gap:6px;margin-top:1.25rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.06);">
+      {%- set _lang = session.get('language', 'de') %}
+      <a href="/set-lang/de" style="font-size:.78rem;font-weight:600;text-decoration:none;padding:4px 10px;border-radius:7px;border:1px solid {{ 'rgba(59,130,246,.55)' if _lang=='de' else 'rgba(255,255,255,.08)' }};background:{{ 'rgba(59,130,246,.18)' if _lang=='de' else 'transparent' }};color:{{ '#60a5fa' if _lang=='de' else '#64748b' }};">&#127465;&#127466; DE</a>
+      <a href="/set-lang/en" style="font-size:.78rem;font-weight:600;text-decoration:none;padding:4px 10px;border-radius:7px;border:1px solid {{ 'rgba(59,130,246,.55)' if _lang=='en' else 'rgba(255,255,255,.08)' }};background:{{ 'rgba(59,130,246,.18)' if _lang=='en' else 'transparent' }};color:{{ '#60a5fa' if _lang=='en' else '#64748b' }};">&#127468;&#127463; EN</a>
+    </div>
+  </div>
+</body>
+</html>
