@@ -16,19 +16,54 @@
   .drop-item:hover{background:#1e3a5f;color:#f1f5f9;}
   .drop-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#818cf8);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:#fff;flex-shrink:0;}
   .drop-empty{padding:.75rem 1rem;color:#64748b;font-size:.85rem;text-align:center;}
+
+  /* Book picker */
+  #book-picker-modal,#book-detail-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9998;align-items:center;justify-content:center;}
+  .bpicker-box{background:#1e293b;border-radius:16px;padding:1.5rem;width:100%;max-width:440px;margin:1rem;max-height:85vh;display:flex;flex-direction:column;}
+  .bpicker-results{overflow-y:auto;flex:1;min-height:0;margin-top:.75rem;}
+  .bpicker-item{display:flex;align-items:center;gap:.75rem;padding:.65rem .75rem;border-radius:10px;cursor:pointer;transition:background .12s;}
+  .bpicker-item:hover{background:#0f172a;}
+  .bpicker-cover{width:38px;height:52px;border-radius:5px;object-fit:cover;background:#0f172a;flex-shrink:0;}
+  .bpicker-cover-ph{width:38px;height:52px;border-radius:5px;background:#0f172a;display:flex;align-items:center;justify-content:center;color:#334155;font-size:1rem;flex-shrink:0;}
+  .bpicker-empty{text-align:center;padding:1.5rem;color:#4b5563;font-size:.85rem;}
+
+  /* Selected book chip in form */
+  #selected-book-chip{display:none;align-items:center;gap:.75rem;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:.6rem .85rem;margin-bottom:.5rem;}
+  #selected-book-chip img{width:32px;height:44px;object-fit:cover;border-radius:4px;}
+  #selected-book-chip .ph{width:32px;height:44px;border-radius:4px;background:#1e293b;display:flex;align-items:center;justify-content:center;color:#475569;font-size:.85rem;}
+  #chip-remove{background:none;border:none;color:#64748b;cursor:pointer;font-size:.9rem;padding:0;margin-left:auto;line-height:1;}
+  #chip-remove:hover{color:#ef4444;}
+
+  /* Book card in feed */
+  .feed-book-card{display:flex;align-items:center;gap:.75rem;background:#0f172a;border:1px solid #1e3a5f;border-radius:10px;padding:.65rem .85rem;margin-bottom:.5rem;cursor:pointer;transition:border-color .15s;}
+  .feed-book-card:hover{border-color:#3b82f6;}
+  .feed-book-cover{width:36px;height:50px;object-fit:cover;border-radius:4px;flex-shrink:0;}
+  .feed-book-cover-ph{width:36px;height:50px;border-radius:4px;background:#1e293b;display:flex;align-items:center;justify-content:center;color:#334155;font-size:.85rem;flex-shrink:0;}
+
+  /* Book detail modal */
+  .bdetail-box{background:#1e293b;border-radius:16px;padding:1.75rem;width:100%;max-width:480px;margin:1rem;max-height:90vh;overflow-y:auto;}
+  .bdetail-cover{width:90px;height:126px;object-fit:cover;border-radius:8px;flex-shrink:0;}
+  .bdetail-cover-ph{width:90px;height:126px;border-radius:8px;background:#0f172a;display:flex;align-items:center;justify-content:center;color:#334155;font-size:2rem;flex-shrink:0;}
+  .bdetail-meta span{display:inline-block;background:#0f172a;border-radius:6px;padding:.2rem .6rem;font-size:.76rem;color:#94a3b8;margin:.15rem .15rem 0 0;}
 </style>
 
 {# JS-Übersetzungsstrings als Variablen #}
 <script>
 const T = {
-  noUser:       "{{ _('Kein User gefunden') }}",
-  confirmDel:   "{{ _('Beitrag löschen?') }}",
-  needContent:  "{{ _('Bitte Inhalt eingeben') }}",
-  needReason:   "{{ _('Bitte Grund wählen') }}",
-  reported:     "{{ _('Meldung eingereicht. Danke!') }}",
-  followed:     "{{ _('Gefolgt') }}",
-  newMember:    "{{ _('Neues Mitglied') }}",
-  error:        "{{ _('Fehler') }}",
+  noUser:        "{{ _('Kein User gefunden') }}",
+  confirmDel:    "{{ _('Beitrag löschen?') }}",
+  needContent:   "{{ _('Bitte Inhalt eingeben') }}",
+  needReason:    "{{ _('Bitte Grund wählen') }}",
+  reported:      "{{ _('Meldung eingereicht. Danke!') }}",
+  followed:      "{{ _('Gefolgt') }}",
+  newMember:     "{{ _('Neues Mitglied') }}",
+  error:         "{{ _('Fehler') }}",
+  attachBook:    "{{ _('Buch anhängen') }}",
+  noBooks:       "{{ _('Keine Bücher gefunden') }}",
+  addWishlist:   "{{ _('Zur Wunschliste hinzufügen') }}",
+  onWishlist:    "{{ _('Bereits auf der Wunschliste') }}",
+  wishlistDone:  "{{ _('Zur Wunschliste hinzugefügt!') }}",
+  ownBook:       "{{ _('Dein Buch') }}",
 };
 </script>
 
@@ -59,8 +94,32 @@ const T = {
     <!-- Neuer Beitrag -->
     <div class="card mb-3" style="background:#1e293b;border:none;border-radius:12px;padding:1.25rem;">
       <h6 style="color:#f1f5f9;margin-bottom:.75rem;"><i class="fas fa-pen me-2" style="color:#3b82f6;"></i>{{ _('Neuer Beitrag') }}</h6>
-      <input type="text" id="post-book" placeholder="{{ _('Buchtitel (optional)') }}"
-        style="width:100%;background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:8px;padding:.5rem .8rem;font-size:.88rem;margin-bottom:.5rem;">
+
+      <!-- Hidden book_id (only set when picked from library) -->
+      <input type="hidden" id="post-book-id">
+
+      <!-- Title row: text input + picker button -->
+      <div style="display:flex;gap:.5rem;margin-bottom:.5rem;">
+        <input type="text" id="post-book-title" placeholder="{{ _('Titel (optional)') }}" maxlength="200"
+          style="flex:1;background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:8px;padding:.5rem .8rem;font-size:.88rem;min-width:0;">
+        <button onclick="openBookPicker()" id="btn-attach-book"
+          title="{{ _('Buch aus Bibliothek wählen') }}"
+          style="background:#0f172a;border:1px solid #334155;color:#64748b;border-radius:8px;padding:.5rem .75rem;font-size:.88rem;cursor:pointer;white-space:nowrap;transition:border-color .15s,color .15s;flex-shrink:0;"
+          onmouseover="this.style.borderColor='#3b82f6';this.style.color='#60a5fa';" onmouseout="this.style.borderColor='#334155';this.style.color='#64748b';">
+          <i class="fas fa-book-open me-1"></i>{{ _('Bibliothek') }}
+        </button>
+      </div>
+
+      <!-- Selected-from-library chip (shown when book_id is set) -->
+      <div id="selected-book-chip">
+        <div id="chip-cover-wrap"></div>
+        <div style="flex:1;min-width:0;">
+          <div id="chip-title" style="color:#3b82f6;font-weight:600;font-size:.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+          <div id="chip-author" style="color:#64748b;font-size:.73rem;"></div>
+        </div>
+        <button id="chip-remove" onclick="clearBook()" title="{{ _('Auswahl aufheben') }}"><i class="fas fa-xmark"></i></button>
+      </div>
+
       <textarea id="post-content" placeholder="{{ _('Rezension, Gedanke oder Empfehlung…') }}" rows="3"
         style="width:100%;background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:8px;padding:.6rem .8rem;font-size:.9rem;resize:none;margin-bottom:.5rem;"></textarea>
       <div class="d-flex align-items-center justify-content-between">
@@ -89,14 +148,35 @@ const T = {
             <a href="/profile/{{ p.username }}" style="color:#f1f5f9;font-weight:600;text-decoration:none;font-size:.9rem;">{{ p.username }}</a>
             <span style="color:#4b5563;font-size:.75rem;margin-left:.4rem;">{{ p.created_at[:16] }}</span>
           </div>
+          {% if p.author_id != uid %}
           <button onclick="openReport('post', {{ p.id }})" class="report-btn-sm" title="{{ _('Melden') }}"><i class="fas fa-flag"></i></button>
+          {% endif %}
           {% if p.author_id == uid %}
           <button onclick="deletePost({{ p.id }})" class="report-btn-sm" title="{{ _('Löschen') }}"><i class="fas fa-trash"></i></button>
           {% endif %}
         </div>
-        {% if p.book_title %}
-        <div style="color:#3b82f6;font-size:.82rem;margin-bottom:.4rem;"><i class="fas fa-book me-1"></i>{{ p.book_title }}</div>
+
+        {% if p.book_id %}
+        {# Styled clickable book card #}
+        <div class="feed-book-card" onclick="openBookDetail({{ p.book_id }})">
+          {% if p.book_cover %}
+          <img src="{{ p.book_cover }}" class="feed-book-cover" alt="{{ p.book_title }}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+          <div class="feed-book-cover-ph" style="display:none;"><i class="fas fa-book"></i></div>
+          {% else %}
+          <div class="feed-book-cover-ph"><i class="fas fa-book"></i></div>
+          {% endif %}
+          <div style="flex:1;min-width:0;">
+            <div style="color:#f1f5f9;font-size:.95rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ p.book_title }}</div>
+            {% if p.book_author %}
+            <div style="color:#64748b;font-size:.78rem;margin-top:.15rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ p.book_author }}</div>
+            {% endif %}
+          </div>
+          <div style="color:#3b82f6;font-size:.75rem;flex-shrink:0;"><i class="fas fa-chevron-right"></i></div>
+        </div>
+        {% elif p.book_title %}
+        <div style="color:#3b82f6;font-size:.95rem;font-weight:600;margin-bottom:.4rem;"><i class="fas fa-book me-1"></i>{{ p.book_title }}</div>
         {% endif %}
+
         <p style="color:#cbd5e1;font-size:.9rem;margin:0 0 .75rem 0;line-height:1.5;">{{ p.content }}</p>
         <button class="like-btn {{ 'liked' if p.liked else '' }}" id="like-{{ p.id }}" onclick="toggleLike({{ p.id }})">
           <i class="fas fa-heart me-1"></i><span id="like-count-{{ p.id }}">{{ p.like_count }}</span>
@@ -222,16 +302,41 @@ const T = {
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════
+     Book Picker Modal
+════════════════════════════════════════════ -->
+<div id="book-picker-modal" onclick="if(event.target===this)closeBookPicker()">
+  <div class="bpicker-box">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h5 style="color:#f1f5f9;margin:0;"><i class="fas fa-book me-2" style="color:#3b82f6;"></i>{{ _('Buch auswählen') }}</h5>
+      <button onclick="closeBookPicker()" style="background:none;border:none;color:#64748b;font-size:1.2rem;cursor:pointer;line-height:1;"><i class="fas fa-xmark"></i></button>
+    </div>
+    <input type="text" id="bpicker-search" autocomplete="off"
+      placeholder="{{ _('Suche in deinen Büchern…') }}"
+      style="width:100%;background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:8px;padding:.55rem .85rem;font-size:.9rem;"
+      oninput="searchMyBooks(this.value)">
+    <div class="bpicker-results" id="bpicker-results">
+      <div class="bpicker-empty"><i class="fas fa-search" style="display:block;font-size:1.5rem;margin-bottom:.5rem;color:#334155;"></i>{{ _('Tippe um zu suchen…') }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     Book Detail Modal
+════════════════════════════════════════════ -->
+<div id="book-detail-modal" onclick="if(event.target===this)closeBookDetail()">
+  <div class="bdetail-box">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h5 style="color:#f1f5f9;margin:0;"><i class="fas fa-book-open me-2" style="color:#3b82f6;"></i>{{ _('Buchdetails') }}</h5>
+      <button onclick="closeBookDetail()" style="background:none;border:none;color:#64748b;font-size:1.2rem;cursor:pointer;line-height:1;"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div id="bdetail-body" style="min-height:120px;display:flex;align-items:center;justify-content:center;">
+      <div style="color:#64748b;font-size:.85rem;"><i class="fas fa-spinner fa-spin me-2"></i>{{ _('Laden…') }}</div>
+    </div>
+  </div>
+</div>
+
 <script>
-/* ── Übersetzungsstrings für JS ── */
-const T = {
-  noUser:      "{{ _('Kein User gefunden') }}",
-  confirmDel:  "{{ _('Beitrag löschen?') }}",
-  needContent: "{{ _('Bitte Inhalt eingeben') }}",
-  needReason:  "{{ _('Bitte Grund wählen') }}",
-  reported:    "{{ _('Meldung eingereicht. Danke!') }}",
-  error:       "{{ _('Fehler') }}",
-};
 
 /* ── Live User-Suche ── */
 let _st = null;
@@ -272,24 +377,30 @@ async function toggleLike(postId) {
 /* ── Neuer Beitrag ── */
 async function submitPost() {
   const content    = document.getElementById('post-content').value.trim();
-  const book_title = document.getElementById('post-book').value.trim();
+  const book_id    = document.getElementById('post-book-id').value || null;
+  const book_title = document.getElementById('post-book-title').value.trim() || null;
   const post_type  = document.getElementById('post-type').value;
   if (!content) { alert(T.needContent); return; }
   const res = await fetch('/api/community/post', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({content, book_title, post_type})
+    body: JSON.stringify({
+      content, post_type,
+      book_id: book_id ? parseInt(book_id) : null,
+      book_title: book_id ? null : book_title   // wenn Bibliotheksbuch, übernimmt Backend den Titel
+    })
   });
   const d = await res.json();
   if (d.success) {
     document.getElementById('post-content').value = '';
-    document.getElementById('post-book').value = '';
+    document.getElementById('post-book-title').value = '';
+    clearBook();
     location.reload();
   } else alert(d.error || T.error);
 }
 
 /* ── Post löschen ── */
 async function deletePost(postId) {
-  if (!confirm(T.confirmDel)) return;
+  try { await showConfirm({ message: T.confirmDel, title: 'Beitrag löschen', type: 'danger', confirmText: 'Löschen' }); } catch { return; }
   const res = await fetch(`/api/community/post/${postId}`, {method:'DELETE'});
   const d = await res.json();
   if (d.success) { const el = document.getElementById(`post-${postId}`); if (el) el.remove(); }
@@ -331,6 +442,177 @@ async function submitReport() {
   document.getElementById('report-modal').style.display = 'none';
   if (d.success) alert(T.reported);
   else alert(d.error || T.error);
+}
+
+/* ══════════════════════════════════════════
+   Book Picker
+════════════════════════════════════════════ */
+function openBookPicker() {
+  document.getElementById('bpicker-search').value = '';
+  document.getElementById('bpicker-results').innerHTML =
+    `<div class="bpicker-empty"><i class="fas fa-search" style="display:block;font-size:1.5rem;margin-bottom:.5rem;color:#334155;"></i>{{ _('Tippe um zu suchen…') }}</div>`;
+  document.getElementById('book-picker-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('bpicker-search').focus(), 80);
+  // Load all books immediately
+  searchMyBooks('');
+}
+function closeBookPicker() {
+  document.getElementById('book-picker-modal').style.display = 'none';
+}
+
+let _bst = null;
+async function searchMyBooks(q) {
+  clearTimeout(_bst);
+  _bst = setTimeout(async () => {
+    const res = await fetch(`/api/community/my-books?q=${encodeURIComponent(q)}`);
+    const books = await res.json();
+    const box = document.getElementById('bpicker-results');
+    if (!books.length) {
+      box.innerHTML = `<div class="bpicker-empty"><i class="fas fa-book-open" style="display:block;font-size:1.5rem;margin-bottom:.5rem;color:#334155;"></i>${T.noBooks}</div>`;
+      return;
+    }
+    box.innerHTML = books.map(b => `
+      <div class="bpicker-item"
+           data-id="${b.id}"
+           data-title="${escHtml(b.title)}"
+           data-author="${escHtml(b.author || '')}"
+           data-cover="${escHtml(b.cover_url || '')}"
+           onclick="pickBook(this)">
+        ${b.cover_url
+          ? `<img src="${escHtml(b.cover_url)}" class="bpicker-cover" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+             <div class="bpicker-cover-ph" style="display:none;"><i class="fas fa-book"></i></div>`
+          : `<div class="bpicker-cover-ph"><i class="fas fa-book"></i></div>`}
+        <div style="flex:1;min-width:0;">
+          <div style="color:#f1f5f9;font-weight:600;font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(b.title)}</div>
+          ${b.author ? `<div style="color:#64748b;font-size:.76rem;">${escHtml(b.author)}</div>` : ''}
+        </div>
+        <i class="fas fa-plus" style="color:#3b82f6;font-size:.8rem;flex-shrink:0;"></i>
+      </div>`).join('');
+  }, 180);
+}
+
+function pickBook(el) {
+  // Liest Daten aus data-Attributen – kein JSON-in-HTML-Escaping-Problem
+  selectBook(parseInt(el.dataset.id), el.dataset.title, el.dataset.author, el.dataset.cover);
+}
+
+function selectBook(id, title, author, cover) {
+  document.getElementById('post-book-id').value = id;
+  // Titel ins Textfeld schreiben (read-only Hinweis via chip)
+  document.getElementById('post-book-title').value = title;
+  document.getElementById('post-book-title').readOnly = true;
+  document.getElementById('post-book-title').style.color = '#64748b';
+
+  // Cover in chip
+  const coverWrap = document.getElementById('chip-cover-wrap');
+  if (cover) {
+    coverWrap.innerHTML = `<img src="${cover}" style="width:28px;height:38px;object-fit:cover;border-radius:3px;" alt="">`;
+  } else {
+    coverWrap.innerHTML = `<div class="ph"><i class="fas fa-book"></i></div>`;
+  }
+  document.getElementById('chip-title').textContent = '📚 ' + title;
+  document.getElementById('chip-author').textContent = author || '';
+  document.getElementById('selected-book-chip').style.display = 'flex';
+
+  closeBookPicker();
+}
+
+function clearBook() {
+  document.getElementById('post-book-id').value = '';
+  document.getElementById('post-book-title').value = '';
+  document.getElementById('post-book-title').readOnly = false;
+  document.getElementById('post-book-title').style.color = '#f1f5f9';
+  document.getElementById('selected-book-chip').style.display = 'none';
+}
+
+/* ══════════════════════════════════════════
+   Book Detail Modal
+════════════════════════════════════════════ */
+async function openBookDetail(bookId) {
+  document.getElementById('bdetail-body').innerHTML =
+    `<div style="color:#64748b;font-size:.85rem;"><i class="fas fa-spinner fa-spin me-2"></i>{{ _('Laden…') }}</div>`;
+  document.getElementById('book-detail-modal').style.display = 'flex';
+
+  const res = await fetch(`/api/community/book-detail/${bookId}`);
+  const b = await res.json();
+  if (b.error) {
+    document.getElementById('bdetail-body').innerHTML =
+      `<div style="color:#ef4444;font-size:.85rem;">${escHtml(b.error)}</div>`;
+    return;
+  }
+
+  const metaParts = [];
+  if (b.genre)     metaParts.push(`<span>${escHtml(b.genre)}</span>`);
+  if (b.pages)     metaParts.push(`<span>${b.pages} {{ _('Seiten') }}</span>`);
+  if (b.isbn)      metaParts.push(`<span>ISBN: ${escHtml(b.isbn)}</span>`);
+  if (b.publisher) metaParts.push(`<span>${escHtml(b.publisher)}</span>`);
+  if (b.format)    metaParts.push(`<span>${escHtml(b.format)}</span>`);
+  if (b.series)    metaParts.push(`<span>${escHtml(b.series)}${b.volume ? ' #'+b.volume : ''}</span>`);
+
+  const wishlistBtn = b.is_own
+    ? `<span style="color:#64748b;font-size:.82rem;"><i class="fas fa-lock me-1"></i>${T.ownBook}</span>`
+    : b.on_wishlist
+      ? `<button disabled style="background:#14532d;color:#4ade80;border:none;border-radius:8px;padding:.5rem 1.2rem;font-weight:600;font-size:.9rem;cursor:default;">
+           <i class="fas fa-check me-2"></i>${T.onWishlist}
+         </button>`
+      : `<button id="wl-btn-${b.id}" onclick="addToWishlist(${b.id})"
+           style="background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:.5rem 1.2rem;font-weight:600;font-size:.9rem;cursor:pointer;transition:background .15s;">
+           <i class="fas fa-heart me-2"></i>${T.addWishlist}
+         </button>`;
+
+  document.getElementById('bdetail-body').innerHTML = `
+    <div class="d-flex gap-3 mb-3">
+      ${b.cover_url
+        ? `<img src="${b.cover_url}" class="bdetail-cover" alt="${escHtml(b.title)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+           <div class="bdetail-cover-ph" style="display:none;"><i class="fas fa-book"></i></div>`
+        : `<div class="bdetail-cover-ph"><i class="fas fa-book"></i></div>`}
+      <div style="flex:1;min-width:0;">
+        <div style="color:#f1f5f9;font-size:1.05rem;font-weight:700;line-height:1.35;margin-bottom:.3rem;">${escHtml(b.title)}</div>
+        ${b.author ? `<div style="color:#94a3b8;font-size:.88rem;margin-bottom:.5rem;">${escHtml(b.author)}</div>` : ''}
+        ${b.release_date ? `<div style="color:#64748b;font-size:.78rem;margin-bottom:.4rem;">${escHtml(b.release_date)}</div>` : ''}
+        ${metaParts.length ? `<div class="bdetail-meta">${metaParts.join('')}</div>` : ''}
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:.75rem;align-items:center;border-top:1px solid #334155;padding-top:.75rem;">
+      <button onclick="closeBookDetail()" style="background:#334155;color:#94a3b8;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.88rem;cursor:pointer;">{{ _('Schließen') }}</button>
+      ${wishlistBtn}
+    </div>`;
+}
+
+function closeBookDetail() {
+  document.getElementById('book-detail-modal').style.display = 'none';
+}
+
+async function addToWishlist(bookId) {
+  const btn = document.getElementById(`wl-btn-${bookId}`);
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>'; }
+  const res = await fetch(`/api/community/book/${bookId}/add-to-wishlist`, {method:'POST'});
+  const d = await res.json();
+  if (d.success) {
+    if (btn) {
+      btn.style.background = '#14532d';
+      btn.style.color = '#4ade80';
+      btn.innerHTML = `<i class="fas fa-check me-2"></i>${T.onWishlist}`;
+    }
+  } else {
+    if (btn) { btn.disabled = false; btn.innerHTML = `<i class="fas fa-heart me-2"></i>${T.addWishlist}`; }
+    alert(d.error || T.error);
+  }
+}
+
+/* ── Escape key closes modals ── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeBookPicker();
+    closeBookDetail();
+    document.getElementById('report-modal').style.display = 'none';
+  }
+});
+
+/* ── HTML escaping helper ── */
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 </script>
 {% endblock %}

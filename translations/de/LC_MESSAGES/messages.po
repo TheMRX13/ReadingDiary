@@ -1537,3 +1537,266 @@ msgstr "Gefolgt"
 
 msgid "Profil"
 msgstr "Profil"
+
+# Support-System
+msgid "Support"
+msgstr "Support"
+
+msgid "Hilfe & Kontakt"
+msgstr "Hilfe & Kontakt"
+
+msgid "Hast du ein Problem oder eine Frage? Öffne ein Support-Ticket oder schau dir deine bisherigen Unterhaltungen an."
+msgstr "Hast du ein Problem oder eine Frage? Öffne ein Support-Ticket oder schau dir deine bisherigen Unterhaltungen an."
+
+msgid "Support-Tickets"
+msgstr "Support-Tickets"
+
+msgid "Meine Unterhaltungen"
+msgstr "Meine Unterhaltungen"
+
+msgid "Alle Chats anzeigen"
+msgstr "Alle Chats anzeigen"
+
+msgid "Hier kannst du Bugs melden oder Fragen stellen."
+msgstr "Hier kannst du Bugs melden oder Fragen stellen."
+
+msgid "Alle Tickets"
+msgstr "Alle Tickets"
+
+msgid "Neues Ticket"
+msgstr "Neues Ticket"
+
+msgid "Offen"
+msgstr "Offen"
+
+msgid "Beantwortet"
+msgstr "Beantwortet"
+
+msgid "Geschlossen"
+msgstr "Geschlossen"
+
+msgid "Noch keine Tickets. Erstelle dein erstes!"
+msgstr "Noch keine Tickets. Erstelle dein erstes!"
+
+msgid "Kategorie"
+msgstr "Kategorie"
+
+msgid "Bug / Fehler"
+msgstr "Bug / Fehler"
+
+msgid "Frage"
+msgstr "Frage"
+
+msgid "Funktionswunsch"
+msgstr "Funktionswunsch"
+
+msgid "Allgemein"
+msgstr "Allgemein"
+
+msgid "Betreff"
+msgstr "Betreff"
+
+msgid "Kurze Beschreibung…"
+msgstr "Kurze Beschreibung…"
+
+msgid "Nachricht"
+msgstr "Nachricht"
+
+msgid "Beschreibe das Problem oder deine Frage so genau wie möglich…"
+msgstr "Beschreibe das Problem oder deine Frage so genau wie möglich…"
+
+msgid "Abbrechen"
+msgstr "Abbrechen"
+
+msgid "Senden"
+msgstr "Senden"
+
+msgid "Bitte Betreff eingeben"
+msgstr "Bitte Betreff eingeben"
+
+msgid "Bitte Nachricht eingeben"
+msgstr "Bitte Nachricht eingeben"
+
+msgid "Fehler"
+msgstr "Fehler"
+
+msgid "Erstellt am"
+msgstr "Erstellt am"
+
+msgid "Ticket schließen"
+msgstr "Ticket schließen"
+
+msgid "Du"
+msgstr "Du"
+
+msgid "Support-Team"
+msgstr "Support-Team"
+
+msgid "Antworten"
+msgstr "Antworten"
+
+msgid "Deine Antwort…"
+msgstr "Deine Antwort…"
+
+msgid "Dieses Ticket ist geschlossen."
+msgstr "Dieses Ticket ist geschlossen."
+
+msgid "Ticket wirklich schließen?"
+msgstr "Ticket wirklich schließen?"
+
+# Profil
+msgid "Öffentliches Profil"
+msgstr "Öffentliches Profil"
+
+msgid "Dein Profil für andere Nutzer sichtbar machen"
+msgstr "Dein Profil für andere Nutzer sichtbar machen"
+
+msgid "Du hast dein Profil nicht öffentlich."
+msgstr "Du hast dein Profil nicht öffentlich."
+
+msgid "In den Einstellungen kannst du dies umstellen."
+msgstr "In den Einstellungen kannst du dies umstellen."
+
+msgid "Zu den Einstellungen"
+msgstr "Zu den Einstellungen"
+
+msgid "Dieser Nutzer hat sein Profil nicht öffentlich."
+msgstr "Dieser Nutzer hat sein Profil nicht öffentlich."
+
+msgid "Zurück zur Community"
+msgstr "Zurück zur Community"
+
+
+# 2FA
+msgid "Or enter this key manually:"
+msgstr "Oder diesen Schlüssel manuell eingeben:"
+
+msgid "Copied!"
+msgstr "Kopiert!"
+
+msgid "Copy"
+msgstr "Kopieren"
+
+# Chat
+msgid "Leute finden"
+msgstr "Leute finden"
+
+msgid "Entfolgen"
+msgstr "Entfolgen"
+
+msgid "Folgst du"
+msgstr "Folgst du"
+
+msgid "Zum Dashboard"
+msgstr "Zum Dashboard"
+
+msgid "Login"
+msgstr "Login"
+
+msgid "Jetzt beitreten"
+msgstr "Jetzt beitreten"
+
+msgid "Erfolgreich abgemeldet"
+msgstr "Erfolgreich abgemeldet"
+
+msgid "Bis bald! Deine Lesereise wartet."
+msgstr "Bis bald! Deine Lesereise wartet."
+
+msgid "Für alle, die Bücher lieben"
+msgstr "Für alle, die Bücher lieben"
+
+msgid "Reading Diary – Deine Lesereise beginnt hier"
+msgstr "Reading Diary – Deine Lesereise beginnt hier"
+
+msgid "Verwalte deine Bücher, verfolge deinen Fortschritt, lies gemeinsam mit Freunden und entdecke neue Welten – alles an einem Ort."
+msgstr "Verwalte deine Bücher, verfolge deinen Fortschritt, lies gemeinsam mit Freunden und entdecke neue Welten – alles an einem Ort."
+
+msgid "Jetzt beitreten – kostenlos"
+msgstr "Jetzt beitreten – kostenlos"
+
+msgid "Bereits Mitglied? Login"
+msgstr "Bereits Mitglied? Login"
+
+msgid "Bücher tracken"
+msgstr "Bücher tracken"
+
+msgid "Persönliche Statistiken"
+msgstr "Persönliche Statistiken"
+
+msgid "Buddy-Reads"
+msgstr "Buddy-Reads"
+
+msgid "Sicherer Chat"
+msgstr "Sicherer Chat"
+
+msgid "Community-Feed"
+msgstr "Community-Feed"
+
+msgid "Alles was du als Leser brauchst"
+msgstr "Alles was du als Leser brauchst"
+
+msgid "Ein vollständiges System für deine Leidenschaft – vom ersten bis zum letzten Satz."
+msgstr "Ein vollständiges System für deine Leidenschaft – vom ersten bis zum letzten Satz."
+
+msgid "Verfolge deine gelesenen Seiten, Bücher pro Monat, Lesedauer und Genres – mit anschaulichen Diagrammen und einem Jahresrückblick."
+msgstr "Verfolge deine gelesenen Seiten, Bücher pro Monat, Lesedauer und Genres – mit anschaulichen Diagrammen und einem Jahresrückblick."
+
+msgid "Lies Bücher gemeinsam mit Freunden. Teilt euren Fortschritt, feuert euch gegenseitig an und verfolgt Meilensteine zusammen."
+msgstr "Lies Bücher gemeinsam mit Freunden. Teilt euren Fortschritt, feuert euch gegenseitig an und verfolgt Meilensteine zusammen."
+
+msgid "Schreibe Nachrichten nur mit gegenseitigen Followern – mit Emoji-Unterstützung, Bildversand und vollständiger Datensicherheit."
+msgstr "Schreibe Nachrichten nur mit gegenseitigen Followern – mit Emoji-Unterstützung, Bildversand und vollständiger Datensicherheit."
+
+msgid "Teile Rezensionen, Zitate und Empfehlungen. Entdecke, was andere lesen, und finde neue Lesefreunde über gemeinsame Genres."
+msgstr "Teile Rezensionen, Zitate und Empfehlungen. Entdecke, was andere lesen, und finde neue Lesefreunde über gemeinsame Genres."
+
+msgid "Wunschliste & Regale"
+msgstr "Wunschliste & Regale"
+
+msgid "Lege eine persönliche Wunschliste an und organisiere deine Bücher in eigenen Regalen – ganz so, wie es zu dir passt."
+msgstr "Lege eine persönliche Wunschliste an und organisiere deine Bücher in eigenen Regalen – ganz so, wie es zu dir passt."
+
+msgid "Lieblingszitate"
+msgstr "Lieblingszitate"
+
+msgid "Sammle und verwalte die schönsten Passagen deiner Bücher – damit unvergessliche Sätze nicht in Vergessenheit geraten."
+msgstr "Sammle und verwalte die schönsten Passagen deiner Bücher – damit unvergessliche Sätze nicht in Vergessenheit geraten."
+
+msgid "In 3 Schritten loslegen"
+msgstr "In 3 Schritten loslegen"
+
+msgid "Keine Kreditkarte, kein Abo – einfach gratis anmelden und loslegen."
+msgstr "Keine Kreditkarte, kein Abo – einfach gratis anmelden und loslegen."
+
+msgid "Kostenlos registrieren"
+msgstr "Kostenlos registrieren"
+
+msgid "Erstelle deinen Account in unter einer Minute. Keine versteckten Kosten."
+msgstr "Erstelle deinen Account in unter einer Minute. Keine versteckten Kosten."
+
+msgid "Bücher hinzufügen"
+msgstr "Bücher hinzufügen"
+
+msgid "Trag deine aktuellen, gelesenen und gewünschten Bücher ein."
+msgstr "Trag deine aktuellen, gelesenen und gewünschten Bücher ein."
+
+msgid "Community entdecken"
+msgstr "Community entdecken"
+
+msgid "Folge anderen Lesern, starte Buddy-Reads und werde Teil der Gemeinschaft."
+msgstr "Folge anderen Lesern, starte Buddy-Reads und werde Teil der Gemeinschaft."
+
+msgid "Bereit für deine Lesereise?"
+msgstr "Bereit für deine Lesereise?"
+
+msgid "Tausende von Büchern warten darauf, von dir entdeckt zu werden."
+msgstr "Tausende von Büchern warten darauf, von dir entdeckt zu werden."
+
+msgid "Gratis starten"
+msgstr "Gratis starten"
+
+msgid "Registrieren"
+msgstr "Registrieren"
+
+msgid "Passwort"
+msgstr "Passwort"

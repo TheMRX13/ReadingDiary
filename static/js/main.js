@@ -248,38 +248,75 @@ function initStarRating(containerId, inputId) {
 }
 
 // ── Custom confirm dialog ──────────────────────────────────
-function showConfirm(message) {
-  return new Promise(resolve => {
-    const modalEl = document.getElementById('confirmModal');
-    document.getElementById('confirmModalMessage').textContent = message;
-    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-    const yes = document.getElementById('confirmModalYes');
-    const no  = document.getElementById('confirmModalNo');
-    function cleanup(result) {
-      yes.removeEventListener('click', onYes);
-      no.removeEventListener('click',  onNo);
-      modalEl.removeEventListener('hidden.bs.modal', onHide);
-      modal.hide();
-      resolve(result);
+function showConfirm(opts) {
+  // Accept plain string for backward compat
+  if (typeof opts === 'string') opts = { message: opts };
+  const {
+    title       = 'Bestätigen',
+    message     = '',
+    confirmText = 'Bestätigen',
+    cancelText  = 'Abbrechen',
+    type        = 'danger',
+  } = opts;
+
+  const styles = {
+    danger:  { bg: 'rgba(239,68,68,.18)',  color: '#f87171', icon: 'fa-triangle-exclamation', btn: '#dc2626' },
+    warning: { bg: 'rgba(245,158,11,.18)', color: '#fbbf24', icon: 'fa-triangle-exclamation', btn: '#b45309' },
+    primary: { bg: 'rgba(59,130,246,.18)', color: '#60a5fa', icon: 'fa-circle-info',           btn: '#2563eb' },
+  };
+  const s = styles[type] || styles.danger;
+
+  const modal      = document.getElementById('confirmModal');
+  const iconWrap   = document.getElementById('cm-icon-wrap');
+  const icon       = document.getElementById('cm-icon');
+  const titleEl    = document.getElementById('cm-title');
+  const msgEl      = document.getElementById('cm-message');
+  const confirmBtn = document.getElementById('cm-confirm');
+  const cancelBtn  = document.getElementById('cm-cancel');
+
+  iconWrap.style.background  = s.bg;
+  iconWrap.style.color       = s.color;
+  icon.className             = `fas ${s.icon}`;
+  titleEl.textContent        = title;
+  msgEl.textContent          = message;
+  confirmBtn.textContent     = confirmText;
+  confirmBtn.style.background = s.btn;
+  cancelBtn.textContent      = cancelText;
+
+  modal.style.display        = 'flex';
+  document.body.style.overflow = 'hidden';
+
+  return new Promise((resolve, reject) => {
+    function cleanup(ok) {
+      modal.style.display          = 'none';
+      document.body.style.overflow = '';
+      confirmBtn.removeEventListener('click',   onConfirm);
+      cancelBtn.removeEventListener('click',    onCancel);
+      document.removeEventListener('keydown',   onKey);
+      modal.removeEventListener('click',        onBackdrop);
+      ok ? resolve() : reject();
     }
-    function onYes()  { cleanup(true);  }
-    function onNo()   { cleanup(false); }
-    function onHide() { cleanup(false); }
-    yes.addEventListener('click', onYes);
-    no.addEventListener('click',  onNo);
-    modalEl.addEventListener('hidden.bs.modal', onHide, { once: true });
-    modal.show();
+    function onConfirm()  { cleanup(true);  }
+    function onCancel()   { cleanup(false); }
+    function onKey(e)     { if (e.key === 'Escape') cleanup(false); }
+    function onBackdrop(e){ if (e.target === modal) cleanup(false); }
+
+    confirmBtn.addEventListener('click',  onConfirm);
+    cancelBtn.addEventListener('click',   onCancel);
+    document.addEventListener('keydown',  onKey, { once: true });
+    modal.addEventListener('click',       onBackdrop);
   });
 }
 
 // ── Confirm delete ─────────────────────────────────────────
 async function confirmDelete(message, url, redirectUrl) {
-  if (!await showConfirm(message)) return;
+  try { await showConfirm({ message, title: 'Löschen bestätigen', confirmText: 'Löschen', type: 'danger' }); }
+  catch { return; }
   try {
     await apiFetch(url, { method: 'DELETE' });
     showToast('Erfolgreich gelöscht!', 'success');
     if (redirectUrl) setTimeout(() => { window.location.href = redirectUrl; }, 900);
-    else            setTimeout(() => location.reload(), 900);
+    else             setTimeout(() => location.reload(), 900);
   } catch (_) {}
 }
 

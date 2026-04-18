@@ -24,6 +24,20 @@
 
       <div class="rd-divider"></div>
 
+      <!-- Profil öffentlich -->
+      <div class="d-flex align-items-center justify-content-between py-2" style="border-top:1px solid var(--border)">
+        <div>
+          <div style="font-weight:600;font-size:.9rem">{{ _('Öffentliches Profil') }}</div>
+          <small style="color:var(--text-muted)">{{ _('Dein Profil für andere Nutzer sichtbar machen') }}</small>
+        </div>
+        <div class="form-check form-switch mb-0">
+          <input class="form-check-input" type="checkbox" role="switch" id="togglePublicProfile"
+                 {{ 'checked' if s.get('public_profile', 'false') == 'true' else '' }}
+                 onchange="saveSetting('public_profile', this.checked ? 'true' : 'false', false)">
+        </div>
+      </div>
+      <div class="rd-divider"></div>
+
       {% set display_toggles = [
         ('show_reviews',   _('Reviews'),         _('Show review function for books')),
         ('show_lent',      _('Lent out'),         _('Show lending status')),
@@ -218,8 +232,15 @@
       </button>
       <div id="qr-container" style="display:none;margin-top:1rem;">
         <p style="font-size:.85rem;color:var(--text-muted);">{{ _('Scan this QR code with your authenticator app:') }}</p>
-        <img id="qr-img" src="" alt="QR Code" style="border-radius:8px;background:#fff;padding:8px;max-width:180px;">
-        <div style="margin-top:.75rem;display:flex;gap:.5rem;align-items:center;">
+        <img id="qr-img" src="" alt="QR Code" style="border-radius:8px;background:#fff;padding:8px;max-width:180px;display:block;margin-bottom:.75rem;">
+        <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:.25rem;">{{ _('Or enter this key manually:') }}</p>
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;">
+          <code id="totp-secret" style="background:var(--bg);border:1px solid var(--border);padding:.35rem .7rem;border-radius:6px;font-size:.85rem;letter-spacing:.08em;color:#f1f5f9;word-break:break-all;"></code>
+          <button onclick="copySecret()" style="background:rgba(59,130,246,.1);color:#60a5fa;border:1px solid rgba(59,130,246,.3);border-radius:6px;padding:.3rem .6rem;font-size:.75rem;cursor:pointer;" title="{{ _('Copy') }}">
+            <i class="fas fa-copy"></i>
+          </button>
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:center;">
           <input type="text" id="totp-code" class="form-control" style="max-width:140px;"
                  placeholder="{{ _('Enter code') }}" maxlength="6" inputmode="numeric">
           <button class="btn btn-success btn-sm" onclick="confirm2FA()">{{ _('Confirm') }}</button>
@@ -525,8 +546,14 @@ async function setup2FA() {
   try {
     const data = await apiFetch('/api/2fa/setup', { method: 'POST', body: '{}' });
     document.getElementById('qr-img').src = data.qr;
+    document.getElementById('totp-secret').textContent = data.secret;
     document.getElementById('qr-container').style.display = 'block';
   } catch(e) { showToast(e.message || '{{ _('Error setting up 2FA') }}', 'danger'); }
+}
+
+function copySecret() {
+  const secret = document.getElementById('totp-secret').textContent;
+  navigator.clipboard.writeText(secret).then(() => showToast('{{ _('Copied!') }}', 'success'));
 }
 
 async function confirm2FA() {
@@ -540,7 +567,7 @@ async function confirm2FA() {
 }
 
 async function disable2FA() {
-  if (!confirm('{{ _('Really disable 2FA? Your account will be less secure.') }}')) return;
+  try { await showConfirm({ message: '{{ _("2FA wirklich deaktivieren? Dein Konto wird dadurch weniger sicher.") }}', title: '2FA deaktivieren', type: 'warning', confirmText: 'Deaktivieren' }); } catch { return; }
   try {
     await apiFetch('/api/2fa/disable', { method: 'POST', body: '{}' });
     showToast('{{ _('2FA disabled') }}', 'success');

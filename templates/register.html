@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="{{ session.get('language', 'de') }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -78,9 +78,17 @@
 
       <div class="mb-3">
         <label class="form-label">{{ _('Passwort') }}</label>
-        <input type="password" name="password" id="pw" class="form-control"
-               placeholder="{{ _('Mindestens 10 Zeichen') }}" maxlength="128" required
-               autocomplete="new-password" oninput="checkPw(this.value)">
+        <div style="position:relative;">
+          <input type="password" name="password" id="pw" class="form-control"
+                 placeholder="{{ _('Mindestens 10 Zeichen') }}" maxlength="128" required
+                 autocomplete="new-password" oninput="checkPw(this.value)"
+                 style="padding-right:2.75rem;">
+          <button type="button" onclick="togglePw('pw','eye1')"
+                  style="position:absolute;right:.75rem;top:50%;transform:translateY(-50%);background:none;border:none;color:#64748b;cursor:pointer;padding:0;line-height:1;"
+                  tabindex="-1" title="Passwort anzeigen">
+            <i id="eye1" class="fas fa-eye"></i>
+          </button>
+        </div>
         <div class="pw-requirements">
           <ul id="pw-rules">
             <li id="r-len"><i class="fas fa-circle-xmark"></i>{{ _('Mindestens 10 Zeichen') }}</li>
@@ -93,9 +101,16 @@
 
       <div class="mb-3">
         <label class="form-label">{{ _('Passwort wiederholen') }}</label>
-        <input type="password" name="password2" class="form-control"
-               placeholder="{{ _('Passwort bestätigen') }}" maxlength="128" required
-               autocomplete="new-password">
+        <div style="position:relative;">
+          <input type="password" name="password2" id="pw2" class="form-control"
+                 placeholder="{{ _('Passwort bestätigen') }}" maxlength="128" required
+                 autocomplete="new-password" style="padding-right:2.75rem;">
+          <button type="button" onclick="togglePw('pw2','eye2')"
+                  style="position:absolute;right:.75rem;top:50%;transform:translateY(-50%);background:none;border:none;color:#64748b;cursor:pointer;padding:0;line-height:1;"
+                  tabindex="-1" title="Passwort anzeigen">
+            <i id="eye2" class="fas fa-eye"></i>
+          </button>
+        </div>
       </div>
 
       <div class="mb-3">
@@ -139,6 +154,18 @@
   </div>
 
   <script>
+    function togglePw(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon  = document.getElementById(iconId);
+      if (input.type === 'password') {
+        input.type     = 'text';
+        icon.className = 'fas fa-eye-slash';
+      } else {
+        input.type     = 'password';
+        icon.className = 'fas fa-eye';
+      }
+    }
+
     function checkPw(pw) {
       const rules = [
         ['r-len',     pw.length >= 10],

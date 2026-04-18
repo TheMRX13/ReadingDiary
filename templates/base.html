@@ -180,7 +180,6 @@
     </button>
     <h1 class="topbar-title">{% block page_title %}{% endblock %}</h1>
     <div class="topbar-actions" style="display:flex;align-items:center;gap:.5rem;">
-      {% include '_lang_switch.html' %}
       <button class="theme-toggle btn btn-sm" onclick="toggleTheme()" title="{{ _('Toggle theme') }}">
         <i class="fas {{ 'fa-sun' if dark_mode else 'fa-moon' }}"></i>
       </button>
@@ -218,19 +217,27 @@
 
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<!-- Bestätigungs-Modal -->
-<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-trash-alt text-danger me-2"></i>{{ _('Confirm Delete') }}</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<!-- Bestätigungs-Modal (custom dark) -->
+<div id="confirmModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10000;align-items:center;justify-content:center;padding:1rem;">
+  <div style="background:#1e293b;border-radius:16px;width:100%;max-width:420px;box-shadow:0 24px 56px rgba(0,0,0,.7);overflow:hidden;">
+    <div style="padding:1.35rem 1.5rem .75rem;display:flex;align-items:flex-start;gap:.9rem;">
+      <div id="cm-icon-wrap" style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;">
+        <i id="cm-icon" class="fas fa-triangle-exclamation"></i>
       </div>
-      <div class="modal-body" id="confirmModalMessage">{{ _('Really delete?') }}</div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="confirmModalNo">{{ _('Cancel') }}</button>
-        <button type="button" class="btn btn-danger" id="confirmModalYes"><i class="fas fa-trash-alt me-1"></i>{{ _('Delete') }}</button>
+      <div style="flex:1;min-width:0;">
+        <h5 id="cm-title" style="color:#f1f5f9;margin:0 0 .45rem;font-size:.98rem;font-weight:700;"></h5>
+        <p id="cm-message" style="color:#94a3b8;font-size:.88rem;line-height:1.55;margin:0;"></p>
       </div>
+    </div>
+    <div style="padding:.85rem 1.5rem 1.25rem;display:flex;gap:.65rem;justify-content:flex-end;border-top:1px solid #334155;margin-top:.5rem;">
+      <button id="cm-cancel" style="background:#334155;color:#94a3b8;border:none;border-radius:8px;padding:.5rem 1.1rem;font-size:.87rem;cursor:pointer;font-weight:600;transition:background .15s;"
+              onmouseenter="this.style.background='#475569'" onmouseleave="this.style.background='#334155'">
+        Abbrechen
+      </button>
+      <button id="cm-confirm" style="border:none;border-radius:8px;padding:.5rem 1.25rem;font-size:.87rem;cursor:pointer;font-weight:700;color:#fff;transition:filter .15s;"
+              onmouseenter="this.style.filter='brightness(1.15)'" onmouseleave="this.style.filter='none'">
+        Bestätigen
+      </button>
     </div>
   </div>
 </div>

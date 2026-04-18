@@ -213,7 +213,7 @@ function selectPartner(id, name) {
 }
 
 async function cancelInvite(readId) {
-  if (!confirm('Einladung zurückziehen?')) return;
+  try { await showConfirm({ message: 'Einladung zurückziehen?', title: 'Einladung zurückziehen', type: 'warning', confirmText: 'Zurückziehen' }); } catch { return; }
   const res = await fetch(`/api/buddies/read/${readId}/cancel`, { method: 'POST' });
   const d = await res.json();
   if (d.success) location.reload();
@@ -221,7 +221,7 @@ async function cancelInvite(readId) {
 }
 
 async function abandonRead(readId) {
-  if (!confirm('Buddy-Read wirklich abbrechen? Dies kann nicht rückgängig gemacht werden.')) return;
+  try { await showConfirm({ message: 'Buddy-Read wirklich abbrechen? Dies kann nicht rückgängig gemacht werden.', title: 'Buddy-Read abbrechen', type: 'danger', confirmText: 'Abbrechen' }); } catch { return; }
   const res = await fetch(`/api/buddies/read/${readId}/abandon`, { method: 'POST' });
   const d = await res.json();
   if (d.success) location.reload();

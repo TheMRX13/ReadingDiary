@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="{{ session.get('language', 'de') }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -260,11 +260,11 @@
     <span style="width:1px;height:20px;background:rgba(255,255,255,.1);"></span>
     {% if logged_in %}
     <a href="{{ url_for('dashboard') }}" class="btn-primary">
-      <i class="fas fa-tachometer-alt me-1"></i>Zum Dashboard
+      <i class="fas fa-tachometer-alt me-1"></i>{{ _('Zum Dashboard') }}
     </a>
     {% else %}
-    <a href="{{ url_for('login') }}" class="btn-outline">Login</a>
-    <a href="{{ url_for('register') }}" class="btn-primary">Jetzt beitreten</a>
+    <a href="{{ url_for('login') }}" class="btn-outline">{{ _('Login') }}</a>
+    <a href="{{ url_for('register') }}" class="btn-primary">{{ _('Jetzt beitreten') }}</a>
     {% endif %}
   </div>
 </nav>
@@ -279,8 +279,8 @@
   animation:slideDown .35s ease;">
   <span style="font-size:1.3rem;">👋</span>
   <div>
-    <div style="color:#f1f5f9;font-weight:700;font-size:.95rem;">Erfolgreich abgemeldet</div>
-    <div style="color:#94a3b8;font-size:.8rem;">Bis bald! Deine Lesereise wartet.</div>
+    <div style="color:#f1f5f9;font-weight:700;font-size:.95rem;">{{ _('Erfolgreich abgemeldet') }}</div>
+    <div style="color:#94a3b8;font-size:.8rem;">{{ _('Bis bald! Deine Lesereise wartet.') }}</div>
   </div>
   <button onclick="document.getElementById('bye-toast').remove()"
     style="margin-left:auto;background:none;border:none;color:#64748b;cursor:pointer;font-size:1.1rem;line-height:1;">
@@ -304,16 +304,19 @@
 <!-- ── Hero ── -->
 <section class="hero">
   <div class="hero-badge">
-    <i class="fas fa-book-open"></i> F&uuml;r alle, die B&uuml;cher lieben
+    <i class="fas fa-book-open"></i> {{ _('Für alle, die Bücher lieben') }}
   </div>
-  <h1>Reading Diary &ndash;<br>Deine Lesereise<br>beginnt hier</h1>
-  <p>Verwalte deine B&uuml;cher, verfolge deinen Fortschritt, lies gemeinsam mit Freunden und entdecke neue Welten &ndash; alles an einem Ort.</p>
+    <h1>
+      {{ _('Reading Diary') }} &ndash;<br>
+      {{ _('Deine Lesereise beginnt hier') }}
+    </h1>
+  <p>{{ _('Verwalte deine Bücher, verfolge deinen Fortschritt, lies gemeinsam mit Freunden und entdecke neue Welten – alles an einem Ort.') }}</p>
   <div class="hero-btns">
     <a href="{{ url_for('register') }}" class="cta-primary">
-      <i class="fas fa-rocket me-2"></i>Jetzt beitreten &ndash; kostenlos
+      <i class="fas fa-rocket me-2"></i>{{ _('Jetzt beitreten – kostenlos') }}
     </a>
     <a href="{{ url_for('login') }}" class="cta-secondary">
-      <i class="fas fa-sign-in-alt me-2"></i>Bereits Mitglied? Login
+      <i class="fas fa-sign-in-alt me-2"></i>{{ _('Bereits Mitglied? Login') }}
     </a>
   </div>
 </section>
@@ -322,31 +325,31 @@
 <div class="stats-strip">
   <div class="stat-item">
     <span class="num">&#128218;</span>
-    <span class="label">B&uuml;cher tracken</span>
+    <span class="label">{{ _('Bücher tracken') }}</span>
   </div>
   <div class="stat-item">
     <span class="num">&#128202;</span>
-    <span class="label">Pers&ouml;nliche Statistiken</span>
+    <span class="label">{{ _('Persönliche Statistiken') }}</span>
   </div>
   <div class="stat-item">
     <span class="num">&#128101;</span>
-    <span class="label">Buddy-Reads</span>
+    <span class="label">{{ _('Buddy-Reads') }}</span>
   </div>
   <div class="stat-item">
     <span class="num">&#128172;</span>
-    <span class="label">Sicherer Chat</span>
+    <span class="label">{{ _('Sicherer Chat') }}</span>
   </div>
   <div class="stat-item">
     <span class="num">&#127757;</span>
-    <span class="label">Community-Feed</span>
+    <span class="label">{{ _('Community-Feed') }}</span>
   </div>
 </div>
 
 <!-- ── Features ── -->
 <section class="section">
   <div class="section-title">
-    <h2>Alles was du als Leser brauchst</h2>
-    <p>Ein vollst&auml;ndiges System f&uuml;r deine Leidenschaft &ndash; vom ersten bis zum letzten Satz.</p>
+    <h2>{{ _('Alles was du als Leser brauchst') }}</h2>
+    <p>{{ _('Ein vollständiges System für deine Leidenschaft – vom ersten bis zum letzten Satz.') }}</p>
   </div>
   <div class="feature-grid">
 
@@ -354,48 +357,48 @@
       <div class="feature-icon" style="background:rgba(59,130,246,.15);color:#3b82f6;">
         <i class="fas fa-chart-bar"></i>
       </div>
-      <h3>Pers&ouml;nliche Statistiken</h3>
-      <p>Verfolge deine gelesenen Seiten, B&uuml;cher pro Monat, Lesedauer und Genres &ndash; mit anschaulichen Diagrammen und einem Jahresr&uuml;ckblick.</p>
+      <h3>{{ _('Persönliche Statistiken') }}</h3>
+      <p>{{ _('Verfolge deine gelesenen Seiten, Bücher pro Monat, Lesedauer und Genres – mit anschaulichen Diagrammen und einem Jahresrückblick.') }}</p>
     </div>
 
     <div class="feature-card">
       <div class="feature-icon" style="background:rgba(34,197,94,.15);color:#22c55e;">
         <i class="fas fa-people-group"></i>
       </div>
-      <h3>Buddy-Reads</h3>
-      <p>Lies B&uuml;cher gemeinsam mit Freunden. Teilt euren Fortschritt, feuert euch gegenseitig an und verfolgt Meilensteine zusammen.</p>
+      <h3>{{ _('Buddy-Reads') }}</h3>
+      <p>{{ _('Lies Bücher gemeinsam mit Freunden. Teilt euren Fortschritt, feuert euch gegenseitig an und verfolgt Meilensteine zusammen.') }}</p>
     </div>
 
     <div class="feature-card">
       <div class="feature-icon" style="background:rgba(168,85,247,.15);color:#a855f7;">
         <i class="fas fa-comments"></i>
       </div>
-      <h3>Sicherer Chat</h3>
-      <p>Schreibe Nachrichten nur mit gegenseitigen Followern &ndash; mit Emoji-Unterst&uuml;tzung, Bildversand und vollst&auml;ndiger Datensicherheit.</p>
+      <h3>{{ _('Sicherer Chat') }}</h3>
+      <p>{{ _('Schreibe Nachrichten nur mit gegenseitigen Followern – mit Emoji-Unterstützung, Bildversand und vollständiger Datensicherheit.') }}</p>
     </div>
 
     <div class="feature-card">
       <div class="feature-icon" style="background:rgba(245,158,11,.15);color:#f59e0b;">
         <i class="fas fa-globe"></i>
       </div>
-      <h3>Community-Feed</h3>
-      <p>Teile Rezensionen, Zitate und Empfehlungen. Entdecke, was andere lesen, und finde neue Lesefreunde &uuml;ber gemeinsame Genres.</p>
+      <h3>{{ _('Community-Feed') }}</h3>
+      <p>{{ _('Teile Rezensionen, Zitate und Empfehlungen. Entdecke, was andere lesen, und finde neue Lesefreunde über gemeinsame Genres.') }}</p>
     </div>
 
     <div class="feature-card">
       <div class="feature-icon" style="background:rgba(239,68,68,.15);color:#ef4444;">
         <i class="fas fa-heart"></i>
       </div>
-      <h3>Wunschliste &amp; Regale</h3>
-      <p>Lege eine pers&ouml;nliche Wunschliste an und organisiere deine B&uuml;cher in eigenen Regalen &ndash; ganz so, wie es zu dir passt.</p>
+      <h3>{{ _('Wunschliste & Regale') }}</h3>
+      <p>{{ _('Lege eine persönliche Wunschliste an und organisiere deine Bücher in eigenen Regalen – ganz so, wie es zu dir passt.') }}</p>
     </div>
 
     <div class="feature-card">
       <div class="feature-icon" style="background:rgba(6,182,212,.15);color:#06b6d4;">
         <i class="fas fa-quote-left"></i>
       </div>
-      <h3>Lieblingszitate</h3>
-      <p>Sammle und verwalte die sch&ouml;nsten Passagen deiner B&uuml;cher &ndash; damit unvergessliche S&auml;tze nicht in Vergessenheit geraten.</p>
+      <h3>{{ _('Lieblingszitate') }}</h3>
+      <p>{{ _('Sammle und verwalte die schönsten Passagen deiner Bücher – damit unvergessliche Sätze nicht in Vergessenheit geraten.') }}</p>
     </div>
 
   </div>
@@ -404,35 +407,35 @@
 <!-- ── How it works ── -->
 <section class="section steps-section">
   <div class="section-title">
-    <h2>In 3 Schritten loslegen</h2>
-    <p>Keine Kreditkarte, kein Abo &ndash; einfach gratis anmelden und loslegen.</p>
+    <h2>{{ _('In 3 Schritten loslegen') }}</h2>
+    <p>{{ _('Keine Kreditkarte, kein Abo – einfach gratis anmelden und loslegen.') }}</p>
   </div>
   <div class="steps-grid">
     <div class="step">
       <div class="step-num">1</div>
-      <h4>Kostenlos registrieren</h4>
-      <p>Erstelle deinen Account in unter einer Minute. Keine versteckten Kosten.</p>
+      <h4>{{ _('Kostenlos registrieren') }}</h4>
+      <p>{{ _('Erstelle deinen Account in unter einer Minute. Keine versteckten Kosten.') }}</p>
     </div>
     <div class="step">
       <div class="step-num">2</div>
-      <h4>B&uuml;cher hinzuf&uuml;gen</h4>
-      <p>Trag deine aktuellen, gelesenen und gew&uuml;nschten B&uuml;cher ein.</p>
+      <h4>{{ _('Bücher hinzufügen') }}</h4>
+      <p>{{ _('Trag deine aktuellen, gelesenen und gewünschten Bücher ein.') }}</p>
     </div>
     <div class="step">
       <div class="step-num">3</div>
-      <h4>Community entdecken</h4>
-      <p>Folge anderen Lesern, starte Buddy-Reads und werde Teil der Gemeinschaft.</p>
+      <h4>{{ _('Community entdecken') }}</h4>
+      <p>{{ _('Folge anderen Lesern, starte Buddy-Reads und werde Teil der Gemeinschaft.') }}</p>
     </div>
   </div>
 </section>
 
 <!-- ── Final CTA ── -->
 <section class="cta-section">
-  <h2>Bereit f&uuml;r deine Lesereise?</h2>
-  <p>Tausende von B&uuml;chern warten darauf, von dir entdeckt zu werden.</p>
+  <h2>{{ _('Bereit für deine Lesereise?') }}</h2>
+  <p>{{ _('Tausende von Büchern warten darauf, von dir entdeckt zu werden.') }}</p>
   <div class="hero-btns" style="justify-content:center;">
     <a href="{{ url_for('register') }}" class="cta-primary">
-      <i class="fas fa-book-open me-2"></i>Gratis starten
+      <i class="fas fa-book-open me-2"></i>{{ _('Gratis starten') }}
     </a>
   </div>
 </section>
@@ -440,8 +443,8 @@
 <!-- ── Footer ── -->
 <footer>
   <div class="footer-links">
-    <a href="{{ url_for('login') }}"><i class="fas fa-sign-in-alt me-1"></i>Login</a>
-    <a href="{{ url_for('register') }}"><i class="fas fa-user-plus me-1"></i>Registrieren</a>
+    <a href="{{ url_for('login') }}"><i class="fas fa-sign-in-alt me-1"></i>{{ _('Login') }}</a>
+    <a href="{{ url_for('register') }}"><i class="fas fa-user-plus me-1"></i>{{ _('Registrieren') }}</a>
     <a href="{{ url_for('impressum') }}"><i class="fas fa-info-circle me-1"></i>Impressum</a>
     <a href="{{ url_for('datenschutz') }}"><i class="fas fa-shield-alt me-1"></i>Datenschutz</a>
     <a href="https://github.com/TheMRX13/ReadingDiary" target="_blank" rel="noopener">

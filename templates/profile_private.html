@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}{{ profile_user.username }} – Reading Diary{% endblock %}
+{% block page_title %}{{ _('Profil') }}{% endblock %}
+{% block content %}
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4rem 1rem;text-align:center;">
+
+  <div style="width:72px;height:72px;border-radius:50%;background:rgba(100,116,139,.15);display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem;border:2px solid #334155;">
+    <i class="fas fa-lock" style="font-size:2rem;color:#64748b;"></i>
+  </div>
+
+  <h3 style="color:#f1f5f9;margin-bottom:.5rem;">{{ profile_user.username }}</h3>
+
+  {% if is_own %}
+    <p style="color:#94a3b8;max-width:380px;line-height:1.6;margin-bottom:1.5rem;">
+      {{ _('Du hast dein Profil nicht öffentlich.') }}<br>
+      <span style="color:#64748b;font-size:.88rem;">{{ _('In den Einstellungen kannst du dies umstellen.') }}</span>
+    </p>
+    <a href="{{ url_for('settings') }}"
+       style="background:#3b82f6;color:#fff;border:none;border-radius:9px;padding:.6rem 1.4rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:.5rem;">
+      <i class="fas fa-cog"></i>{{ _('Zu den Einstellungen') }}
+    </a>
+  {% else %}
+    <p style="color:#94a3b8;max-width:380px;line-height:1.6;margin-bottom:1.5rem;">
+      {{ _('Dieser Nutzer hat sein Profil nicht öffentlich.') }}
+    </p>
+    <a href="{{ url_for('community') }}"
+       style="background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:9px;padding:.55rem 1.2rem;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:.5rem;">
+      <i class="fas fa-arrow-left"></i>{{ _('Zurück zur Community') }}
+    </a>
+  {% endif %}
+</div>
+{% endblock %}

@@ -98,16 +98,6 @@ def get_locale():
 
 babel = Babel(app, locale_selector=get_locale)
 
-# Tägliches Backup um 05:00 Uhr
-try:
-    from apscheduler.schedulers.background import BackgroundScheduler
-    _scheduler = BackgroundScheduler()
-    _scheduler.add_job(create_backup, 'cron', hour=5, minute=0, id='daily_backup', replace_existing=True)
-    _scheduler.start()
-except Exception as _e:
-    app.logger.warning(f'Scheduler nicht gestartet: {_e}')
-
-
 @app.after_request
 def no_cache(response):
     """Verhindert Caching durch Nginx und Browser für HTML-Seiten."""
@@ -422,6 +412,16 @@ def create_backup():
     return zip_path
 
 
+# Tägliches Backup um 05:00 Uhr (nach create_backup Definition)
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+    _scheduler = BackgroundScheduler()
+    _scheduler.add_job(create_backup, 'cron', hour=5, minute=0, id='daily_backup', replace_existing=True)
+    _scheduler.start()
+except Exception as _e:
+    app.logger.warning(f'Scheduler nicht gestartet: {_e}')
+
+
 # ──────────────────────────────────────────────────────────────────
 #  IP-Lock (nur Anfragen vom nginx-Proxy erlauben)
 # ──────────────────────────────────────────────────────────────────
@@ -462,7 +462,7 @@ def check_maintenance():
     """Prüft Wartungsmodus. Admins, statische Dateien und Maintenance-Seite sind erreichbar."""
     if request.path.startswith('/static'):
         return
-    if request.path in ('/set-lang/de', '/set-lang/en'):
+    if request.path in ('/set-lang/de', '/set-lang/en', '/', '/favicon.ico'):
         return
     # Maintenance-Seite: wenn Modus aus ist, weiterleiten
     if request.path == '/maintenance':
@@ -1760,6 +1760,38 @@ def admin_support_ticket(ticket_id):
     return render_template('admin_support_ticket.html', ticket=ticket, replies=replies)
 
 
+@app.route('/api/profile/<int:uid>/followers')
+@login_required
+def api_profile_followers(uid):
+    """Follower-Liste eines Users (nur eigenes Profil oder öffentliche Profile)."""
+    viewer_id = session['user_id']
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT u.id, u.username, "
+        " EXISTS(SELECT 1 FROM follows WHERE follower_id=? AND followed_id=u.id) as i_follow "
+        "FROM follows f JOIN users u ON f.follower_id=u.id "
+        "WHERE f.followed_id=? ORDER BY u.username",
+        (viewer_id, uid)
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/profile/<int:uid>/following')
+@login_required
+def api_profile_following(uid):
+    """Following-Liste eines Users."""
+    viewer_id = session['user_id']
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT u.id, u.username, "
+        " EXISTS(SELECT 1 FROM follows WHERE follower_id=? AND followed_id=u.id) as i_follow "
+        "FROM follows f JOIN users u ON f.followed_id=u.id "
+        "WHERE f.follower_id=? ORDER BY u.username",
+        (viewer_id, uid)
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
 @app.route('/profile/<username>')
 def public_profile(username):
     """Zeigt ein öffentliches Profil eines Benutzers."""
@@ -1773,10 +1805,15 @@ def public_profile(username):
         "SELECT value FROM user_settings WHERE user_id=? AND key='public_profile'",
         (user['id'],)
     ).fetchone()
-    if not setting or setting['value'] != 'true':
-        abort(404)
-    uid = user['id']
     viewer_id = session.get('user_id')
+    uid = user['id']
+    is_own_profile = (viewer_id == uid)
+    if not setting or setting['value'] != 'true':
+        conn.close()
+        return render_template('profile_private.html',
+            profile_user=user,
+            is_own=is_own_profile
+        )
     year = datetime.now(timezone.utc).year
 
     # Follower / Following Zahlen
@@ -1830,7 +1867,7 @@ def public_profile(username):
     duels = conn.execute(
         "SELECT br.book_title, br.book_cover, "
         "       br.initiator_id, br.partner_id, "
-        "       br.initiator_progress, br.partner_progress, "
+        "       br.initiator_page, br.partner_page, "
         "       br.total_pages, br.updated_at, "
         "       u1.username as initiator_name, u2.username as partner_name "
         "FROM buddy_reads br "
@@ -1845,8 +1882,8 @@ def public_profile(username):
     duel_results = []
     for d in duels:
         if d['total_pages'] and d['total_pages'] > 0:
-            i_pct = (d['initiator_progress'] or 0) / d['total_pages'] * 100
-            p_pct = (d['partner_progress'] or 0) / d['total_pages'] * 100
+            i_pct = (d['initiator_page'] or 0) / d['total_pages'] * 100
+            p_pct = (d['partner_page'] or 0) / d['total_pages'] * 100
             if i_pct >= 100 and p_pct >= 100:
                 winner = d['initiator_name'] if d['initiator_id'] == uid else d['partner_name']
             elif i_pct >= 100:
@@ -2024,7 +2061,7 @@ def buddy_read_detail(read_id):
         "FROM buddy_reads br "
         "JOIN users ui ON br.initiator_id=ui.id "
         "JOIN users up ON br.partner_id=up.id "
-        "WHERE br.id=? AND (br.initiator_id=? OR br.partner_id=?) AND br.status IN ('active','finished')",
+        "WHERE br.id=? AND (br.initiator_id=? OR br.partner_id=?) AND br.status IN ('active','finished','abandoned','cancelled')",
         (read_id, uid, uid)
     ).fetchone()
     if not br:
@@ -2122,6 +2159,29 @@ def buddy_send_message(read_id):
     ).fetchall()
     conn.close()
     return jsonify({'success': True, 'messages': [dict(m) for m in reversed(msgs)]})
+
+@app.route('/api/buddies/read/<int:read_id>/messages/poll')
+@login_required
+def buddy_messages_poll(read_id):
+    """Neue Chat-Nachrichten seit after_id für Live-Polling."""
+    uid = session['user_id']
+    after_id = request.args.get('after', 0, type=int)
+    conn = get_db()
+    br = conn.execute(
+        "SELECT id FROM buddy_reads WHERE id=? AND (initiator_id=? OR partner_id=?)",
+        (read_id, uid, uid)
+    ).fetchone()
+    if not br:
+        conn.close()
+        return jsonify([])
+    msgs = conn.execute(
+        "SELECT bm.id, bm.content, bm.is_spoiler, bm.created_at, u.username, u.id as sender_id "
+        "FROM buddy_messages bm JOIN users u ON bm.sender_id=u.id "
+        "WHERE bm.buddy_read_id=? AND bm.id>? ORDER BY bm.created_at ASC",
+        (read_id, after_id)
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(m) for m in msgs])
 
 @csrf.exempt
 @app.route('/api/buddies/read/<int:read_id>/milestone', methods=['POST'])
@@ -3441,6 +3501,7 @@ def admin_status_api():
         'active_users': active_users,
         'open_reports': open_reports,
         'last_backup':  last_backup[:16] if last_backup else 'Noch kein Backup',
+        'maintenance':  get_app_setting('maintenance_mode', '0') == '1',
         'online':       True,
     })
 
@@ -3665,16 +3726,11 @@ def maintenance_page():
 @login_required
 @admin_required
 def admin_backup():
-    """Erstellt ein Backup und lädt es herunter."""
+    """Erstellt ein Backup und speichert es im backups-Ordner (nicht öffentlich erreichbar)."""
     try:
         zip_path = create_backup()
         log_audit('backup_created')
-        with open(zip_path, 'rb') as f:
-            return Response(
-                f.read(),
-                mimetype='application/zip',
-                headers={'Content-Disposition': f'attachment; filename={os.path.basename(zip_path)}'}
-            )
+        return jsonify({'success': True, 'filename': os.path.basename(zip_path)})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -3976,7 +4032,7 @@ def submit_report():
 def admin_reports():
     status_filter = request.args.get('status', 'open')
     conn = get_db()
-    reports = conn.execute("""
+    rows = conn.execute("""
         SELECT r.*, u1.username as reporter_name, u2.username as target_username
         FROM reports r
         JOIN users u1 ON r.reporter_id=u1.id
@@ -3984,6 +4040,39 @@ def admin_reports():
         WHERE r.status=?
         ORDER BY r.created_at DESC LIMIT 100
     """, (status_filter,)).fetchall()
+
+    # Fetch actual content for each report so admin can see what was reported
+    reports = []
+    for r in rows:
+        rd = dict(r)
+        rd['content_preview'] = None
+        if r['target_type'] == 'post' and r['target_id']:
+            post = conn.execute(
+                "SELECT content, image_url, u.username as author FROM community_posts cp "
+                "JOIN users u ON cp.user_id=u.id WHERE cp.id=?", (r['target_id'],)
+            ).fetchone()
+            if post:
+                rd['content_preview'] = {
+                    'kind': 'post',
+                    'text': post['content'],
+                    'image_url': post['image_url'],
+                    'author': post['author']
+                }
+        elif r['target_type'] in ('message', 'chat') and r['target_id']:
+            msg = conn.execute(
+                "SELECT cm.content, cm.image_url, u.username as sender "
+                "FROM chat_messages cm JOIN users u ON cm.sender_id=u.id WHERE cm.id=?",
+                (r['target_id'],)
+            ).fetchone()
+            if msg:
+                rd['content_preview'] = {
+                    'kind': 'message',
+                    'text': msg['content'],
+                    'image_url': msg['image_url'],
+                    'sender': msg['sender']
+                }
+        reports.append(rd)
+
     open_count   = conn.execute("SELECT COUNT(*) as c FROM reports WHERE status='open'").fetchone()['c']
     closed_count = conn.execute("SELECT COUNT(*) as c FROM reports WHERE status!='open'").fetchone()['c']
     conn.close()
@@ -4080,12 +4169,15 @@ def community():
         "GROUP BY genre ORDER BY cnt DESC LIMIT 10").fetchall()
     # Community-Feed: Posts von allen Usern mit öffentlichem Profil (neueste zuerst)
     feed = conn.execute("""
-        SELECT cp.id, cp.content, cp.book_title, cp.book_cover, cp.post_type, cp.created_at,
+        SELECT cp.id, cp.content, cp.book_title, cp.book_cover, cp.book_id, cp.post_type, cp.created_at,
                u.username, u.id as author_id,
+               a.name as book_author,
                (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id=cp.id) as like_count,
                (SELECT 1 FROM post_likes pl WHERE pl.post_id=cp.id AND pl.user_id=?) as liked
         FROM community_posts cp
         JOIN users u ON cp.user_id=u.id
+        LEFT JOIN books bk ON bk.id=cp.book_id
+        LEFT JOIN authors a ON a.id=bk.author_id
         WHERE u.is_active=1
         ORDER BY cp.created_at DESC LIMIT 30
     """, (uid,)).fetchall()
@@ -4139,6 +4231,95 @@ def community_search_users():
     return jsonify([{'id': r['id'], 'username': r['username']} for r in rows])
 
 
+@app.route('/api/community/my-books')
+@login_required
+def community_my_books():
+    """Eigene Bücher für den Book-Picker im Post-Formular."""
+    uid = session['user_id']
+    q   = request.args.get('q', '').strip()
+    conn = get_db()
+    if q:
+        rows = conn.execute(
+            "SELECT b.id, b.title, b.cover_url, b.genre, b.pages, a.name as author "
+            "FROM books b LEFT JOIN authors a ON b.author_id=a.id "
+            "WHERE b.user_id=? AND (b.title LIKE ? OR a.name LIKE ?) "
+            "ORDER BY b.title LIMIT 20",
+            (uid, f'%{q}%', f'%{q}%')
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT b.id, b.title, b.cover_url, b.genre, b.pages, a.name as author "
+            "FROM books b LEFT JOIN authors a ON b.author_id=a.id "
+            "WHERE b.user_id=? ORDER BY b.title LIMIT 30",
+            (uid,)
+        ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route('/api/community/book-detail/<int:book_id>')
+@login_required
+def community_book_detail(book_id):
+    """Buchdetails für das Detail-Modal – für alle eingeloggten User sichtbar."""
+    uid  = session['user_id']
+    conn = get_db()
+    book = conn.execute(
+        "SELECT b.id, b.title, b.cover_url, b.genre, b.pages, b.isbn, b.format, "
+        "       b.release_date, b.series, b.volume, b.user_id, "
+        "       a.name as author, p.name as publisher "
+        "FROM books b "
+        "LEFT JOIN authors   a ON b.author_id=a.id "
+        "LEFT JOIN publishers p ON b.publisher_id=p.id "
+        "WHERE b.id=?", (book_id,)
+    ).fetchone()
+    if not book:
+        conn.close(); return jsonify({'error': 'Buch nicht gefunden'}), 404
+    # Prüfen ob der Viewer das Buch schon auf der Wunschliste hat
+    on_wishlist = bool(conn.execute(
+        "SELECT 1 FROM wishlist WHERE user_id=? AND title=?", (uid, book['title'])
+    ).fetchone())
+    conn.close()
+    return jsonify({**dict(book), 'on_wishlist': on_wishlist, 'is_own': book['user_id'] == uid})
+
+
+@csrf.exempt
+@app.route('/api/community/book/<int:book_id>/add-to-wishlist', methods=['POST'])
+@login_required
+def community_add_to_wishlist(book_id):
+    """Buch aus Community-Post zur eigenen Wunschliste hinzufügen."""
+    uid  = session['user_id']
+    conn = get_db()
+    book = conn.execute(
+        "SELECT b.*, a.name as author_name, p.name as publisher_name "
+        "FROM books b "
+        "LEFT JOIN authors   a ON b.author_id=a.id "
+        "LEFT JOIN publishers p ON b.publisher_id=p.id "
+        "WHERE b.id=?", (book_id,)
+    ).fetchone()
+    if not book:
+        conn.close(); return jsonify({'error': 'Buch nicht gefunden'}), 404
+    if book['user_id'] == uid:
+        conn.close(); return jsonify({'error': 'Das ist dein eigenes Buch'}), 400
+    # Duplikat-Check
+    exists = conn.execute(
+        "SELECT 1 FROM wishlist WHERE user_id=? AND title=?", (uid, book['title'])
+    ).fetchone()
+    if exists:
+        conn.close(); return jsonify({'error': 'Bereits auf der Wunschliste', 'already': True}), 409
+    # Author/Publisher für den neuen User anlegen
+    aid = upsert_author(conn, book['author_name'], uid)
+    pid = upsert_publisher(conn, book['publisher_name'], uid)
+    conn.execute(
+        "INSERT INTO wishlist (user_id, title, author_id, publisher_id, isbn, cover_url, "
+        "genre, pages, release_date, series, volume) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        (uid, book['title'], aid, pid, book['isbn'], book['cover_url'],
+         book['genre'], book['pages'] or 0, book['release_date'],
+         book['series'], book['volume'])
+    )
+    conn.commit(); conn.close()
+    return jsonify({'success': True})
+
+
 @csrf.exempt
 @app.route('/api/community/post', methods=['POST'])
 @login_required
@@ -4146,6 +4327,7 @@ def community_post_create():
     uid = session['user_id']
     data = request.get_json() or {}
     content    = (data.get('content') or '').strip()
+    book_id    = data.get('book_id')     # Optional: angehängtes Buch
     book_title = (data.get('book_title') or '').strip()
     book_cover = (data.get('book_cover') or '').strip()
     post_type  = data.get('post_type', 'review')
@@ -4154,9 +4336,21 @@ def community_post_create():
     if len(content) > 1000:
         return jsonify({'error': 'Max. 1000 Zeichen'}), 400
     conn = get_db()
+    # Wenn book_id angegeben: Titel/Cover aus DB holen (sicherstellen dass es dem User gehört)
+    if book_id:
+        bk = conn.execute(
+            "SELECT b.title, b.cover_url FROM books b WHERE b.id=? AND b.user_id=?",
+            (book_id, uid)
+        ).fetchone()
+        if bk:
+            book_title = bk['title']
+            book_cover = bk['cover_url'] or ''
+        else:
+            book_id = None  # ungültige book_id ignorieren
     conn.execute(
-        "INSERT INTO community_posts (user_id, book_title, book_cover, content, post_type) VALUES (?,?,?,?,?)",
-        (uid, book_title or None, book_cover or None, content, post_type)
+        "INSERT INTO community_posts (user_id, book_id, book_title, book_cover, content, post_type) "
+        "VALUES (?,?,?,?,?,?)",
+        (uid, book_id or None, book_title or None, book_cover or None, content, post_type)
     )
     conn.commit(); conn.close()
     return jsonify({'success': True})
@@ -4196,6 +4390,43 @@ def community_post_delete(post_id):
 # ──────────────────────────────────────────────────────────────────
 #  Error Handlers
 # ──────────────────────────────────────────────────────────────────
+
+# Pfade, die Browser automatisch anfragen – niemals als Sicherheitsvorfall loggen
+BROWSER_AUTO_PATHS = frozenset([
+    '/favicon.ico', '/favicon.png', '/favicon.svg',
+    '/apple-touch-icon.png', '/apple-touch-icon-precomposed.png',
+    '/apple-touch-icon-120x120.png', '/apple-touch-icon-152x152.png',
+    '/apple-touch-icon-180x180.png',
+    '/robots.txt', '/sitemap.xml', '/sitemap_index.xml',
+    '/browserconfig.xml', '/manifest.json', '/sw.js',
+    '/.well-known/security.txt', '/.well-known/change-password',
+])
+
+@app.route('/favicon.ico')
+@app.route('/favicon.png')
+def favicon():
+    static_dir = os.path.join(app.root_path, 'static')
+    resp = send_from_directory(static_dir, 'favicon.ico', mimetype='image/x-icon')
+    resp.cache_control.max_age = 86400  # 1 Tag cachen → Browser fragt seltener nach
+    resp.cache_control.public = True
+    return resp
+
+@app.route('/apple-touch-icon.png')
+@app.route('/apple-touch-icon-precomposed.png')
+@app.route('/apple-touch-icon-120x120.png')
+@app.route('/apple-touch-icon-152x152.png')
+@app.route('/apple-touch-icon-180x180.png')
+def apple_touch_icon():
+    static_dir = os.path.join(app.root_path, 'static')
+    try:
+        return send_from_directory(static_dir, 'apple-touch-icon.png', mimetype='image/png')
+    except Exception:
+        return '', 204  # Kein Inhalt, aber kein Fehler
+
+@app.route('/robots.txt')
+def robots_txt():
+    return 'User-agent: *\nAllow: /\n', 200, {'Content-Type': 'text/plain; charset=utf-8'}
+
 @app.errorhandler(403)
 def forbidden(e):
     log_hacker('403 Forbidden')
@@ -4203,7 +4434,9 @@ def forbidden(e):
 
 @app.errorhandler(404)
 def not_found(e):
-    log_hacker('404 Not Found')
+    # Normale Browser-Standard-Requests nicht als Sicherheitsvorfall werten
+    if request.path not in BROWSER_AUTO_PATHS:
+        log_hacker('404 Not Found')
     return render_template('error.html', code=404, message='Seite nicht gefunden'), 404
 
 @app.errorhandler(405)

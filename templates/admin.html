@@ -54,6 +54,9 @@
     <a href="#audit-log-section" style="background:rgba(99,102,241,.15);color:#a5b4fc;border:1px solid rgba(99,102,241,.25);border-radius:6px;padding:.2rem .65rem;text-decoration:none;font-weight:600;font-size:.75rem;">
       <i class="fas fa-list-check me-1"></i>Audit-Log
     </a>
+    <a href="{{ url_for('admin_support') }}" style="background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.25);border-radius:6px;padding:.2rem .65rem;text-decoration:none;font-weight:600;font-size:.75rem;">
+      <i class="fas fa-headset me-1"></i>Support
+    </a>
   </div>
 </div>
 
@@ -67,12 +70,18 @@
             onclick="toggleMaintenance()" id="btn-maintenance">
       <i class="fas fa-tools me-1"></i> Wartungsmodus
     </button>
-    <a href="{{ url_for('admin_backup') }}" class="btn btn-sm" style="background:#14532d;color:#4ade80;border:none;">
-      <i class="fas fa-download me-1"></i> Backup erstellen
-    </a>
+    <button onclick="triggerBackup()" class="btn btn-sm" style="background:#14532d;color:#4ade80;border:none;">
+      <i class="fas fa-database me-1"></i> Backup erstellen
+    </button>
     <a href="{{ url_for('admin_reports') }}" class="btn btn-sm" style="background:#7f1d1d;color:#fca5a5;border:none;">
       <i class="fas fa-flag me-1"></i> Meldungen
     </a>
+    <a href="{{ url_for('admin_support') }}" class="btn btn-sm" style="background:#1e3a5f;color:#60a5fa;border:none;">
+      <i class="fas fa-headset me-1"></i> Support
+    </a>
+    <span id="maintenance-badge" style="display:none;background:#78350f;color:#fcd34d;border-radius:6px;padding:.25rem .7rem;font-size:.75rem;font-weight:700;">
+      <i class="fas fa-tools me-1"></i>WARTUNG AKTIV
+    </span>
   </div>
 </div>
 
@@ -140,11 +149,13 @@
 
 <!-- ── Audit-Log ── -->
 <div class="card mb-4" id="audit-log-section">
-  <div class="card-header" style="background:#1e293b;border-bottom:1px solid #334155;padding:1rem 1.5rem;">
+  <div class="card-header" style="background:#1e293b;border-bottom:1px solid #334155;padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;">
     <h5 style="color:#f1f5f9;margin:0;">
       <i class="fas fa-clipboard-list me-2" style="color:#3b82f6"></i>Audit-Log
       <span style="font-size:.78rem;color:#64748b;margin-left:.5rem;">(letzte 200 Admin-Aktionen)</span>
     </h5>
+    <input type="text" id="audit-search" oninput="filterAuditLog(this.value)" placeholder="Suchen…"
+      style="background:#0f172a;border:1px solid #334155;color:#f1f5f9;border-radius:7px;padding:.35rem .75rem;font-size:.8rem;width:220px;outline:none;">
   </div>
   <div style="overflow-x:auto;max-height:484px;overflow-y:auto;">
     <table class="table table-dark mb-0" style="font-size:.82rem;">
@@ -315,7 +326,7 @@ async function openUserModal(uid, username) {
 // ── Admin-Aktionen ──
 async function adminAction(uid, action) {
   const labels = { activate:'aktivieren', ban:'sperren', unban:'entsperren' };
-  if (!confirm(`Benutzer ${labels[action]}?`)) return;
+  try { await showConfirm({ message: `Benutzer ${labels[action]}?`, title: 'Aktion bestätigen', confirmText: 'Ja, ausführen' }); } catch { return; }
   const res = await fetch(`/admin/users/${uid}/${action}`, { method:'POST' });
   const data = await res.json();
   if (data.success) location.reload();
@@ -323,7 +334,7 @@ async function adminAction(uid, action) {
 }
 
 async function toggleAd(uid, current) {
-  if (!confirm(`Werbefunktion ${current?'deaktivieren':'aktivieren'}?`)) return;
+  try { await showConfirm({ message: `Werbefunktion ${current?'deaktivieren':'aktivieren'}?`, title: 'Werbefunktion', type: 'warning', confirmText: current ? 'Deaktivieren' : 'Aktivieren' }); } catch { return; }
   const res = await fetch(`/admin/users/${uid}/toggle-ad`, { method:'POST' });
   const data = await res.json();
   if (data.success) location.reload();
@@ -331,7 +342,7 @@ async function toggleAd(uid, current) {
 }
 
 async function sendPasswordReset(uid, username) {
-  if (!confirm(`Passwort-Reset E-Mail an „${username}" senden?`)) return;
+  try { await showConfirm({ message: `Passwort-Reset E-Mail an „${username}" senden?`, title: 'Passwort zurücksetzen', type: 'primary', confirmText: 'E-Mail senden' }); } catch { return; }
   const res = await fetch(`/admin/users/${uid}/send-reset`, { method:'POST' });
   const data = await res.json();
   if (data.success) alert(`Reset-E-Mail wurde an ${username} gesendet.`);
@@ -339,8 +350,10 @@ async function sendPasswordReset(uid, username) {
 }
 
 async function deleteUser(uid, username) {
-  if (!confirm(`Benutzer „${username}" und ALLE seine Daten unwiderruflich löschen?`)) return;
-  if (!confirm(`Letzte Warnung: „${username}" wirklich dauerhaft löschen?`)) return;
+  try {
+    await showConfirm({ title: 'Benutzer löschen', message: `„${username}" und ALLE seine Daten unwiderruflich löschen?`, type: 'danger', confirmText: 'Weiter' });
+    await showConfirm({ title: '⚠️ Letzte Warnung', message: `„${username}" wirklich dauerhaft löschen? Dies kann NICHT rückgängig gemacht werden.`, type: 'danger', confirmText: 'Endgültig löschen' });
+  } catch { return; }
   const res = await fetch(`/admin/users/${uid}/delete`, { method:'POST' });
   const data = await res.json();
   if (data.success) { location.reload(); }
@@ -348,20 +361,54 @@ async function deleteUser(uid, username) {
 }
 
 async function impersonate(uid, username) {
-  if (!confirm(`Als „${username}" einloggen? Alle Aktionen werden im Audit-Log vermerkt.`)) return;
+  try { await showConfirm({ message: `Als „${username}" einloggen? Alle Aktionen werden im Audit-Log vermerkt.`, title: 'Impersonation', type: 'warning', confirmText: 'Als User einloggen' }); } catch { return; }
   const res = await fetch(`/admin/impersonate/${uid}`, { method:'POST' });
   const data = await res.json();
   if (data.success) window.location.href = '/dashboard';
   else alert('Fehler: ' + (data.error||'Unbekannt'));
 }
 
+async function triggerBackup() {
+  const btn = document.querySelector('[onclick="triggerBackup()"]');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Backup läuft…';
+  try {
+    const res = await fetch('/admin/backup');
+    const d = await res.json();
+    if (d.success) {
+      showToast(`✅ Backup gespeichert: ${d.filename}`, 'success');
+    } else {
+      showToast('❌ Backup fehlgeschlagen: ' + (d.error || '?'), 'danger');
+    }
+  } catch(e) { showToast('Fehler beim Backup', 'danger'); }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-database me-1"></i> Backup erstellen';
+}
+
 async function toggleMaintenance() {
   const res = await fetch('/admin/toggle-maintenance', { method:'POST' });
   const data = await res.json();
   if (data.success) {
-    alert(data.maintenance ? 'Wartungsmodus AKTIVIERT' : 'Wartungsmodus DEAKTIVIERT');
-    location.reload();
+    updateMaintenanceBadge(data.maintenance);
+    alert(data.maintenance ? '⚠️ Wartungsmodus AKTIVIERT' : '✅ Wartungsmodus DEAKTIVIERT');
   }
+}
+
+function updateMaintenanceBadge(active) {
+  const badge = document.getElementById('maintenance-badge');
+  const btn = document.getElementById('btn-maintenance');
+  if (badge) badge.style.display = active ? '' : 'none';
+  if (btn) {
+    btn.style.background = active ? '#dc2626' : '#78350f';
+    btn.style.color = active ? '#fff' : '#fcd34d';
+  }
+}
+
+function filterAuditLog(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('#audit-log-section tbody tr').forEach(row => {
+    row.style.display = (!q || row.textContent.toLowerCase().includes(q)) ? '' : 'none';
+  });
 }
 </script>
 <script>
@@ -391,6 +438,9 @@ async function toggleMaintenance() {
         rBadge.style.animation  = '';
       }
       prevReports = count;
+
+      // Wartungsmodus-Badge
+      if (d.maintenance !== undefined) updateMaintenanceBadge(d.maintenance);
 
       // Dot blinkt bei erhöhter Aktivität
       const dot = document.getElementById('sb-dot');

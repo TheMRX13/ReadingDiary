@@ -226,12 +226,16 @@
     <!-- Follower / Following Modal -->
     <div id="social-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center;padding:1rem;" onclick="if(event.target===this)closeModal()">
       <div style="background:#1e293b;border-radius:16px;width:100%;max-width:400px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 24px 48px rgba(0,0,0,.6);">
+        <!-- Modal Header -->
         <div style="padding:1.25rem 1.5rem;border-bottom:1px solid #334155;display:flex;align-items:center;justify-content:space-between;">
           <h5 id="modal-title" style="color:#f1f5f9;margin:0;font-size:1rem;font-weight:700;"></h5>
-          <button onclick="closeModal()" style="background:none;border:none;color:#64748b;font-size:1.1rem;cursor:pointer;padding:.2rem .4rem;border-radius:6px;line-height:1;"><i class="fas fa-times"></i></button>
+          <button onclick="closeModal()" style="background:none;border:none;color:#64748b;font-size:1.1rem;cursor:pointer;padding:.2rem .4rem;border-radius:6px;line-height:1;" onmouseenter="this.style.background='#334155'" onmouseleave="this.style.background='none'"><i class="fas fa-times"></i></button>
         </div>
+        <!-- Modal Body -->
         <div id="modal-list" style="overflow-y:auto;flex:1;padding:.75rem 1rem;">
-          <div style="text-align:center;color:#64748b;padding:2rem;"><i class="fas fa-spinner fa-spin me-2"></i>Laden…</div>
+          <div id="modal-loading" style="text-align:center;color:#64748b;padding:2rem;">
+            <i class="fas fa-spinner fa-spin me-2"></i>Laden…
+          </div>
         </div>
       </div>
     </div>
@@ -249,20 +253,16 @@
     const TXT_FOLLOW   = "{{ _('Folgen') }}";
     const TXT_UNFOLLOW = "{{ _('Entfolgen') }}";
     const TXT_FOLLOWS  = "{{ _('Folgst du') }}";
-    const PROFILE_UID  = {{ profile_user.id }};
-    const VIEWER_ID    = {{ viewer_id or 'null' }};
-    const IS_OWN       = {{ 'true' if viewer_id == profile_user.id else 'false' }};
 
-    /* ── Follow button on profile header ── */
     function hoverFollow(btn, entering) {
       if (!btn.classList.contains('following')) return;
       const icon  = document.getElementById('follow-icon');
       const label = document.getElementById('follow-label');
       if (entering) {
-        icon.className    = 'fas fa-user-minus me-1';
+        icon.className  = 'fas fa-user-minus me-1';
         label.textContent = TXT_UNFOLLOW;
       } else {
-        icon.className    = 'fas fa-user-check me-1';
+        icon.className  = 'fas fa-user-check me-1';
         label.textContent = TXT_FOLLOWS;
       }
     }
@@ -280,135 +280,25 @@
       .then(r => r.json())
       .then(data => {
         if (!data.success) return;
-        const hdrNum  = document.getElementById('follower-count-header');
-        const statBox = document.querySelectorAll('.stat-box .stat-num')[2];
+        const followerNum = document.querySelectorAll('.social-stat .num')[0];
+        const statBox     = document.querySelectorAll('.stat-box .stat-num')[2];
         if (data.following) {
           btn.classList.add('following');
-          icon.className    = 'fas fa-user-check me-1';
+          icon.className  = 'fas fa-user-check me-1';
           label.textContent = TXT_FOLLOWS;
-          if (hdrNum)  hdrNum.textContent  = parseInt(hdrNum.textContent)  + 1;
-          if (statBox) statBox.textContent = parseInt(statBox.textContent) + 1;
+          if (followerNum) followerNum.textContent = parseInt(followerNum.textContent) + 1;
+          if (statBox)     statBox.textContent     = parseInt(statBox.textContent) + 1;
         } else {
           btn.classList.remove('following');
-          icon.className    = 'fas fa-user-plus me-1';
+          icon.className  = 'fas fa-user-plus me-1';
           label.textContent = TXT_FOLLOW;
-          if (hdrNum)  hdrNum.textContent  = Math.max(0, parseInt(hdrNum.textContent)  - 1);
-          if (statBox) statBox.textContent = Math.max(0, parseInt(statBox.textContent) - 1);
+          if (followerNum) followerNum.textContent = Math.max(0, parseInt(followerNum.textContent) - 1);
+          if (statBox)     statBox.textContent     = Math.max(0, parseInt(statBox.textContent) - 1);
         }
       })
       .catch(() => {})
       .finally(() => { btn.disabled = false; });
     }
-
-    /* ── Follower / Following Modal ── */
-    let currentModalType = null;
-
-    function openModal(type) {
-      if (!VIEWER_ID) {
-        window.location.href = '/login';
-        return;
-      }
-      currentModalType = type;
-      const modal = document.getElementById('social-modal');
-      const title = document.getElementById('modal-title');
-      title.textContent = type === 'followers' ? 'Follower' : 'Following';
-      document.getElementById('modal-list').innerHTML =
-        '<div style="text-align:center;color:#64748b;padding:2rem;"><i class="fas fa-spinner fa-spin me-2"></i>Laden…</div>';
-      modal.style.display = 'flex';
-      document.body.style.overflow = 'hidden';
-
-      fetch('/api/profile/' + PROFILE_UID + '/' + type)
-        .then(r => r.json())
-        .then(users => renderModalList(users, type))
-        .catch(() => {
-          document.getElementById('modal-list').innerHTML =
-            '<p style="color:#ef4444;text-align:center;padding:1.5rem;">Fehler beim Laden.</p>';
-        });
-    }
-
-    function closeModal() {
-      document.getElementById('social-modal').style.display = 'none';
-      document.body.style.overflow = '';
-      currentModalType = null;
-    }
-
-    function escHtml(s) {
-      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    }
-
-    function renderModalList(users, type) {
-      const list = document.getElementById('modal-list');
-      if (!users.length) {
-        list.innerHTML = '<p style="color:#64748b;text-align:center;padding:1.5rem;font-size:.88rem;">Noch niemand hier.</p>';
-        return;
-      }
-      list.innerHTML = users.map(u => {
-        const initial = u.username[0].toUpperCase();
-        let actionBtn = '';
-        if (VIEWER_ID && VIEWER_ID !== u.id) {
-          if (type === 'following' && IS_OWN) {
-            actionBtn = `<button onclick="modalToggleFollow(${u.id}, this, 'following')"
-              style="background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.3);border-radius:7px;padding:.3rem .75rem;font-size:.78rem;cursor:pointer;font-weight:600;white-space:nowrap;">
-              <i class="fas fa-user-minus me-1"></i>${TXT_UNFOLLOW}</button>`;
-          } else {
-            const isF = u.i_follow;
-            actionBtn = isF
-              ? `<button onclick="modalToggleFollow(${u.id}, this, '${type}')"
-                  data-state="following"
-                  style="background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.3);border-radius:7px;padding:.3rem .75rem;font-size:.78rem;cursor:pointer;font-weight:600;white-space:nowrap;">
-                  <i class="fas fa-user-check me-1"></i>${TXT_FOLLOWS}</button>`
-              : `<button onclick="modalToggleFollow(${u.id}, this, '${type}')"
-                  data-state="not-following"
-                  style="background:#3b82f6;color:#fff;border:none;border-radius:7px;padding:.3rem .75rem;font-size:.78rem;cursor:pointer;font-weight:600;white-space:nowrap;">
-                  <i class="fas fa-user-plus me-1"></i>${TXT_FOLLOW}</button>`;
-          }
-        }
-        return `<div id="modal-user-${u.id}" class="d-flex align-items-center gap-3" style="padding:.65rem .25rem;border-bottom:1px solid #1e293b;">
-          <div style="width:34px;height:34px;background:linear-gradient(135deg,#3b82f6,#818cf8);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:.85rem;flex-shrink:0;">${initial}</div>
-          <a href="/profile/${escHtml(u.username)}" style="color:#f1f5f9;font-weight:600;font-size:.9rem;text-decoration:none;flex:1;" onclick="closeModal()">${escHtml(u.username)}</a>
-          ${actionBtn}
-        </div>`;
-      }).join('');
-    }
-
-    async function modalToggleFollow(targetId, btn, listType) {
-      btn.disabled = true;
-      try {
-        const res  = await fetch('/api/buddies/follow/' + targetId, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }
-        });
-        const data = await res.json();
-        if (!data.success) { btn.disabled = false; return; }
-
-        if (listType === 'following' && IS_OWN) {
-          // Remove row from own following list + update header count
-          const row = document.getElementById('modal-user-' + targetId);
-          if (row) row.remove();
-          const hdr = document.getElementById('following-count-header');
-          if (hdr) hdr.textContent = Math.max(0, parseInt(hdr.textContent) - 1);
-          // also update main-page follow button if this is the profile owner
-        } else {
-          // Toggle button state
-          if (data.following) {
-            btn.dataset.state   = 'following';
-            btn.style.background = 'rgba(34,197,94,.1)';
-            btn.style.color      = '#4ade80';
-            btn.style.border     = '1px solid rgba(34,197,94,.3)';
-            btn.innerHTML        = `<i class="fas fa-user-check me-1"></i>${TXT_FOLLOWS}`;
-          } else {
-            btn.dataset.state   = 'not-following';
-            btn.style.background = '#3b82f6';
-            btn.style.color      = '#fff';
-            btn.style.border     = 'none';
-            btn.innerHTML        = `<i class="fas fa-user-plus me-1"></i>${TXT_FOLLOW}`;
-          }
-          btn.disabled = false;
-        }
-      } catch(e) { btn.disabled = false; }
-    }
-
-    // Close modal on Escape key
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
   </script>
 </body>
 </html>

@@ -81,6 +81,32 @@
       {% if r.detail %}
       <div style="color:#94a3b8;font-size:.82rem;margin-top:.3rem;font-style:italic;">"{{ r.detail }}"</div>
       {% endif %}
+
+      <!-- Gemeldeter Inhalt -->
+      {% if r.content_preview %}
+      <div style="margin-top:.6rem;background:#0f172a;border-radius:8px;padding:.65rem .9rem;border-left:3px solid #475569;">
+        <div style="color:#64748b;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.35rem;">
+          {% if r.content_preview.kind == 'post' %}
+            <i class="fas fa-file-lines me-1"></i>Beitrag von {{ r.content_preview.author }}
+          {% else %}
+            <i class="fas fa-comment me-1"></i>Nachricht von {{ r.content_preview.sender }}
+          {% endif %}
+        </div>
+        {% if r.content_preview.image_url %}
+        <img src="{{ r.content_preview.image_url }}" style="max-width:180px;max-height:120px;border-radius:6px;margin-bottom:.4rem;cursor:pointer;"
+             onclick="window.open(this.src)" alt="Bild">
+        {% endif %}
+        {% if r.content_preview.text %}
+        <div style="color:#cbd5e1;font-size:.85rem;line-height:1.45;white-space:pre-wrap;word-break:break-word;">{{ r.content_preview.text }}</div>
+        {% elif not r.content_preview.image_url %}
+        <div style="color:#4b5563;font-size:.82rem;font-style:italic;">[Inhalt bereits gelöscht]</div>
+        {% endif %}
+      </div>
+      {% elif r.target_type not in ('profile',) and r.target_id %}
+      <div style="margin-top:.5rem;background:#0f172a;border-radius:8px;padding:.5rem .75rem;border-left:3px solid #334155;">
+        <span style="color:#4b5563;font-size:.8rem;font-style:italic;">Inhalt nicht mehr verfügbar (gelöscht oder ID {{ r.target_id }})</span>
+      </div>
+      {% endif %}
     </div>
 
     <!-- Aktionen -->
@@ -124,13 +150,13 @@
 
 <script>
 async function doAction(reportId, action) {
-  const labels = {
-    dismiss: 'Meldung abweisen?',
-    delete_content: 'Inhalt wirklich löschen?',
-    warn_user: 'Verwarnung senden?',
-    ban_user: 'User wirklich sperren?',
+  const confirmOpts = {
+    dismiss:        { message: 'Meldung abweisen? Sie wird als erledigt markiert.',                type: 'primary', title: 'Abweisen',        confirmText: 'Abweisen' },
+    delete_content: { message: 'Inhalt wirklich löschen? Dies kann nicht rückgängig gemacht werden.', type: 'danger',  title: 'Inhalt löschen',  confirmText: 'Löschen' },
+    warn_user:      { message: 'Verwarnung an den User senden?',                                   type: 'warning', title: 'Verwarnung',       confirmText: 'Verwarnen' },
+    ban_user:       { message: 'User wirklich sperren? Er kann sich dann nicht mehr einloggen.',   type: 'danger',  title: 'User sperren',     confirmText: 'Sperren' },
   };
-  if (!confirm(labels[action] || 'Fortfahren?')) return;
+  try { await showConfirm(confirmOpts[action] || { message: 'Fortfahren?' }); } catch { return; }
   const res = await fetch(`/api/admin/report/${reportId}/action`, {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ action })

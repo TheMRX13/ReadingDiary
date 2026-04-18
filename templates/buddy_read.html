@@ -133,7 +133,47 @@
 </div>
 
 <script>
-const READ_ID = {{ br.id }};
+const READ_ID  = {{ br.id }};
+const MY_UID   = {{ uid }};
+let lastMsgId  = {{ messages[-1].id if messages else 0 }};
+
+/* ── Live-Chat Polling (alle 3 Sekunden) ── */
+function msgHTML(m) {
+  const mine = m.sender_id === MY_UID;
+  let body = '';
+  if (m.is_spoiler) {
+    body = `<div class="spoiler-msg" onclick="this.classList.toggle('revealed')" style="cursor:pointer;">
+      <span class="spoiler-hidden" style="background:#ef4444;color:#fff;padding:.15rem .4rem;border-radius:4px;font-size:.75rem;"><i class="fas fa-eye-slash me-1"></i>Spoiler - klicken</span>
+      <span class="spoiler-text" style="display:none;color:#f1f5f9;font-size:.9rem;">${m.content}</span>
+    </div>`;
+  } else {
+    body = `<div style="color:#f1f5f9;font-size:.9rem;">${m.content.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>`;
+  }
+  return `<div class="d-flex gap-2 ${mine ? 'justify-content-end' : ''}">
+    <div style="max-width:75%;background:${mine ? '#1e3a5f' : '#0f172a'};border-radius:10px;padding:.6rem .9rem;">
+      <div style="color:#64748b;font-size:.7rem;margin-bottom:.2rem;">${m.username} - ${m.created_at.substring(0,16)}</div>
+      ${body}
+    </div>
+  </div>`;
+}
+
+async function pollBuddyChat() {
+  try {
+    const res = await fetch(`/api/buddies/read/${READ_ID}/messages/poll?after=${lastMsgId}`);
+    const msgs = await res.json();
+    if (msgs.length) {
+      const box = document.getElementById('chat-messages');
+      const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+      msgs.forEach(m => {
+        box.insertAdjacentHTML('beforeend', msgHTML(m));
+        lastMsgId = Math.max(lastMsgId, m.id);
+      });
+      if (atBottom) box.scrollTop = box.scrollHeight;
+    }
+  } catch(e) {}
+  setTimeout(pollBuddyChat, 3000);
+}
+pollBuddyChat();
 
 async function updateProgress(waiting=false) {
   const page = parseInt(document.getElementById('my-progress-input').value) || 0;
@@ -149,19 +189,22 @@ async function updateProgress(waiting=false) {
 function setWaiting() { updateProgress(true); }
 
 async function sendMessage() {
-  const content = document.getElementById('chat-input').value.trim();
+  const input = document.getElementById('chat-input');
+  const content = input.value.trim();
   const is_spoiler = document.getElementById('spoiler-flag').checked;
   if (!content) return;
-  const res = await fetch(`/api/buddies/read/${READ_ID}/message`, {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ content, is_spoiler })
-  });
-  const d = await res.json();
-  if (d.success) {
-    document.getElementById('chat-input').value = '';
-    document.getElementById('spoiler-flag').checked = false;
-    location.reload();
-  } else alert('Fehler: ' + d.error);
+  input.value = '';
+  document.getElementById('spoiler-flag').checked = false;
+  try {
+    const res = await fetch(`/api/buddies/read/${READ_ID}/message`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ content, is_spoiler })
+    });
+    const d = await res.json();
+    if (d.success) {
+      // Polling holt die Nachricht automatisch
+    } else { input.value = content; alert('Fehler: ' + d.error); }
+  } catch(e) { input.value = content; }
 }
 
 async function addMilestone() {
@@ -189,7 +232,7 @@ function showToast(msg) {
 }
 
 async function abandonRead(readId) {
-  if (!confirm('Buddy-Read wirklich abbrechen?')) return;
+  try { await showConfirm({ message: 'Buddy-Read wirklich abbrechen?', title: 'Buddy-Read abbrechen', type: 'danger', confirmText: 'Abbrechen' }); } catch { return; }
   const res = await fetch(`/api/buddies/read/${readId}/abandon`, { method: 'POST' });
   const d = await res.json();
   if (d.success) window.location.href = '/buddies';

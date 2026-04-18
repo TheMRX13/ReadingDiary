@@ -117,7 +117,7 @@ async function sendReply() {
 }
 
 async function closeTicket() {
-  if (!confirm('{{ _("Ticket wirklich schließen?") }}')) return;
+  try { await showConfirm({ message: '{{ _("Ticket wirklich schließen?") }}', title: '{{ _("Ticket schließen") }}', type: 'warning', confirmText: '{{ _("Schließen") }}' }); } catch { return; }
   const res = await fetch(`/api/support/ticket/${TICKET_ID}/close`, {
     method: 'POST',
     headers: {'Content-Type':'application/json'},

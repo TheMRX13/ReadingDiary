@@ -120,7 +120,7 @@ async function sendAdminReply() {
 }
 
 async function adminCloseTicket() {
-  if (!confirm('Ticket wirklich schließen?')) return;
+  try { await showConfirm({ message: 'Ticket wirklich schließen?', title: 'Ticket schließen', type: 'warning', confirmText: 'Schließen' }); } catch { return; }
   const res = await fetch(`/api/support/ticket/${TICKET_ID}/close`, {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
