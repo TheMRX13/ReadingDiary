@@ -1,6 +1,6 @@
 # 📚 Reading Diary
 
-Eine persönliche Bücherverwaltung als Web-App – lokal gehostet, mobilfreundlich, mit Dark Mode.
+Eine persönliche Bücherverwaltung als Web-App 
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python)
 ![Flask](https://img.shields.io/badge/Flask-3.0.3-black?logo=flask)
@@ -55,7 +55,7 @@ Die App ist dann unter **http://localhost:7443** erreichbar.
 
 ## Konfiguration
 
-Das Standard-Passwort beim ersten Start ist `admin`. Es kann in den **Einstellungen** geändert werden.
+Der Admin Account muss vor dem ersten start in der `.env`. Festgelegt werden
 
 Die Datenbank (`reading_diary.db`) wird automatisch beim ersten Start erstellt.
 
